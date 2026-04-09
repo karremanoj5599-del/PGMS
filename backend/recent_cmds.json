@@ -1,0 +1,142 @@
+[
+  {
+    "id": 31,
+    "device_sn": "JNP2254501106",
+    "command": "DATA UPDATE USERINFO PIN=1\tName=manoj\tPri=0\tPass=\tCard=\tGrp=1\tTZ=0000000000000000\tPIN2=1",
+    "executed": 1,
+    "created_at": "2026-03-26 21:11:11"
+  },
+  {
+    "id": 30,
+    "device_sn": "JNP2254501106",
+    "command": "DATA UPDATE USERINFO PIN=1\tName=manoj\tPri=0\tPass=\tCard=\tGrp=3\tTZ=0000000000000000\tPIN2=1",
+    "executed": 1,
+    "created_at": "2026-03-26 21:10:00"
+  },
+  {
+    "id": 29,
+    "device_sn": "JNP2254501106",
+    "command": "DATA UPDATE accgroup id=3\ttimezone1=3\ttimezone2=53\ttimezone3=0\tholiday=0\tverifystyle=0",
+    "executed": 1,
+    "created_at": "2026-03-26 21:09:52"
+  },
+  {
+    "id": 28,
+    "device_sn": "JNP2254501106",
+    "command": "DATA UPDATE timezone TimezoneId=53\tSUN=00:00-00:00\tMON=00:00-00:00\tTUE=00:00-00:00\tWED=00:00-00:00\tTHU=00:00-00:00\tFRI=00:00-00:00\tSAT=00:00-00:00",
+    "executed": 1,
+    "created_at": "2026-03-26 21:09:52"
+  },
+  {
+    "id": 27,
+    "device_sn": "JNP2254501106",
+    "command": "DATA UPDATE timezone TimezoneId=3\tSUN=00:00-00:00\tMON=00:00-00:00\tTUE=00:00-00:00\tWED=00:00-00:00\tTHU=00:00-00:00\tFRI=00:00-00:00\tSAT=00:00-00:00",
+    "executed": 1,
+    "created_at": "2026-03-26 21:09:52"
+  },
+  {
+    "id": 26,
+    "device_sn": "JNP2254501106",
+    "command": "DATA UPDATE USERINFO PIN=1\tName=manoj\tPri=0\tPass=\tCard=\tGrp=3\tTZ=0000000000000000\tPIN2=1",
+    "executed": 1,
+    "created_at": "2026-03-26 20:54:53"
+  },
+  {
+    "id": 25,
+    "device_sn": "JNP2254501106",
+    "command": "DATA UPDATE USERINFO PIN=1\tName=manoj\tPri=0\tPass=\tCard=\tGrp=2\tTZ=0000000000000000\tPIN2=1",
+    "executed": 1,
+    "created_at": "2026-03-26 20:54:49"
+  },
+  {
+    "id": 24,
+    "device_sn": "JNP2254501106",
+    "command": "DATA UPDATE USERINFO PIN=1\tName=manoj\tPri=0\tPass=\tCard=\tGrp=3\tTZ=0000000000000000\tPIN2=1",
+    "executed": 1,
+    "created_at": "2026-03-26 20:43:28"
+  },
+  {
+    "id": 23,
+    "device_sn": "JNP2254501106",
+    "command": "DATA UPDATE accgroup id=3\ttimezone1=3\ttimezone2=0\ttimezone3=0\tholiday=0\tverifystyle=0",
+    "executed": 1,
+    "created_at": "2026-03-26 20:43:22"
+  },
+  {
+    "id": 22,
+    "device_sn": "JNP2254501106",
+    "command": "DATA UPDATE timezone TimezoneId=3\tSUN=00:00-00:00\tMON=00:00-00:00\tTUE=00:00-00:00\tWED=00:00-00:00\tTHU=00:00-00:00\tFRI=00:00-00:00\tSAT=00:00-00:00",
+    "executed": 1,
+    "created_at": "2026-03-26 20:43:22"
+  },
+  {
+    "id": 21,
+    "device_sn": "JNP2254501106",
+    "command": "DATA UPDATE USERINFO PIN=1\tName=manoj\tPri=0\tPass=\tCard=\tGrp=3\tTZ=0000000000000000\tPIN2=1",
+    "executed": 1,
+    "created_at": "2026-03-26 20:42:06"
+  },
+  {
+    "id": 20,
+    "device_sn": "JNP2254501106",
+    "command": "DATA UPDATE accgroup id=3\ttimezone1=3\ttimezone2=0\ttimezone3=0\tholiday=0\tverifystyle=0",
+    "executed": 1,
+    "created_at": "2026-03-26 20:41:54"
+  },
+  {
+    "id": 19,
+    "device_sn": "JNP2254501106",
+    "command": "DATA UPDATE timezone TimezoneId=3\tSUN=00:00-00:00\tMON=00:00-00:00\tTUE=00:00-00:00\tWED=00:00-00:00\tTHU=00:00-00:00\tFRI=00:00-00:00\tSAT=00:00-00:00",
+    "executed": 1,
+    "created_at": "2026-03-26 20:41:54"
+  },
+  {
+    "id": 18,
+    "device_sn": "JNP2254501106",
+    "command": "DATA UPDATE USERINFO PIN=2\tName=kothi\tPri=0\tPass=\tCard=\tGrp=2\tTZ=0000000000000000\tPIN2=2",
+    "executed": 1,
+    "created_at": "2026-03-26 20:40:32"
+  },
+  {
+    "id": 17,
+    "device_sn": "JNP2254501106",
+    "command": "DATA UPDATE accgroup id=2\ttimezone1=2\ttimezone2=0\ttimezone3=0\tholiday=0\tverifystyle=0",
+    "executed": 1,
+    "created_at": "2026-03-26 20:40:18"
+  },
+  {
+    "id": 16,
+    "device_sn": "JNP2254501106",
+    "command": "DATA UPDATE timezone TimezoneId=2\tSUN=00:00-00:00\tMON=00:00-00:00\tTUE=00:00-00:00\tWED=00:00-00:00\tTHU=00:00-00:00\tFRI=00:00-00:00\tSAT=00:00-00:00",
+    "executed": 1,
+    "created_at": "2026-03-26 20:40:18"
+  },
+  {
+    "id": 15,
+    "device_sn": "JNP2254501106",
+    "command": "DATA UPDATE USERINFO PIN=2\tName=kothi\tPri=0\tPass=\tCard=\tGrp=1\tTZ=0000000000000000\tPIN2=2",
+    "executed": 1,
+    "created_at": "2026-03-26 20:32:43"
+  },
+  {
+    "id": 14,
+    "device_sn": "JNP2254501106",
+    "command": "DATA UPDATE USERINFO PIN=3\tName=kondenga\tPri=0\tPass=\tCard=\tGrp=2\tTZ=0000000000000000\tPIN2=3",
+    "executed": 1,
+    "created_at": "2026-03-26 20:30:01"
+  },
+  {
+    "id": 13,
+    "device_sn": "JNP2254501106",
+    "command": "DATA UPDATE USERINFO PIN=1\tName=manoj\tPri=0\tPass=\tCard=\tGrp=2\tTZ=0000000000000000\tPIN2=1",
+    "executed": 1,
+    "created_at": "2026-03-26 20:29:57"
+  },
+  {
+    "id": 12,
+    "device_sn": "JNP2254501106",
+    "command": "DATA UPDATE USERINFO PIN=1\tName=manoj\tPri=0\tPass=\tCard=\tGrp=1\tTZ=1000000000000000\tPIN2=1",
+    "executed": 1,
+    "created_at": "2026-03-26 19:53:42"
+  }
+]

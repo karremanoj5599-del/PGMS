@@ -1,0 +1,9 @@
+
+        {
+            "type": "chrome",
+            "name": "http://localhost:5173/",
+            "request": "launch",
+            "url": "http://localhost:5173/"
+        }
+    ]
+}
