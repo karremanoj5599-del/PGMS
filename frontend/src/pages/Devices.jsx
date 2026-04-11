@@ -14,10 +14,21 @@ const Devices = () => {
   const [testResult, setTestResult] = useState(null);
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [newDevice, setNewDevice] = useState({ device_name: '', ip_address: '', adms_status: false });
+  const [newDevice, setNewDevice] = useState({ device_name: '', ip_address: '', port: 4370, machine_id: 1, adms_status: false });
+  const [liveEvents, setLiveEvents] = useState([]);
 
   useEffect(() => {
     fetchDevices();
+    
+    // Live Monitoring SSE
+    const user_id = localStorage.getItem('user_id'); // If using localStorage for user scoping
+    const url = user_id ? `${API}/api/events?user_id=${user_id}` : `${API}/api/events`;
+    const es = new EventSource(url);
+    es.onmessage = (e) => {
+       const data = JSON.parse(e.data);
+       setLiveEvents(prev => [data, ...prev].slice(0, 50));
+    };
+    return () => es.close();
   }, []);
 
   const fetchDevices = async () => {
@@ -61,7 +72,16 @@ const Devices = () => {
     }
   };
 
-  const openConfigModal = (device) => {
+  const triggerControl = async (id, action) => {
+    try {
+      const res = await axios.post(`${API}/api/devices/${id}/control`, { action });
+      alert(res.data.message);
+    } catch (err) {
+       alert(err.response?.data?.error || 'Failed to send command');
+    }
+  };
+
+  const openConfigModal = async (device) => {
     setConfigDevice({ ...device });
     setTestResult(null);
     setShowConfigModal(true);
@@ -164,6 +184,13 @@ const Devices = () => {
                   Download Users
                 </button>
                 <button 
+                  onClick={() => triggerControl(device.device_id, 'unlock')}
+                  className="btn" 
+                  style={{ flex: 1, minWidth: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', fontSize: '0.85rem' }}
+                >
+                  Unlock Now
+                </button>
+                <button 
                   onClick={() => openConfigModal(device)}
                   className="btn" 
                   style={{ flex: 1, minWidth: '90px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', fontSize: '0.85rem' }}
@@ -208,6 +235,26 @@ const Devices = () => {
                   value={newDevice.ip_address}
                   onChange={e => setNewDevice({...newDevice, ip_address: e.target.value})}
                 />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="form-group">
+                  <label>Comm Port</label>
+                  <input 
+                    type="number" 
+                    placeholder="4370" 
+                    value={newDevice.port}
+                    onChange={e => setNewDevice({...newDevice, port: parseInt(e.target.value)})}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Machine ID</label>
+                  <input 
+                    type="number" 
+                    placeholder="1" 
+                    value={newDevice.machine_id}
+                    onChange={e => setNewDevice({...newDevice, machine_id: parseInt(e.target.value)})}
+                  />
+                </div>
               </div>
               <div className="form-group">
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
@@ -280,6 +327,25 @@ const Devices = () => {
                 </small>
               </div>
 
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="form-group">
+                  <label>Comm Port</label>
+                  <input 
+                    type="number" 
+                    value={configDevice.port || 4370}
+                    onChange={e => setConfigDevice({...configDevice, port: parseInt(e.target.value)})}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Machine ID</label>
+                  <input 
+                    type="number" 
+                    value={configDevice.machine_id || 1}
+                    onChange={e => setConfigDevice({...configDevice, machine_id: parseInt(e.target.value)})}
+                  />
+                </div>
+              </div>
+
               <div className="form-group">
                 <label>Communication Key</label>
                 <input 
@@ -304,6 +370,8 @@ const Devices = () => {
                 </label>
               </div>
 
+
+
               {/* ADMS Setup Instructions */}
               <div style={{ 
                 background: 'rgba(99, 102, 241, 0.08)', 
@@ -314,21 +382,22 @@ const Devices = () => {
                 marginBottom: '1rem'
               }}>
                 <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--primary)', marginBottom: '0.75rem' }}>
-                  <Server size={16} /> ADMS Device Setup
+                  <Server size={16} /> Connection Guidelines
                 </h4>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.7' }}>
-                  <p style={{ margin: '0 0 0.5rem' }}>Configure these settings on your <strong>eSSL biometric device</strong>:</p>
-                  <ol style={{ margin: 0, paddingLeft: '1.25rem' }}>
+                  <p style={{ marginBottom: '0.5rem' }}><strong>Option 1: ADMS (Recommended)</strong></p>
+                  <ol style={{ margin: '0 0 1rem', paddingLeft: '1.25rem' }}>
                     <li>Go to <strong>Comm. → Cloud Server Setting</strong> on the device</li>
                     <li>Set <strong>Server Address</strong> to: <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.15rem 0.4rem', borderRadius: '4px' }}>{getADMSUrl()}</code></li>
-                    <li>Set <strong>Enable Domain</strong>: No</li>
-                    <li>Set <strong>Server Port</strong>: <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.15rem 0.4rem', borderRadius: '4px' }}>5000</code></li>
-                    <li>Set <strong>Enable Proxy Server</strong>: No</li>
+                    <li>Set <strong>Server Port</strong> to: <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.15rem 0.4rem', borderRadius: '4px' }}>5000</code></li>
                   </ol>
-                  <p style={{ margin: '0.75rem 0 0', display: 'flex', alignItems: 'flex-start', gap: '0.35rem' }}>
-                    <Info size={14} style={{ marginTop: '2px', flexShrink: 0 }} /> 
-                    Replace <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.15rem 0.4rem', borderRadius: '4px' }}>&lt;YOUR_PC_IP&gt;</code> with this machine's IP on the same network (e.g. 192.168.1.x)
-                  </p>
+                  
+                  <p style={{ marginBottom: '0.5rem' }}><strong>Option 2: Standalone SDK (Direct)</strong></p>
+                  <ul style={{ margin: 0, paddingLeft: '1.25rem', listStyle: 'disc' }}>
+                    <li>Ensure <strong>PC and Device</strong> are on the same network</li>
+                    <li><strong>Comm Port</strong> default is 4370</li>
+                    <li><strong>Machine ID</strong> default is 1</li>
+                  </ul>
                 </div>
               </div>
 
@@ -447,6 +516,30 @@ const Devices = () => {
           </div>
         </div>
       )}
+
+      <div style={{ marginTop: '3rem' }}>
+        <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
+          <ShieldCheck size={20} color="var(--primary)" /> Live Monitoring Feed
+        </h3>
+        <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '1rem', padding: '1.5rem', height: '300px', overflowY: 'auto' }}>
+          {liveEvents.length === 0 ? (
+            <p style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '4rem' }}>No recent activity. Waiting for events...</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {liveEvents.map((ev, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px' }}>
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                     <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: ev.punch_time?.includes('AUTO-LOCKED') ? '#ef4444' : '#10b981' }}></div>
+                     <span style={{ fontWeight: 'bold' }}>{ev.user_id || 'Unknown User'}</span> 
+                     <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>• {ev.device_sn}</span>
+                   </div>
+                   <div style={{ color: 'var(--primary)', fontSize: '0.85rem' }}>{ev.punch_time}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
 
       <div style={{ marginTop: '3rem', background: 'rgba(99, 102, 241, 0.05)', border: '1px solid rgba(99, 102, 241, 0.2)', borderRadius: '1rem', padding: '2rem' }}>
         <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>

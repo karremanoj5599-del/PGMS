@@ -10,8 +10,8 @@ module.exports = {
     migrations: {
       directory: './migrations'
     },
-    seeds: {
-      directory: './seeds'
+    beds: {
+      directory: './test-data'
     }
   },
   supabase: {
@@ -23,8 +23,8 @@ module.exports = {
     migrations: {
       directory: './migrations'
     },
-    seeds: {
-      directory: './seeds'
+    beds: {
+      directory: './test-data'
     }
   }
 };

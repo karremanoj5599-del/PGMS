@@ -106,21 +106,58 @@ const syncTenantAccess = async (tenant_id) => {
         }
 
         // 2. Queue Group Definition
-        commands.push({ device_sn: device.sn, command: `DATA UPDATE accgroup id=${grpId}\ttimezone1=${tzIds[0]}\ttimezone2=${tzIds[1]}\ttimezone3=${tzIds[2]}\tholiday=0\tverifystyle=0`, user_id: tenant.user_id });
+        let holidayId = 0;
+        if (access && access.access_group_id) {
+            const group = await db('access_groups').where({ id: access.access_group_id, user_id: tenant.user_id }).first();
+            if (group && group.holiday_id) {
+                holidayId = group.holiday_id;
+                // Ensure the holiday definition is also pushed to the machine
+                const holiday = await db('holidays').where('id', holidayId).first();
+                if (holiday) {
+                    const hDate = new Date(holiday.start_date);
+                    commands.push({
+                        device_sn: device.sn,
+                        command: `DATA UPDATE holiday Holiday=${holiday.id}\tName=${holiday.name.replace(/\s+/g,'')}\tTimezone=${holiday.timezone_id || 0}\tMonth=${hDate.getMonth()+1}\tDay=${hDate.getDate()}`,
+                        user_id: tenant.user_id
+                    });
+                }
+            }
+        }
+        commands.push({ device_sn: device.sn, command: `DATA UPDATE accgroup id=${grpId}\ttimezone1=${tzIds[0]}\ttimezone2=${tzIds[1]}\ttimezone3=${tzIds[2]}\tholiday=${holidayId}\tverifystyle=0`, user_id: tenant.user_id });
 
         // 3. Grant/Update: DATA UPDATE USERINFO
         const cleanName = tenant.name.replace(/[^\w]/g, '');
+        // Use biometric_pin if it exists, otherwise use tenant_id
+        const pin = tenant.biometric_pin || tenant.tenant_id.toString();
+        
         const tzMask = generateTZMask(tzIds[0]);
+        
+        let extraParams = [];
+        if (tenant.access_expiry_date) {
+            const d = new Date(tenant.access_expiry_date);
+            if (!isNaN(d)) {
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                extraParams.push(`EndDatetime=${yyyy}${mm}${dd}235959`);
+            }
+        }
+        if (tenant.punch_limit && tenant.punch_limit > 0) {
+            extraParams.push(`ValidCount=${tenant.punch_limit}`);
+        }
+        const extraString = extraParams.length > 0 ? '\t' + extraParams.join('\t') : '';
+
         commands.push({
           device_sn: device.sn,
-          command: `DATA UPDATE USERINFO PIN=${tenant.tenant_id}\tName=${cleanName}\tPri=0\tPass=\tCard=\tGrp=${grpId}\tTZ=${tzMask}\tPIN2=${tenant.tenant_id}`,
+          command: `DATA UPDATE USERINFO PIN=${pin}\tName=${cleanName}\tPri=0\tPass=\tCard=\tGrp=${grpId}\tTZ=${tzMask}\tPIN2=${pin}${extraString}`,
           user_id: tenant.user_id
         });
       } else {
         // Revoke: DATA DELETE USERINFO
+        const pin = tenant.biometric_pin || tenant.tenant_id.toString();
         commands.push({
           device_sn: device.sn,
-          command: `DATA DELETE USERINFO PIN=${tenant.tenant_id}`,
+          command: `DATA DELETE USERINFO PIN=${pin}`,
           user_id: tenant.user_id
         });
       }
@@ -129,7 +166,7 @@ const syncTenantAccess = async (tenant_id) => {
         await db('device_commands').insert(commands);
       }
     }
-    console.log(`[ADMS] Queued sync for tenant ${tenant_id} on ${devices.length} devices`);
+    console.log(`[ADMS] Queued sync for tenant ${tenant_id} as PIN ${tenant.biometric_pin || tenant_id} on ${devices.length} devices`);
   } catch (err) {
     console.error('[ADMS] Failed to sync tenant access:', err.message);
   }
@@ -173,6 +210,57 @@ setInterval(checkPaymentStatusAndEnforceAccess, 30 * 60 * 1000);
 // Run once on startup after 10s
 setTimeout(checkPaymentStatusAndEnforceAccess, 10000);
 
+const enforceInactivityRules = async () => {
+  try {
+    const devices = await db('devices').where('adms_status', true);
+    for (const device of devices) {
+      if (!device || !device.sn) continue;
+      
+      const globalSettings = await db('device_settings').where({ device_id: 0, user_id: device.user_id }).first();
+      if (!globalSettings || (!globalSettings.auto_block_enabled && !globalSettings.auto_delete_enabled)) continue;
+
+      const tenants = await db('tenants').where('user_id', device.user_id);
+      
+      for (const tenant of tenants) {
+        const lastPunch = await db('attendance_logs')
+          .where({ tenant_id: tenant.tenant_id, device_sn: device.sn })
+          .orderBy('punch_time', 'desc').first();
+          
+        let daysInactive = 0;
+        if (lastPunch) {
+           const logDate = new Date(lastPunch.punch_time);
+           daysInactive = (Date.now() - logDate.getTime()) / (1000 * 3600 * 24);
+        } else {
+           if (tenant.joining_date) {
+               daysInactive = (Date.now() - new Date(tenant.joining_date).getTime()) / (1000 * 3600 * 24);
+           }
+        }
+        
+        if (globalSettings.auto_delete_enabled && daysInactive >= globalSettings.auto_delete_days) {
+            console.log(`[EXPIRY] Auto-deleting tenant ${tenant.name} from device ${device.sn} (${Math.round(daysInactive)} days)`);
+            await db('device_commands').insert({
+                device_sn: device.sn,
+                command: `DATA DELETE USERINFO PIN=${tenant.tenant_id}`,
+                user_id: tenant.user_id
+            });
+            await db('access_control').where('tenant_id', tenant.tenant_id).update({ access_granted: false });
+        } 
+        else if (globalSettings.auto_block_enabled && daysInactive >= globalSettings.auto_block_days) {
+            console.log(`[EXPIRY] Auto-blocking tenant ${tenant.name} on device ${device.sn} (${Math.round(daysInactive)} days)`);
+            await db('device_commands').insert({
+                device_sn: device.sn,
+                command: `DATA UPDATE USERINFO PIN=${tenant.tenant_id}\tName=${tenant.name.replace(/[^\w]/g, '')}\tPri=0\tPass=\tCard=\tGrp=0\tTZ=0\tPIN2=${tenant.tenant_id}`,
+                user_id: tenant.user_id
+            });
+        }
+      }
+    }
+  } catch(err) {
+    console.error('[EXPIRY] Error enforcing inactivity rules:', err.message);
+  }
+};
+setInterval(enforceInactivityRules, 12 * 60 * 60 * 1000); // 12 hours
+setTimeout(enforceInactivityRules, 15000); // Run on startup
 const fs = require('fs');
 const path = require('path');
 
@@ -768,14 +856,15 @@ app.post('/api/tenants/bulk-delete', async (req, res) => {
     }
 
     // Queue DELETE USER commands for devices
-    const devices = await db('devices').where('adms_status', true);
+    const devices = await db('devices').where({ adms_status: true, user_id: req.userId });
     for (const tenant of tenants) {
       const pin = tenant.biometric_pin || tenant.tenant_id.toString();
       for (const dev of devices) {
         await db('device_commands').insert({
           device_sn: dev.sn,
           command: `DELETE USER PIN=${pin}`,
-          executed: false
+          executed: false,
+          user_id: req.userId
         });
       }
     }
@@ -803,9 +892,44 @@ app.put('/api/tenants/:id', async (req, res) => {
     }
 
     const tenant = await db('tenants').where('tenant_id', id).first();
+    // Sync if expiry or punch rules might have changed
+    if (req.body.access_expiry_date !== undefined || req.body.punch_limit !== undefined) {
+      await syncTenantAccess(id);
+    }
+    
     res.json(tenant);
   } catch (err) {
     res.status(500).json({ error: 'Failed to update tenant' });
+  }
+});
+
+// Instant Revoke Access
+app.post('/api/tenants/:id/revoke', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const tenant = await db('tenants').where({ tenant_id: id, user_id: req.userId }).first();
+    if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
+
+    // 1. Lock local access and tenant app
+    await db('access_control').where('tenant_id', id).update({ access_granted: false });
+    await db('tenants').where('tenant_id', id).update({ access_status: 'locked' }); // Lock PGMS app access
+    
+    // 2. Immediately purge from devices
+    const devices = await db('devices').where({ adms_status: true, user_id: req.userId });
+    for (const dev of devices) {
+      if (dev.sn) {
+        await db('device_commands').insert({
+          device_sn: dev.sn,
+          command: `DATA DELETE USERINFO PIN=${id}`,
+          user_id: req.userId
+        });
+      }
+    }
+    
+    res.json({ message: 'User access instantly revoked from biometric readers and tenant app.' });
+  } catch (err) {
+    console.error('Revoke error:', err);
+    res.status(500).json({ error: 'Failed to revoke access' });
   }
 });
 
@@ -1174,8 +1298,8 @@ app.post('/api/access-schedules', async (req, res) => {
 
     const [id] = await db('access_schedules').insert(data).returning('id');
 
-    // Sync TimeZone and Access Group to all devices
-    const devices = await db('devices').where('adms_status', true);
+    // Sync TimeZone and Access Group ONLY to the current user's active devices
+    const devices = await db('devices').where({ adms_status: true, user_id: req.userId });
     for (const device of devices) {
       if (device.sn) {
         const dStr = data.valid_days;
@@ -1185,8 +1309,8 @@ app.post('/api/access-schedules', async (req, res) => {
         }).join('\t');
 
         await db('device_commands').insert([
-          { device_sn: device.sn, command: `DATA UPDATE timezone TimezoneId=${nextId}\t${daysMap}` },
-          { device_sn: device.sn, command: `DATA UPDATE accgroup id=${id}\ttimezone1=${nextId}\ttimezone2=0\ttimezone3=0\tholiday=0\tverifystyle=0` }
+          { device_sn: device.sn, command: `DATA UPDATE timezone TimezoneId=${nextId}\t${daysMap}`, user_id: req.userId },
+          { device_sn: device.sn, command: `DATA UPDATE accgroup id=${id}\ttimezone1=${nextId}\ttimezone2=0\ttimezone3=0\tholiday=0\tverifystyle=0`, user_id: req.userId }
         ]);
       }
     }
@@ -1221,13 +1345,14 @@ app.get('/api/access-groups', async (req, res) => {
 
 app.post('/api/access-groups', async (req, res) => {
   try {
-    const { name, timezone1_id, timezone2_id, timezone3_id } = req.body;
+    const { name, timezone1_id, timezone2_id, timezone3_id, holiday_id } = req.body;
     const [id] = await db('access_groups').insert({
       name,
       user_id: req.userId,
       timezone1_id: toNull(timezone1_id),
       timezone2_id: toNull(timezone2_id),
-      timezone3_id: toNull(timezone3_id)
+      timezone3_id: toNull(timezone3_id),
+      holiday_id: toNull(holiday_id)
     }).returning('id');
     res.json({ id, message: 'Access Group created' });
   } catch (err) {
@@ -1241,6 +1366,56 @@ app.delete('/api/access-groups/:id', async (req, res) => {
     res.json({ message: 'Access Group deleted' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete access group' });
+  }
+});
+
+// Holidays
+app.get('/api/holidays', async (req, res) => {
+  try {
+    const holidays = await db('holidays').where('user_id', req.userId).select('*');
+    res.json(holidays);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch holidays' });
+  }
+});
+
+app.post('/api/holidays', async (req, res) => {
+  try {
+    const { name, start_date, end_date, timezone_id } = req.body;
+    const [id] = await db('holidays').insert({
+      name, 
+      start_date, 
+      end_date, 
+      timezone_id: toNull(timezone_id), 
+      user_id: req.userId
+    }).returning('id');
+    
+    // Sync to ONLY current user devices
+    const devices = await db('devices').where({ user_id: req.userId, adms_status: true });
+    for (const dev of devices) {
+      const start = new Date(start_date);
+      const end = new Date(end_date);
+      
+      await db('device_commands').insert({
+        device_sn: dev.sn,
+        command: `DATA UPDATE holiday Holiday=${id}\tName=${name.replace(/\s+/g,'')}\tTimezone=${timezone_id || 0}\tMonth=${start.getMonth()+1}\tDay=${start.getDate()}`,
+        user_id: req.userId
+      });
+    }
+
+    res.json({ id, message: 'Holiday created and synced' });
+  } catch (err) {
+    console.error('Holiday create error:', err);
+    res.status(500).json({ error: 'Failed to create holiday' });
+  }
+});
+
+app.delete('/api/holidays/:id', async (req, res) => {
+  try {
+    await db('holidays').where({ id: req.params.id, user_id: req.userId }).del();
+    res.json({ message: 'Holiday deleted' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete holiday' });
   }
 });
 
@@ -1275,7 +1450,7 @@ app.post('/api/devices/bulk-sync', async (req, res) => {
 
   try {
     const tenants = await db('tenants').whereIn('tenant_id', tenant_ids).andWhere('user_id', req.userId);
-    const devices = await db('devices').where('adms_status', true);
+    const devices = await db('devices').where({ adms_status: true, user_id: req.userId });
     
     if (devices.length === 0) return res.status(400).json({ error: 'No active ADMS devices found' });
 
@@ -1310,12 +1485,12 @@ app.post('/api/access-schedules/resync-all', async (req, res) => {
           const daysMap1 = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map((d, i) => `${d}=${dStr[i]?.toString() === '1' ? s.start_time + '-23:59' : '00:00-00:00'}`).join('\t');
           const daysMap2 = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map((d, i) => `${d}=${dStr[i]?.toString() === '1' ? '00:00-' + s.end_time : '00:00-00:00'}`).join('\t');
           await db('device_commands').insert([
-            { device_sn: device.sn, command: `DATA UPDATE timezone TimezoneId=${tzId}\t${daysMap1}` },
-            { device_sn: device.sn, command: `DATA UPDATE timezone TimezoneId=${tzId + 50}\t${daysMap2}` }
+            { device_sn: device.sn, command: `DATA UPDATE timezone TimezoneId=${tzId}\t${daysMap1}`, user_id: req.userId },
+            { device_sn: device.sn, command: `DATA UPDATE timezone TimezoneId=${tzId + 50}\t${daysMap2}`, user_id: req.userId }
           ]);
         } else {
           const daysMap = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map((d, i) => `${d}=${dStr[i]?.toString() === '1' ? s.start_time + '-' + s.end_time : '00:00-00:00'}`).join('\t');
-          await db('device_commands').insert({ device_sn: device.sn, command: `DATA UPDATE timezone TimezoneId=${tzId}\t${daysMap}` });
+          await db('device_commands').insert({ device_sn: device.sn, command: `DATA UPDATE timezone TimezoneId=${tzId}\t${daysMap}`, user_id: req.userId });
         }
       }
 
@@ -1326,7 +1501,7 @@ app.post('/api/access-schedules/resync-all', async (req, res) => {
           const t2 = await db('access_schedules').where('id', group.timezone2_id || 0).first();
           const t3 = await db('access_schedules').where('id', group.timezone3_id || 0).first();
           const tzIds = [t1?.timezone_id || 0, t2?.timezone_id || 0, t3?.timezone_id || 0];
-          await db('device_commands').insert({ device_sn: device.sn, command: `DATA UPDATE accgroup id=${group.id}\ttimezone1=${tzIds[0]}\ttimezone2=${tzIds[1]}\ttimezone3=${tzIds[2]}\tholiday=0\tverifystyle=0` });
+          await db('device_commands').insert({ device_sn: device.sn, command: `DATA UPDATE accgroup id=${group.id}\ttimezone1=${tzIds[0]}\ttimezone2=${tzIds[1]}\ttimezone3=${tzIds[2]}\tholiday=0\tverifystyle=0`, user_id: req.userId });
       }
     }
 
@@ -1440,9 +1615,20 @@ app.get('/api/devices', async (req, res) => {
 
 app.post('/api/devices', async (req, res) => {
   try {
-    const [device] = await db('devices').insert({ ...req.body, user_id: req.userId }).returning('*');
+    const { device_name, ip_address, port, machine_id, sn, comm_key, adms_status } = req.body;
+    const [device] = await db('devices').insert({ 
+      device_name,
+      ip_address,
+      port: port || 4370,
+      machine_id: machine_id || 1,
+      sn: toNull(sn),
+      comm_key: comm_key || '0',
+      adms_status: !!adms_status,
+      user_id: req.userId 
+    }).returning('*');
     res.json(device);
   } catch (err) {
+    console.error('Add Device Error:', err);
     res.status(500).json({ error: 'Failed to add device' });
   }
 });
@@ -1450,11 +1636,13 @@ app.post('/api/devices', async (req, res) => {
 app.put('/api/devices/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (isNaN(id)) return res.status(400).json({ error: 'Invalid Device ID' });
-  const { device_name, ip_address, sn, comm_key, adms_status } = req.body;
+  const { device_name, ip_address, port, machine_id, sn, comm_key, adms_status } = req.body;
   try {
-    const [device] = await db('devices').where('device_id', id).update({
+    const [device] = await db('devices').where({ device_id: id, user_id: req.userId }).update({
       device_name,
       ip_address,
+      port: port || 4370,
+      machine_id: machine_id || 1,
       sn: toNull(sn),
       comm_key: comm_key || '0',
       adms_status: !!adms_status
@@ -1489,7 +1677,8 @@ app.post('/api/devices/sync-user', async (req, res) => {
         
         await db('device_commands').insert({
           device_sn: device.sn,
-          command: command
+          command: command,
+          user_id: req.userId || tenant.user_id
         });
         count++;
       }
@@ -1498,6 +1687,80 @@ app.post('/api/devices/sync-user', async (req, res) => {
   } catch (err) {
     console.error('Sync User Error:', err);
     res.status(500).json({ error: 'Failed to queue sync command' });
+  }
+});
+
+// Device Settings
+// Global Access Settings route
+app.get('/api/system/access-options', async (req, res) => {
+  try {
+    let settings = await db('device_settings').where({ device_id: 0, user_id: req.userId }).first();
+    if (!settings) {
+      const [inserted] = await db('device_settings').insert({ device_id: 0, user_id: req.userId }).returning('*');
+      settings = inserted.id ? inserted : await db('device_settings').where('id', inserted).first();
+    }
+    res.json(settings);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch global settings' });
+  }
+});
+
+app.put('/api/system/access-options', async (req, res) => {
+  const { 
+    lock_delay, sensor_type, door_mode, anti_passback,
+    expire_action, auto_block_enabled, auto_block_days, auto_delete_enabled, auto_delete_days
+  } = req.body;
+  try {
+    let settings = await db('device_settings').where({ device_id: 0, user_id: req.userId }).first();
+    if (!settings) {
+       await db('device_settings').insert({ device_id: 0, user_id: req.userId });
+    }
+    await db('device_settings').where({ device_id: 0, user_id: req.userId }).update({
+      lock_delay, sensor_type, door_mode, anti_passback,
+      expire_action, auto_block_enabled, auto_block_days, auto_delete_enabled, auto_delete_days
+    });
+    
+    // Sync to ALL user devices via Command Queue
+    const devices = await db('devices').where({ user_id: req.userId, adms_status: true });
+    for(const device of devices){
+        if (device && device.sn) {
+          await db('device_commands').insert({
+            device_sn: device.sn,
+            command: `DATA UPDATE options LockDelay=${lock_delay || 5}\tExpireAction=${expire_action || 0}`,
+            user_id: req.userId
+          });
+        }
+    }
+
+    const updated = await db('device_settings').where({ device_id: 0, user_id: req.userId }).first();
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update global settings' });
+  }
+});
+
+// Remote Device Control (Unlock, etc)
+app.post('/api/devices/:id/control', async (req, res) => {
+  const id = Number(req.params.id);
+  const action = req.body.action || 'unlock';
+  if (isNaN(id)) return res.status(400).json({ error: 'Invalid Device ID' });
+  
+  try {
+    const device = await db('devices').where({ device_id: id, user_id: req.userId }).first();
+    if (!device || !device.sn) return res.status(404).json({ error: 'Device not found or not configured' });
+    
+    let commandStr = 'ACUNLOCK';
+    if (action === 'alarm_cancel') commandStr = 'ACALARM';
+    
+    await db('device_commands').insert({
+      device_sn: device.sn,
+      command: commandStr,
+      user_id: req.userId
+    });
+    
+    res.json({ message: `Queued remote ${action} command` });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to send remote command' });
   }
 });
 
@@ -1647,11 +1910,13 @@ app.all(/iclock\/cdata/i, async (req, res) => {
           const verifyType = parts.length > 2 ? parseInt(parts[2]) || 0 : 0;
           const status = parts.length > 3 ? parseInt(parts[3]) || 0 : 0;
 
-          // Find tenant by biometric_pin or tenant_id, restricted to the device's user
-          let tenant = await db('tenants').where({ biometric_pin: pin, user_id: adminUserId }).first();
-          if (!tenant && !isNaN(pin)) {
-            tenant = await db('tenants').where({ tenant_id: Number(pin), user_id: adminUserId }).first();
-          }
+          // Find tenant by matching Hardware PIN to Software tenant_id OR biometric_pin
+          let tenant = await db('tenants')
+            .where({ user_id: adminUserId })
+            .where(builder => {
+              builder.where('biometric_pin', pin).orWhere('tenant_id', isNaN(pin) ? -1 : Number(pin));
+            })
+            .first();
 
           if (tenant) {
             await db('attendance_logs').insert({
@@ -1704,13 +1969,23 @@ app.all(/iclock\/cdata/i, async (req, res) => {
 
         if (userData.PIN) {
           const pin = userData.PIN;
+          const pinNum = parseInt(pin);
           const name = userData.NAME || `User ${pin}`;
           const adminUserId = device ? device.user_id : null;
           
-          let tenant = await db('tenants').where({ biometric_pin: pin, user_id: adminUserId }).first();
+          // Check if user exists by either ID
+          let tenant = await db('tenants')
+            .where({ user_id: adminUserId })
+            .where(builder => {
+              builder.where('biometric_pin', pin).orWhere('tenant_id', isNaN(pinNum) ? -1 : pinNum);
+            })
+            .first();
+
           if (!tenant) {
-            console.log(`[ADMS] Importing from device: ${name} (PIN: ${pin}) for user ${adminUserId}`);
-            const [newId] = await db('tenants').insert({
+            console.log(`[ADMS] Importing from device: ${name} (PIN/ID: ${pin}) for admin ${adminUserId}`);
+            
+            // If the PIN is a number, we try to use it as the tenant_id directly (per user policy: device ID = software ID)
+            const insertData = {
               name: name,
               mobile: '0000000000',
               joining_date: new Date().toISOString().split('T')[0],
@@ -1718,7 +1993,24 @@ app.all(/iclock\/cdata/i, async (req, res) => {
               device_sn: sn,
               status: 'Staying',
               user_id: adminUserId
-            });
+            };
+
+            // Only use as Primary Key if it's a valid ID and not conflicting
+            if (!isNaN(pinNum) && pinNum > 0) {
+              const existingId = await db('tenants').where('tenant_id', pinNum).first();
+              if (!existingId) {
+                insertData.tenant_id = pinNum;
+              }
+            }
+
+            const [inserted] = await db('tenants').insert(insertData).returning('tenant_id');
+            const newId = typeof inserted === 'object' ? inserted.tenant_id : inserted;
+
+            // FIX: If we manually inserted an ID, we MUST update the PostgreSQL sequence 
+            // to avoid "duplicate key" errors on the next auto-increment insert.
+            if (!isNaN(pinNum)) {
+              await db.raw(`SELECT setval(pg_get_serial_sequence('tenants', 'tenant_id'), max(tenant_id)) FROM tenants`).catch(e => console.error('Sequence Fix Error:', e));
+            }
 
             await db('access_control').insert({
               tenant_id: newId,

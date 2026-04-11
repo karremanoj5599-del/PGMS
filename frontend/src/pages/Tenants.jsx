@@ -20,7 +20,7 @@ const Tenants = () => {
   });
   const [newTenant, setNewTenant] = useState({
     tenant_id: '', name: '', mobile: '', gender: 'Male', joining_date: new Date().toISOString().split('T')[0], 
-    expiry_date: '', bed_id: '', status: 'Staying', initial_payment: 'Pending', tenant_type: 'Permanent'
+    expiry_date: '', access_expiry_date: '', punch_limit: '', bed_id: '', status: 'Staying', initial_payment: 'Pending', tenant_type: 'Permanent'
   });
   const [toast, setToast] = useState(null);
   const [showPinModal, setShowPinModal] = useState(false);
@@ -111,6 +111,8 @@ const Tenants = () => {
     }
   };
 
+
+
   const handleEditClick = (tenant) => {
     setEditId(tenant.tenant_id);
     setNewTenant({
@@ -120,6 +122,8 @@ const Tenants = () => {
       gender: tenant.gender || 'Male',
       joining_date: tenant.joining_date.split('T')[0],
       expiry_date: tenant.expiry_date ? tenant.expiry_date.split('T')[0] : '',
+      access_expiry_date: tenant.access_expiry_date ? tenant.access_expiry_date.split('T')[0] : '',
+      punch_limit: tenant.punch_limit || '',
       bed_id: tenant.bed_id || '',
       status: tenant.status || 'Staying',
       initial_payment: 'Pending',
@@ -247,7 +251,7 @@ const Tenants = () => {
           >
             {selectionMode === 'delete' ? 'Exit Delete Mode' : 'Select & Delete'}
           </button>
-          <button className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => { setIsEditing(false); setNewTenant({ name: '', mobile: '', occupation: '', gender: 'Male', joining_date: new Date().toISOString().split('T')[0], expiry_date: '', bed_id: '', status: 'Staying', initial_payment: 'Pending', tenant_type: 'Permanent' }); setShowModal(true); }}>
+          <button className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => { setIsEditing(false); setNewTenant({ name: '', mobile: '', occupation: '', gender: 'Male', joining_date: new Date().toISOString().split('T')[0], expiry_date: '', access_expiry_date: '', punch_limit: '', bed_id: '', status: 'Staying', initial_payment: 'Pending', tenant_type: 'Permanent' }); setShowModal(true); }}>
             <UserPlus size={18} /> Add Tenant
           </button>
         </div>
@@ -350,6 +354,7 @@ const Tenants = () => {
                     >
                       Sync
                     </button>
+
                     <button
                       onClick={() => handleDeleteTenant(t.tenant_id)}
                       className="btn btn-icon-only" style={{ color: 'var(--danger)' }}
@@ -396,16 +401,38 @@ const Tenants = () => {
               {isEditing && <span style={{ background: 'var(--accent)', color: 'white', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.8rem' }}>ID: #{newTenant.tenant_id}</span>}
             </div>
             <form onSubmit={handleAddTenant} style={{ marginTop: '1.5rem' }}>
-              {!isEditing && (
-                <div className="form-group">
-                  <label>System ID / Biometric ID (Optional)</label>
+              <div className="form-group">
+                <label>System ID / Biometric PIN {isEditing ? '(Locked)' : '(Optional)'}</label>
+                <input 
+                  type="number" 
+                  placeholder="Auto-increment if empty"
+                  value={newTenant.tenant_id} 
+                  disabled={isEditing}
+                  onChange={e => setNewTenant({ ...newTenant, tenant_id: e.target.value })} 
+                />
+                <small style={{ color: 'var(--text-muted)' }}>
+                  {isEditing ? 'System ID cannot be changed after creation' : 'The user ID that will reflect on the biometric device'}
+                </small>
+              </div>
+
+              {isEditing && (
+                <div className="form-group" style={{ 
+                  background: 'rgba(245, 158, 11, 0.05)', 
+                  padding: '1rem', 
+                  borderRadius: '8px', 
+                  border: '1px solid rgba(245, 158, 11, 0.2)',
+                  marginBottom: '1.5rem'
+                }}>
+                  <label style={{ color: '#f59e0b', fontSize: '0.85rem' }}>Change Biometric Device PIN</label>
                   <input 
                     type="number" 
-                    placeholder="Auto-increment if empty"
-                    value={newTenant.tenant_id} 
-                    onChange={e => setNewTenant({ ...newTenant, tenant_id: e.target.value })} 
+                    placeholder={newTenant.tenant_id}
+                    value={newTenant.biometric_pin || ''} 
+                    onChange={e => setNewTenant({ ...newTenant, biometric_pin: e.target.value })} 
                   />
-                  <small style={{ color: 'var(--text-muted)' }}>Useful for matching existing RFID card IDs</small>
+                  <small style={{ color: 'var(--text-muted)', display: 'block', marginTop: '0.5rem' }}>
+                    Only use this if you want the ID on the machine (e.g. 69) to be different from the Software ID (#{newTenant.tenant_id}).
+                  </small>
                 </div>
               )}
               <div className="form-group">
@@ -431,7 +458,7 @@ const Tenants = () => {
                 </div>
                 <div className="form-group">
                   <label style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    Expiry Date
+                    Stay Expiry Date (Rent)
                     <span
                       onClick={() => {
                         const d = new Date(newTenant.joining_date);
@@ -444,6 +471,20 @@ const Tenants = () => {
                     </span>
                   </label>
                   <input type="date" value={newTenant.expiry_date} onChange={e => setNewTenant({ ...newTenant, expiry_date: e.target.value })} />
+                </div>
+              </div>
+
+              <div style={{ padding: '1rem', background: 'rgba(99, 102, 241, 0.05)', borderRadius: '8px', border: '1px solid rgba(99, 102, 241, 0.2)', marginBottom: '1rem' }}>
+                <h4 style={{ marginBottom: '0.75rem', color: 'var(--primary)', fontSize: '0.85rem' }}>Biometric Hardware Limits (Optional)</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>Hardware Expiry Date</label>
+                    <input type="date" value={newTenant.access_expiry_date || ''} onChange={e => setNewTenant({ ...newTenant, access_expiry_date: e.target.value })} />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>Entry / Punch Limit</label>
+                    <input type="number" placeholder="e.g. 10" value={newTenant.punch_limit || ''} onChange={e => setNewTenant({ ...newTenant, punch_limit: parseInt(e.target.value) || '' })} />
+                  </div>
                 </div>
               </div>
               <div className="form-group">

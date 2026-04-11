@@ -5,6 +5,7 @@ import { Clock, Plus, Trash2, ShieldCheck, AlertCircle, Users, CheckCircle, XCir
 const AccessSchedules = () => {
   const [schedules, setSchedules] = useState([]);
   const [groups, setGroups] = useState([]);
+  const [holidays, setHolidays] = useState([]);
   const [tenants, setTenants] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showGroupModal, setShowGroupModal] = useState(false);
@@ -22,15 +23,57 @@ const AccessSchedules = () => {
     }
   });
   const [useSameTimeAllDays, setUseSameTimeAllDays] = useState(true);
-  const [newGroup, setNewGroup] = useState({ name: '', timezone1_id: '', timezone2_id: '', timezone3_id: '' });
+  const [newGroup, setNewGroup] = useState({ name: '', timezone1_id: '', timezone2_id: '', timezone3_id: '', holiday_id: '' });
+  const [globalOptions, setGlobalOptions] = useState({});
+  const [revokeTenantId, setRevokeTenantId] = useState('');
+  const [holiday_id, setHolidayId] = useState('');
+  const [showHolidayModal, setShowHolidayModal] = useState(false);
+  const [newHoliday, setNewHoliday] = useState({ name: '', start_date: '', end_date: '', timezone_id: '' });
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     fetchSchedules();
     fetchGroups();
+    fetchHolidays();
     fetchTenants();
+    fetchGlobalOptions();
   }, []);
+
+  const fetchGlobalOptions = async () => {
+    try {
+      const res = await axios.get('http://localhost:5000/api/system/access-options');
+      setGlobalOptions(res.data || {});
+    } catch (err) { console.error(err); }
+  };
+
+  const saveGlobalOptions = async () => {
+    setLoading(true);
+    try {
+      await axios.put('http://localhost:5000/api/system/access-options', globalOptions);
+      alert('Global access options saved & queued for device push!');
+    } catch (err) { alert('Failed to save global options'); }
+    finally { setLoading(false); }
+  };
+
+  const handleRevokeAccess = async () => {
+    if (!revokeTenantId) return alert('Select a tenant first');
+    if (!window.confirm('WARNING: This will instantly revoke biometric access and lock mobile app access. Continue?')) return;
+    try {
+      const res = await axios.post(`http://localhost:5000/api/tenants/${revokeTenantId}/revoke`);
+      alert(res.data.message || 'Access completely revoked');
+      setRevokeTenantId('');
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to revoke access');
+    }
+  };
+
+  const fetchHolidays = async () => {
+    try {
+      const res = await axios.get('http://localhost:5000/api/holidays');
+      setHolidays(res.data);
+    } catch (err) { console.error(err); }
+  };
 
   const fetchGroups = async () => {
     try {
@@ -98,10 +141,30 @@ const AccessSchedules = () => {
     try {
       await axios.post('http://localhost:5000/api/access-groups', newGroup);
       setShowGroupModal(false);
-      setNewGroup({ name: '', timezone1_id: '', timezone2_id: '', timezone3_id: '' });
+      setNewGroup({ name: '', timezone1_id: '', timezone2_id: '', timezone3_id: '', holiday_id: '' });
       fetchGroups();
     } catch (err) { alert('Failed to create access group'); }
     finally { setLoading(false); }
+  };
+
+  const handleAddHoliday = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await axios.post('http://localhost:5000/api/holidays', newHoliday);
+      setShowHolidayModal(false);
+      setNewHoliday({ name: '', start_date: '', end_date: '', timezone_id: '' });
+      fetchHolidays();
+    } catch (err) { alert('Failed to create holiday'); }
+    finally { setLoading(false); }
+  };
+
+  const handleDeleteHoliday = async (id) => {
+    if (!window.confirm('Are you sure?')) return;
+    try {
+      await axios.delete(`http://localhost:5000/api/holidays/${id}`);
+      fetchHolidays();
+    } catch (err) { console.error(err); }
   };
 
   const handleDeleteGroup = async (id) => {
@@ -146,11 +209,123 @@ const AccessSchedules = () => {
           <button className="btn" onClick={resyncAll} disabled={syncing} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: syncing ? 'var(--text-muted)' : 'var(--success)', color: 'white', border: 'none', padding: '0.6rem 1.2rem', borderRadius: '8px', cursor: syncing ? 'not-allowed' : 'pointer', fontWeight: 600 }}>
             <RefreshCw size={18} className={syncing ? 'spin' : ''} /> {syncing ? 'Syncing...' : 'Re-Sync to Device'}
           </button>
+          <button className="btn" onClick={() => setShowHolidayModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--success)', color: 'white' }}>
+            <Clock size={18} /> New Holiday
+          </button>
           <button className="btn" onClick={() => setShowGroupModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--accent)', color: 'white' }}>
             <Users size={18} /> New Access Group
           </button>
           <button className="btn btn-primary" onClick={() => setShowAddModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Plus size={18} /> New Schedule
+          </button>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '1.5rem', marginBottom: '3rem' }}>
+        {/* Global Configuration */}
+        <div className="card">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem' }}>
+            <ShieldCheck size={20} color="var(--primary)" />
+            <h2 style={{ margin: 0 }}>Global Access Configuration</h2>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+            <div className="form-group">
+              <label>Lock Delay (Seconds)</label>
+              <input 
+                type="number" min="1" max="255"
+                value={globalOptions.lock_delay || 5}
+                onChange={e => setGlobalOptions({...globalOptions, lock_delay: parseInt(e.target.value)})}
+              />
+            </div>
+            <div className="form-group">
+              <label>Anti-Passback</label>
+              <div style={{ padding: '0.6rem', borderRadius: '8px', background: '#2d3748', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', margin: 0 }}>
+                  <input 
+                    type="checkbox" 
+                    checked={!!globalOptions.anti_passback}
+                    onChange={e => setGlobalOptions({...globalOptions, anti_passback: e.target.checked})}
+                  />
+                  Enable Network Anti-Passback
+                </label>
+              </div>
+            </div>
+            <div className="form-group">
+              <label>Device Expiration Action</label>
+              <select 
+                value={globalOptions.expire_action ?? 0}
+                onChange={e => setGlobalOptions({...globalOptions, expire_action: parseInt(e.target.value)})}
+              >
+                <option value={0}>Retain User, Stop Saving Logs</option>
+                <option value={1}>Retain User, Continue Saving Logs</option>
+                <option value={2}>Delete User Record Completely</option>
+              </select>
+            </div>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginBottom: '0.5rem' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={!!globalOptions.auto_block_enabled}
+                    onChange={e => setGlobalOptions({...globalOptions, auto_block_enabled: e.target.checked})}
+                  />
+                  Auto-Block
+                </label>
+                <input 
+                  type="number" placeholder="Days"
+                  disabled={!globalOptions.auto_block_enabled}
+                  value={globalOptions.auto_block_days || ''}
+                  onChange={e => setGlobalOptions({...globalOptions, auto_block_days: parseInt(e.target.value)})}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginBottom: '0.5rem' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={!!globalOptions.auto_delete_enabled}
+                    onChange={e => setGlobalOptions({...globalOptions, auto_delete_enabled: e.target.checked})}
+                  />
+                  Auto-Delete
+                </label>
+                <input 
+                  type="number" placeholder="Days"
+                  disabled={!globalOptions.auto_delete_enabled}
+                  value={globalOptions.auto_delete_days || ''}
+                  onChange={e => setGlobalOptions({...globalOptions, auto_delete_days: parseInt(e.target.value)})}
+                />
+              </div>
+            </div>
+          </div>
+          <button className="btn btn-primary" onClick={saveGlobalOptions} disabled={loading}>
+            Save Global Settings
+          </button>
+        </div>
+
+        {/* Revoke Tool */}
+        <div className="card" style={{ border: '1px solid rgba(239, 68, 68, 0.2)', background: 'linear-gradient(to bottom, rgba(239, 68, 68, 0.05), transparent)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem' }}>
+            <AlertCircle size={20} color="var(--danger)" />
+            <h2 style={{ margin: 0, color: 'var(--danger)' }}>Instant Revoke Tool</h2>
+          </div>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem', lineHeight: '1.5' }}>
+            Immediately force delete a user's biometric signature from all hardware and lock their mobile app access.
+          </p>
+          <div className="form-group">
+            <label>Select Tenant to Revoke</label>
+            <select value={revokeTenantId} onChange={e => setRevokeTenantId(e.target.value)}>
+              <option value="">-- Choose Tenant --</option>
+              {tenants.map(t => (
+                <option key={t.tenant_id} value={t.tenant_id}>{t.name} (Room {t.room_number || 'NA'})</option>
+              ))}
+            </select>
+          </div>
+          <button 
+            className="btn" 
+            onClick={handleRevokeAccess} 
+            disabled={!revokeTenantId || loading}
+            style={{ width: '100%', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', border: '1px solid rgba(239, 68, 68, 0.5)', marginTop: '0.5rem' }}
+          >
+            REVOKE ACCESS
           </button>
         </div>
       </div>
@@ -180,6 +355,50 @@ const AccessSchedules = () => {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Holiday Rules */}
+      <div style={{ marginBottom: '3rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem' }}>
+          <Clock size={20} color="var(--success)" />
+          <h2 style={{ margin: 0 }}>Holiday Access Rules</h2>
+        </div>
+        <div className="grid-container" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+          {holidays.map(h => (
+            <div key={h.id} className="card" style={{ border: '1px solid rgba(34, 197, 94, 0.2)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ background: 'rgba(34, 197, 94, 0.1)', padding: '10px', borderRadius: '10px' }}>
+                    <Clock size={20} color="#22c55e" />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0 }}>{h.name}</h3>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      {new Date(h.start_date).toLocaleDateString()} to {new Date(h.end_date).toLocaleDateString()}
+                    </div>
+                  </div>
+                </div>
+                <button onClick={() => handleDeleteHoliday(h.id)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer' }}>
+                  <Trash2 size={16} />
+                </button>
+              </div>
+              <div style={{ fontSize: '0.85rem', background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '8px' }}>
+                {h.timezone_id ? (
+                  <>Uses Schedule: <span style={{ fontWeight: 600, color: 'var(--success)' }}>
+                    {schedules.find(s => s.id === h.timezone_id)?.name || 'Full Access'}
+                  </span></>
+                ) : (
+                  <span style={{ color: 'var(--danger)' }}>No Access Permitted</span>
+                )}
+              </div>
+            </div>
+          ))}
+          {holidays.length === 0 && (
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', gridColumn: '1/-1', textAlign: 'center', padding: '2rem', background: 'rgba(255,255,255,0.02)', borderRadius: '12px' }}>
+              No holiday rules defined.
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Access Group Definitions */}
@@ -453,8 +672,61 @@ const AccessSchedules = () => {
                 </div>
               ))}
               
+              <div className="form-group">
+                <label>Holiday Configuration</label>
+                <select 
+                  value={newGroup.holiday_id || ''} 
+                  onChange={e => setNewGroup({...newGroup, holiday_id: e.target.value})}
+                  style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', background: '#2d3748', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }}
+                >
+                  <option value="" style={{ background: '#2d3748', color: 'white' }}>No Holiday Rule</option>
+                  {holidays.map(h => (
+                    <option key={h.id} value={h.id} style={{ background: '#2d3748', color: 'white' }}>{h.name} ({h.start_date.split('T')[0]} to {h.end_date.split('T')[0]})</option>
+                  ))}
+                </select>
+              </div>
+              
               <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1.5rem', background: 'var(--accent)' }} disabled={loading}>
                 {loading ? 'Creating...' : 'Create Access Group'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+      {showHolidayModal && (
+        <div className="modal-overlay" onClick={() => setShowHolidayModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+            <h2>New Holiday Rule</h2>
+            <form onSubmit={handleAddHoliday}>
+              <div className="form-group">
+                <label>Holiday Name</label>
+                <input type="text" required placeholder="e.g. Diwali" value={newHoliday.name} onChange={e => setNewHoliday({...newHoliday, name: e.target.value})} />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div className="form-group">
+                  <label>Start Date</label>
+                  <input type="date" required value={newHoliday.start_date} onChange={e => setNewHoliday({...newHoliday, start_date: e.target.value})} />
+                </div>
+                <div className="form-group">
+                  <label>End Date</label>
+                  <input type="date" required value={newHoliday.end_date} onChange={e => setNewHoliday({...newHoliday, end_date: e.target.value})} />
+                </div>
+              </div>
+              <div className="form-group">
+                <label>Access Schedule to Apply</label>
+                <select 
+                  value={newHoliday.timezone_id} 
+                  onChange={e => setNewHoliday({...newHoliday, timezone_id: e.target.value})}
+                >
+                  <option value="">No Access (Blocked)</option>
+                  {schedules.map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+                <small style={{ color: 'var(--text-muted)' }}>Tenant will follow this schedule during holiday period.</small>
+              </div>
+              <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1.5rem', background: 'var(--success)' }} disabled={loading}>
+                {loading ? 'Adding...' : 'Save Holiday'}
               </button>
             </form>
           </div>
