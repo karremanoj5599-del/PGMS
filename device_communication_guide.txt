@@ -1,0 +1,54 @@
+PGMS DEVICE COMMUNICATION GUIDE (ADMS / PUSH PROTOCOL)
+========================================================
+
+1. OVERVIEW: THE PUSH MODEL
+---------------------------
+The biometric devices (ZKTeco/ADMS compatible) use a "PUSH" architecture. 
+Instead of the server "calling" the device, the DEVICE initiates all 
+communication via HTTP.
+
+- Benefit: Works behind firewalls/NAT without port forwarding.
+- Requirement: The device must have a URL pointing to the PGMS Backend 
+  (e.g., an ngrok tunnel or public IP).
+
+2. KEY ENDPOINTS (BACKEND)
+--------------------------
+The hardware hits these specific endpoints on your Node.js server:
+
+A. HEARTBEAT & COMMANDS: /iclock/getrequest.aspx (GET)
+   - Purpose: Device asks "What do I do next?"
+   - Server Response: Returns pending commands (e.g., Add/Delete User).
+
+B. DATA UPLOAD: /iclock/cdata.aspx (POST)
+   - Purpose: Device sends attendance logs ("Punches") and photos.
+   - Server Action: Parses tab-separated data and updates `attendance_logs`.
+
+C. COMMAND STATUS: /iclock/devicecmd.aspx (POST)
+   - Purpose: Device confirms if a command was successful or failed.
+   - Server Action: Updates `device_commands` table status.
+
+3. SOFTWARE SYNC LOGIC
+----------------------
+The system uses automated functions to bridge the Software DB and Hardware:
+
+- syncTenantAccess(tenant_id):
+  Translates "Approve Tenant" in the UI into a raw hardware command:
+  "DATA UPDATE USERINFO PIN=101 Name=Manoj..."
+
+- Automated Payment Guard:
+  Backend checks payments every 30 mins. If a balance is overdue (>1.2x rent),
+  it automatically sends a "DATA DELETE" command to the device to block 
+  access.
+
+- Inactivity Rules:
+  If a tenant hasn't punched in X days, the software can automatically 
+  de-register them from the hardware to save space/security.
+
+4. DATABASE MAPPING
+-------------------
+- PIN (Hardware)  <-->  tenant_id (Software)
+- Group (Hardware) <-->  access_group_id (Software)
+- TZ (Hardware)    <-->  access_schedules (Software)
+
+--------------------------------------------------------
+Created for PGMS Project Documentation - 2026

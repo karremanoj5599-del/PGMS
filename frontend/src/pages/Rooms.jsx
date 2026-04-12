@@ -39,8 +39,8 @@ const Rooms = () => {
   const fetchData = async () => {
     try {
       const [rRes, bRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/rooms'),
-        axios.get('http://localhost:5000/api/beds')
+        axios.get('/api/rooms'),
+        axios.get('/api/beds')
       ]);
       setRooms(rRes.data);
       setBeds(bRes.data);
@@ -51,7 +51,7 @@ const Rooms = () => {
 
   const fetchFloors = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/floors');
+      const res = await axios.get('/api/floors');
       setFloors(res.data);
     } catch (err) {
       console.error('Failed to fetch floors');
@@ -62,7 +62,7 @@ const Rooms = () => {
   const handleAddRoom = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post('http://localhost:5000/api/rooms', newRoom);
+      const res = await axios.post('/api/rooms', newRoom);
       setShowRoomModal(false);
       fetchData();
       alert(res.data.message || 'Room added successfully');
@@ -75,7 +75,7 @@ const Rooms = () => {
     e.preventDefault();
     setBedError('');
     try {
-      const res = await axios.post('http://localhost:5000/api/beds', newBed);
+      const res = await axios.post('/api/beds', newBed);
       setShowBedModal(false);
       fetchData();
       alert(res.data.message || 'Bed added successfully');
@@ -87,7 +87,7 @@ const Rooms = () => {
   const handleAddFloor = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post('http://localhost:5000/api/floors', newFloor);
+      const res = await axios.post('/api/floors', newFloor);
       setShowFloorModal(false);
       fetchFloors();
       alert(res.data.message || 'Floor added successfully');
@@ -99,7 +99,7 @@ const Rooms = () => {
   const handleEditRoom = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(`http://localhost:5000/api/rooms/${editingRoom.room_id}`, editingRoom);
+      await axios.put(`/api/rooms/${editingRoom.room_id}`, editingRoom);
       setShowEditRoomModal(false);
       fetchData();
       alert('Room updated successfully');
@@ -111,7 +111,7 @@ const Rooms = () => {
   const handleEditFloor = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(`http://localhost:5000/api/floors/${editingFloor.floor_id}`, editingFloor);
+      await axios.put(`/api/floors/${editingFloor.floor_id}`, editingFloor);
       setShowEditFloorModal(false);
       fetchFloors();
       fetchData();
@@ -124,7 +124,7 @@ const Rooms = () => {
   const handleEditBed = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(`http://localhost:5000/api/beds/${editingBed.bed_id}`, editingBed);
+      await axios.put(`/api/beds/${editingBed.bed_id}`, editingBed);
       setShowEditBedModal(false);
       fetchData();
       alert('Bed updated successfully');
@@ -136,7 +136,7 @@ const Rooms = () => {
   const handleDeleteRoom = async (id) => {
     if (!window.confirm('Delete this room? Use with caution.')) return;
     try {
-      await axios.delete(`http://localhost:5000/api/rooms/${id}`);
+      await axios.delete(`/api/rooms/${id}`);
       fetchData();
     } catch (err) {
       alert(err.response?.data?.error || err.message || 'Failed to delete room');
@@ -146,7 +146,7 @@ const Rooms = () => {
   const handleDeleteBed = async (id) => {
     if (!window.confirm('Delete this bed?')) return;
     try {
-      await axios.delete(`http://localhost:5000/api/beds/${id}`);
+      await axios.delete(`/api/beds/${id}`);
       fetchData();
     } catch (err) {
       alert(err.response?.data?.error || err.message || 'Failed to delete bed');
@@ -156,7 +156,7 @@ const Rooms = () => {
   const handleDeleteFloor = async (id) => {
     if (!window.confirm('Delete this floor? It must be empty of rooms first.')) return;
     try {
-      await axios.delete(`http://localhost:5000/api/floors/${id}`);
+      await axios.delete(`/api/floors/${id}`);
       fetchFloors();
     } catch (err) {
       alert(err.response?.data?.error || err.message || 'Failed to delete floor');

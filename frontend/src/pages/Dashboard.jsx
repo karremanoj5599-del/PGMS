@@ -16,8 +16,8 @@ const Dashboard = () => {
     const fetchStats = async () => {
       try {
         const [bedsRes, tenantsRes] = await Promise.all([
-          axios.get('http://localhost:5000/api/beds'),
-          axios.get('http://localhost:5000/api/tenants')
+          axios.get('/api/beds'),
+          axios.get('/api/tenants')
         ]);
         
         const beds = bedsRes.data;

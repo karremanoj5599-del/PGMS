@@ -45,7 +45,7 @@ const Reports = () => {
 
   const fetchStats = async () => {
     try {
-      const res = await axios.get(`http://localhost:5000/api/reports/stats?startDate=${startDate}&endDate=${endDate}`);
+      const res = await axios.get(`/api/reports/stats?startDate=${startDate}&endDate=${endDate}`);
       setStats(res.data);
     } catch (err) { console.error(err); }
   };
@@ -53,7 +53,7 @@ const Reports = () => {
   const fetchTransactions = async () => {
     try {
       const q = new URLSearchParams({ startDate, endDate, payment_via: filters.payment_via }).toString();
-      const res = await axios.get(`http://localhost:5000/api/reports/transactions?${q}`);
+      const res = await axios.get(`/api/reports/transactions?${q}`);
       setTransactions(res.data);
     } catch (err) { console.error(err); }
   };
@@ -61,7 +61,7 @@ const Reports = () => {
   const fetchTenantWise = async () => {
     try {
       const q = new URLSearchParams({ startDate, endDate, ...filters }).toString();
-      const res = await axios.get(`http://localhost:5000/api/reports/tenant-wise?${q}`);
+      const res = await axios.get(`/api/reports/tenant-wise?${q}`);
       setTenantData(res.data);
     } catch (err) { console.error(err); }
   };
@@ -69,21 +69,21 @@ const Reports = () => {
   const fetchAttendance = async () => {
     try {
       const q = new URLSearchParams({ startDate, endDate, ...filters }).toString();
-      const res = await axios.get(`http://localhost:5000/api/reports/tenant-attendance?${q}`);
+      const res = await axios.get(`/api/reports/tenant-attendance?${q}`);
       setAttendanceData(res.data);
     } catch (err) { console.error(err); }
   };
 
   const fetchFloors = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/floors');
+      const res = await axios.get('/api/floors');
       setFloors(res.data);
     } catch (err) { console.error(err); }
   };
 
   const fetchRooms = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/rooms');
+      const res = await axios.get('/api/rooms');
       setRooms(res.data);
     } catch (err) { console.error(err); }
   };

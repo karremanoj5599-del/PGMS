@@ -17,7 +17,7 @@ const SupportTickets = () => {
   const fetchTickets = async () => {
     setIsLoading(true);
     try {
-      const res = await axios.get('http://localhost:5000/api/admin/tickets');
+      const res = await axios.get('/api/admin/tickets');
       setTickets(res.data);
     } catch (err) {
       console.error('Failed to fetch tickets');
@@ -28,7 +28,7 @@ const SupportTickets = () => {
 
   const handleUpdateTicket = async (id, status) => {
     try {
-      await axios.put(`http://localhost:5000/api/admin/tickets/${id}`, {
+      await axios.put(`/api/admin/tickets/${id}`, {
         status,
         admin_notes: adminNotes
       });

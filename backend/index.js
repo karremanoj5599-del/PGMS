@@ -1,3 +1,10 @@
+// ─── FIX for AggregateError [ETIMEDOUT] on Indian Networks (Jio/Airtel) ──────
+// Node.js 18/20+ resolves DNS for both IPv4 + IPv6 simultaneously.
+// Indian ISPs block/drop IPv6, causing both to fail → AggregateError.
+// Must be the VERY FIRST line before any network-using require().
+require('dns').setDefaultResultOrder('ipv4first');
+// ─────────────────────────────────────────────────────────────────────────────
+
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -48,6 +55,19 @@ const syncTenantAccess = async (tenant_id) => {
 
     for (const device of devices) {
       if (!device.sn) continue;
+      const pin = tenant.biometric_pin || tenant.tenant_id.toString();
+
+      // NEW: Clear any pending (executed=0) commands for this specific user on this device
+      // to prevent queue bloating if sync is triggered multiple times.
+      await db('device_commands')
+        .where({ device_sn: device.sn, executed: 0 })
+        .andWhere(function() {
+          this.where('command', 'like', `%Pin=${pin}\t%`)
+              .orWhere('command', 'like', `%PIN=${pin}\t%`)
+              .orWhere('command', 'like', `%PIN2=${pin}%`)
+              .orWhere('command', 'like', `%accgroup%`); // Groups are also tenant-linked in our context
+        })
+        .del();
       
       let commands = [];
       if (isApproved) {
@@ -152,12 +172,49 @@ const syncTenantAccess = async (tenant_id) => {
           command: `DATA UPDATE USERINFO PIN=${pin}\tName=${cleanName}\tPri=0\tPass=\tCard=\tGrp=${grpId}\tTZ=${tzMask}\tPIN2=${pin}${extraString}`,
           user_id: tenant.user_id
         });
-      } else {
-        // Revoke: DATA DELETE USERINFO
-        const pin = tenant.biometric_pin || tenant.tenant_id.toString();
+        // Re-enable user on device (in case previously disabled)
         commands.push({
           device_sn: device.sn,
-          command: `DATA DELETE USERINFO PIN=${pin}`,
+          command: `DATA UPDATE user Pin=${pin}\tEnabled=1`,
+          user_id: tenant.user_id
+        });
+
+        // 4. Queue Biometric Templates (Fingerprints, Face)
+        const templates = await db('biometric_templates').where({ tenant_id, is_valid: true });
+        for (const tpl of templates) {
+          if (tpl.type === 'fingerprint') {
+            const major = tpl.major_ver ? `\tMajorVer=${tpl.major_ver}` : '';
+            const minor = tpl.minor_ver ? `\tMinorVer=${tpl.minor_ver}` : '';
+            // Use BIODATA format for fingerprints as well, since device rejected FPTMP
+            commands.push({
+              device_sn: device.sn,
+              command: `DATA UPDATE BIODATA Pin=${pin}\tNo=0\tIndex=${tpl.finger_index}\tValid=1\tDuress=0\tType=1${major}${minor}\tTmp=${tpl.template_data}`,
+              user_id: tenant.user_id
+            });
+          } else {
+            const bioType = tpl.type === 'face' ? '9' : (tpl.type === 'palm' ? '8' : '0');
+            const major = tpl.major_ver ? `\tMajorVer=${tpl.major_ver}` : '';
+            const minor = tpl.minor_ver ? `\tMinorVer=${tpl.minor_ver}` : '';
+            const format = tpl.format ? `\tFormat=${tpl.format}` : '';
+            
+            commands.push({
+              device_sn: device.sn,
+              command: `DATA UPDATE BIODATA Pin=${pin}\tNo=0\tIndex=${tpl.finger_index}\tValid=1\tDuress=0\tType=${bioType}${major}${minor}${format}\tTmp=${tpl.template_data}`,
+              user_id: tenant.user_id
+            });
+          }
+        }
+
+      } else {
+        // Restrict: Disable user on device (keeps data, blocks access)
+        // Some devices ignore 'Enabled=0'. The foolproof way is to set their TimeZone mask to 0 
+        // and assign them to an invalid group so the door never opens.
+        const cleanName = tenant.name.replace(/[^\w]/g, '');
+        const pin = tenant.biometric_pin || tenant.tenant_id.toString();
+        
+        commands.push({
+          device_sn: device.sn,
+          command: `DATA UPDATE USERINFO PIN=${pin}\tName=${cleanName}\tPri=0\tPass=\tCard=\tGrp=99\tTZ=0000000000000000\tPIN2=${pin}`,
           user_id: tenant.user_id
         });
       }
@@ -205,10 +262,13 @@ const checkPaymentStatusAndEnforceAccess = async () => {
   }
 };
 
-// Run the guard every 30 minutes
-setInterval(checkPaymentStatusAndEnforceAccess, 30 * 60 * 1000);
-// Run once on startup after 10s
-setTimeout(checkPaymentStatusAndEnforceAccess, 10000);
+// ONLY run intervals if we are running as a standalone server (not on Vercel)
+if (process.env.NODE_ENV !== 'production' || process.env.VERCEL !== '1') {
+  // Run the guard every 30 minutes
+  setInterval(checkPaymentStatusAndEnforceAccess, 30 * 60 * 1000);
+  // Run once on startup after 10s
+  setTimeout(checkPaymentStatusAndEnforceAccess, 10000);
+}
 
 const enforceInactivityRules = async () => {
   try {
@@ -237,10 +297,10 @@ const enforceInactivityRules = async () => {
         }
         
         if (globalSettings.auto_delete_enabled && daysInactive >= globalSettings.auto_delete_days) {
-            console.log(`[EXPIRY] Auto-deleting tenant ${tenant.name} from device ${device.sn} (${Math.round(daysInactive)} days)`);
+            console.log(`[EXPIRY] Auto-restricting tenant ${tenant.name} on device ${device.sn} (${Math.round(daysInactive)} days)`);
             await db('device_commands').insert({
                 device_sn: device.sn,
-                command: `DATA DELETE USERINFO PIN=${tenant.tenant_id}`,
+                command: `DATA UPDATE user Pin=${tenant.biometric_pin || tenant.tenant_id}\tEnabled=0`,
                 user_id: tenant.user_id
             });
             await db('access_control').where('tenant_id', tenant.tenant_id).update({ access_granted: false });
@@ -259,8 +319,10 @@ const enforceInactivityRules = async () => {
     console.error('[EXPIRY] Error enforcing inactivity rules:', err.message);
   }
 };
-setInterval(enforceInactivityRules, 12 * 60 * 60 * 1000); // 12 hours
-setTimeout(enforceInactivityRules, 15000); // Run on startup
+if (process.env.NODE_ENV !== 'production' || process.env.VERCEL !== '1') {
+  setInterval(enforceInactivityRules, 12 * 60 * 60 * 1000); // 12 hours
+  setTimeout(enforceInactivityRules, 15000); // Run on startup
+}
 const fs = require('fs');
 const path = require('path');
 
@@ -269,20 +331,30 @@ const PORT = process.env.PORT || 5000;
 app.use((req, res, next) => {
   if (req.url.toLowerCase().includes('iclock')) {
     console.log(`[ADMS DEBUG] ${req.method} ${req.url}`);
-    // Log basic info to the file too, just in case
-    const now = new Date().toISOString();
-    const logMsg = `[${now}] DEBUG: ${req.method} ${req.url}\nHeaders: ${JSON.stringify(req.headers)}\n-------------------\n`;
-    fs.appendFileSync(path.join(__dirname, 'adms_packets.log'), logMsg);
+    
+    if (process.env.VERCEL !== '1') {
+      // Log basic info to the file too, just in case
+      const now = new Date().toISOString();
+      const logMsg = `[${now}] DEBUG: ${req.method} ${req.url}\nHeaders: ${JSON.stringify(req.headers)}\n-------------------\n`;
+      try {
+        fs.appendFileSync(path.join(__dirname, 'adms_packets.log'), logMsg);
+      } catch (err) {
+        // Silently fail on read-only FS
+      }
+    }
   }
   next();
 });
 
 // Multi-tenant Middleware
 const extractUser = (req, res, next) => {
-  const userId = req.headers['x-user-id'];
-  if (!userId && !req.path.startsWith('/api/auth')) {
-    // For now, if no userId is provided, we might want to block or default.
-    // However, since we're migrating, we'll allow it for now but log it.
+  const userId = req.headers['x-user-id'] || req.query.user_id;
+  
+  if (req.url.includes('/api/events')) {
+    console.log(`[AUTH DEBUG] URL: ${req.url}, Query: ${JSON.stringify(req.query)}, Header: ${req.headers['x-user-id']}`);
+  }
+
+  if (!userId && !req.path.startsWith('/api/auth') && !req.path.startsWith('/iclock')) {
     console.warn(`[AUTH] Missing x-user-id for ${req.path}`);
   }
   req.userId = userId ? parseInt(userId) : null;
@@ -293,9 +365,18 @@ app.use(extractUser);
 
 // Helper to log ADMS traffic to file
 const logADMS = (req, msg, data = '') => {
+  // Disable local file logging on Vercel (read-only filesystem)
+  if (process.env.VERCEL === '1') {
+    console.log(`[ADMS] ${req.method} ${req.url} - ${msg} ${data.substring(0, 500)}`);
+    return;
+  }
   const logPath = path.join(__dirname, 'adms_packets.log');
   const logEntry = `[${new Date().toISOString()}] ${req.method} ${req.url}\n${msg}\n${data ? 'Data: ' + data.substring(0, 500) + '\n' : ''}-------------------\n`;
-  fs.appendFileSync(logPath, logEntry);
+  try {
+    fs.appendFileSync(logPath, logEntry);
+  } catch (err) {
+    console.error('[ADMS] Failed to write log:', err.message);
+  }
   console.log(logEntry);
 };
 
@@ -822,7 +903,8 @@ app.get('/api/tenants', async (req, res) => {
       'rooms.room_number', 
       'rooms.room_id',
       'floors.floor_name',
-      'floors.floor_id'
+      'floors.floor_id',
+      db.raw(`(SELECT COUNT(*) FROM biometric_templates WHERE biometric_templates.tenant_id = tenants.tenant_id AND biometric_templates.is_valid = true) as biometric_count`)
     );
   res.json(tenants);
 });
@@ -914,13 +996,14 @@ app.post('/api/tenants/:id/revoke', async (req, res) => {
     await db('access_control').where('tenant_id', id).update({ access_granted: false });
     await db('tenants').where('tenant_id', id).update({ access_status: 'locked' }); // Lock PGMS app access
     
-    // 2. Immediately purge from devices
+    // 2. Immediately restrict on devices
     const devices = await db('devices').where({ adms_status: true, user_id: req.userId });
+    const cleanName = tenant.name.replace(/[^\w]/g, '');
     for (const dev of devices) {
       if (dev.sn) {
         await db('device_commands').insert({
           device_sn: dev.sn,
-          command: `DATA DELETE USERINFO PIN=${id}`,
+          command: `DATA UPDATE user Pin=${tenant.biometric_pin || id}\tEnabled=0`,
           user_id: req.userId
         });
       }
@@ -1046,7 +1129,7 @@ app.get('/api/reports/tenant-attendance', async (req, res) => {
       'floors.floor_name'
     );
 
-    let aQuery = db('attendance_logs').where('user_id', 'in', tenants.map(t => t.tenant_id)).orderBy('punch_time', 'asc');
+    let aQuery = db('attendance_logs').whereIn('tenant_id', tenants.map(t => t.tenant_id)).orderBy('punch_time', 'asc');
     if (startDate) aQuery = aQuery.where('punch_time', '>=', startDate + ' 00:00:00');
     if (endDate) aQuery = aQuery.where('punch_time', '<=', endDate + ' 23:59:59');
 
@@ -1060,13 +1143,13 @@ app.get('/api/reports/tenant-attendance', async (req, res) => {
       tenantMap[t.tenant_id.toString()] = t;
     });
 
-    // Group logs by user_id -> date -> punches
+    // Group logs by tenant_id -> date -> punches
     const grouped = {};
     
     logs.forEach(log => {
-      if (!log.user_id) return;
+      if (!log.tenant_id) return;
       
-      const tId = log.user_id.toString();
+      const tId = log.tenant_id.toString();
       if (!tenantMap[tId]) return; // Only include if it matches our active filtered tenants
       
       // parse date (Y-M-D) from punch_time
@@ -1661,13 +1744,17 @@ app.delete('/api/devices/:id', async (req, res) => {
 });
 
 app.post('/api/devices/sync-user', async (req, res) => {
-  const { tenant_id } = req.body;
+  const { tenant_id, target_device_sn } = req.body;
   try {
     const tenant = await db('tenants').where('tenant_id', tenant_id).first();
     if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
     
     // Find all active devices that support ADMS
-    const devices = await db('devices').where('adms_status', true);
+    let devicesQuery = db('devices').where({ adms_status: true, user_id: req.userId });
+    if (target_device_sn) {
+      devicesQuery = devicesQuery.whereRaw('LOWER(sn) = ?', [target_device_sn.toLowerCase()]);
+    }
+    const devices = await devicesQuery;
     let count = 0;
     
     for (const device of devices) {
@@ -1764,15 +1851,67 @@ app.post('/api/devices/:id/control', async (req, res) => {
   }
 });
 
-// Device Test Connection — tries to reach the device over HTTP
+// Maintenance Commands (eTimeTrackLite style)
+app.post('/api/devices/:id/reboot', async (req, res) => {
+  const id = Number(req.params.id);
+  try {
+    const device = await db('devices').where({ device_id: id, user_id: req.userId }).first();
+    if (!device || !device.sn) return res.status(404).json({ error: 'Device not found' });
+    await db('device_commands').insert({ device_sn: device.sn, command: 'REBOOT', user_id: req.userId });
+    res.json({ message: 'Reboot command queued' });
+  } catch (err) { res.status(500).json({ error: 'Failed to queue reboot' }); }
+});
+
+app.post('/api/devices/:id/clear-logs', async (req, res) => {
+  const id = Number(req.params.id);
+  try {
+    const device = await db('devices').where({ device_id: id, user_id: req.userId }).first();
+    if (!device || !device.sn) return res.status(404).json({ error: 'Device not found' });
+    await db('device_commands').insert({ device_sn: device.sn, command: 'CLEAR LOG', user_id: req.userId });
+    res.json({ message: 'Clear logs command queued' });
+  } catch (err) { res.status(500).json({ error: 'Failed to queue clear logs' }); }
+});
+
+app.post('/api/devices/:id/sync-time', async (req, res) => {
+  const id = Number(req.params.id);
+  try {
+    const device = await db('devices').where({ device_id: id, user_id: req.userId }).first();
+    if (!device || !device.sn) return res.status(404).json({ error: 'Device not found' });
+    const d = new Date();
+    const serverTime = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+    await db('device_commands').insert({ device_sn: device.sn, command: `SET OPTIONS Time=${serverTime}`, user_id: req.userId });
+    res.json({ message: 'Time sync command queued' });
+  } catch (err) { res.status(500).json({ error: 'Failed to queue time sync' }); }
+});
+
+// Device Test Connection — checks if device is reachable
 app.get('/api/devices/:id/test', async (req, res) => {
   const id = Number(req.params.id);
   if (isNaN(id)) return res.status(400).json({ error: 'Invalid Device ID' });
 
   const device = await db('devices').where('device_id', id).first();
   if (!device) return res.status(404).json({ error: 'Device not found' });
+
+  // 1. For ADMS (Push) devices, check if they checked in recently
+  if (device.adms_status && device.last_seen) {
+    const lastSeen = new Date(device.last_seen);
+    const now = new Date();
+    const diffSeconds = Math.abs(now - lastSeen) / 1000;
+
+    // If seen in last 2 minutes, consider it online
+    if (diffSeconds < 120) {
+       return res.json({ 
+         status: 'online', 
+         message: `ADMS Active (Last Seen: ${lastSeen.toLocaleTimeString()})`, 
+         ip: device.ip_address,
+         last_seen: device.last_seen 
+       });
+    }
+  }
+
   if (!device.ip_address) return res.status(400).json({ error: 'No IP address configured' });
 
+  // 2. Fallback to direct HTTP fetch (standard Pull mode)
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
@@ -1780,7 +1919,11 @@ app.get('/api/devices/:id/test', async (req, res) => {
     clearTimeout(timeout);
     res.json({ status: 'online', message: `Device responded with HTTP ${response.status}`, ip: device.ip_address });
   } catch (err) {
-    res.json({ status: 'offline', message: `Device unreachable at ${device.ip_address}: ${err.message}`, ip: device.ip_address });
+    let msg = `Device unreachable at ${device.ip_address}: ${err.message}`;
+    if (device.adms_status) {
+      msg += '. Note: Push devices may not respond to direct pings.';
+    }
+    res.json({ status: 'offline', message: msg, ip: device.ip_address });
   }
 });
 
@@ -1788,7 +1931,7 @@ app.get('/api/devices/:id/test', async (req, res) => {
 app.get('/api/attendance-logs', async (req, res) => {
   const { device_sn, startDate, endDate } = req.query;
   // We filter by user_id to ensure the admin only sees their own logs
-  let query = db('attendance_logs').where('user_id', req.userId).orderBy('punch_time', 'desc').limit(200);
+  let query = db('attendance_logs').where('admin_user_id', req.userId).orderBy('punch_time', 'desc').limit(200);
   if (device_sn) query = query.where('device_sn', device_sn);
   if (startDate) query = query.where('punch_time', '>=', startDate);
   if (endDate) query = query.where('punch_time', '<=', endDate);
@@ -1803,12 +1946,30 @@ app.post('/api/devices/:id/download-users', async (req, res) => {
     if (!device) return res.status(404).json({ error: 'Device not found' });
     
     if (device.sn) {
-      await db('device_commands').insert({
-        device_sn: device.sn,
-        command: `DATA QUERY USERINFO`,
-        user_id: req.userId
-      });
-      res.json({ message: 'Download trigger queued' });
+      // Queue commands to download USERINFO + fingerprint templates + biometric data
+      await db('device_commands').insert([
+        {
+          device_sn: device.sn,
+          command: `DATA QUERY USERINFO`,
+          user_id: req.userId
+        },
+        {
+          device_sn: device.sn,
+          command: `DATA QUERY BIODATA Type=1`,
+          user_id: req.userId
+        },
+        {
+          device_sn: device.sn,
+          command: `DATA QUERY BIODATA Type=9`,
+          user_id: req.userId
+        },
+        {
+          device_sn: device.sn,
+          command: `CHECK`,
+          user_id: req.userId
+        }
+      ]);
+      res.json({ message: 'Download queued: Forced device sync (CHECK command)' });
     } else {
       res.status(400).json({ error: 'Device SN not configured' });
     }
@@ -1818,6 +1979,143 @@ app.post('/api/devices/:id/download-users', async (req, res) => {
 });
 
 // Sync History Endpoint
+// ── Biometric Templates API ──────────────────────────────────────────
+
+// List all biometric templates for the current user's tenants
+app.get('/api/biometric-templates', async (req, res) => {
+  try {
+    const templates = await db('biometric_templates')
+      .join('tenants', 'biometric_templates.tenant_id', 'tenants.tenant_id')
+      .where('biometric_templates.user_id', req.userId)
+      .select(
+        'biometric_templates.*',
+        'tenants.name as tenant_name',
+        'tenants.biometric_pin'
+      )
+      .orderBy('biometric_templates.updated_at', 'desc');
+    res.json(templates);
+  } catch (err) {
+    console.error('[BIOMETRIC] Failed to fetch templates:', err.message);
+    res.status(500).json({ error: 'Failed to fetch biometric templates' });
+  }
+});
+
+// Broadcast ALL saved templates to a specific device (for setting up new devices)
+app.post('/api/devices/:id/broadcast-templates', async (req, res) => {
+  const id = Number(req.params.id);
+  if (isNaN(id)) return res.status(400).json({ error: 'Invalid Device ID' });
+
+  try {
+    const device = await db('devices').where({ device_id: id, user_id: req.userId }).first();
+    if (!device || !device.sn) return res.status(404).json({ error: 'Device not found or SN not configured' });
+
+    // Fetch all valid templates for this admin's tenants
+    const templates = await db('biometric_templates')
+      .where({ user_id: req.userId, is_valid: true });
+
+    if (templates.length === 0) {
+      return res.json({ message: 'No biometric templates found to broadcast.', count: 0 });
+    }
+
+    const commands = [];
+    for (const tpl of templates) {
+      const tenant = await db('tenants').where('tenant_id', tpl.tenant_id).first();
+      if (!tenant) continue;
+      const pin = tenant.biometric_pin || tenant.tenant_id.toString();
+
+      if (tpl.type === 'fingerprint') {
+        commands.push({
+          device_sn: device.sn,
+          command: `DATA UPDATE FPTMP PIN=${pin}\tFID=${tpl.finger_index}\tSize=${tpl.template_data.length}\tValid=1\tTMP=${tpl.template_data}`,
+          user_id: req.userId
+        });
+      } else {
+        const bioType = tpl.type === 'face' ? '9' : (tpl.type === 'palm' ? '8' : '0');
+        commands.push({
+          device_sn: device.sn,
+          command: `DATA UPDATE BIODATA PIN=${pin}\tType=${bioType}\tSize=${tpl.template_data.length}\tContent=${tpl.template_data}`,
+          user_id: req.userId
+        });
+      }
+    }
+
+    if (commands.length > 0) {
+      await db('device_commands').insert(commands);
+    }
+
+    console.log(`[BIOMETRIC] Broadcasted ${commands.length} templates to device ${device.sn} (${device.device_name})`);
+    res.json({ message: `Queued ${commands.length} biometric template(s) to ${device.device_name}.`, count: commands.length });
+  } catch (err) {
+    console.error('[BIOMETRIC] Broadcast error:', err.message);
+    res.status(500).json({ error: 'Failed to broadcast templates' });
+  }
+});
+
+// Resync all biometrics for a specific tenant across all (or specific) devices
+app.post('/api/tenants/:id/resync-biometrics', async (req, res) => {
+  const tenantId = Number(req.params.id);
+  const { target_device_sn } = req.body || {};
+  if (isNaN(tenantId)) return res.status(400).json({ error: 'Invalid tenant ID' });
+
+  try {
+    const tenant = await db('tenants').where({ tenant_id: tenantId, user_id: req.userId }).first();
+    if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
+
+    const templates = await db('biometric_templates')
+      .where({ tenant_id: tenantId, is_valid: true });
+
+    if (templates.length === 0) {
+      return res.json({ message: `No biometric templates found for ${tenant.name}.`, count: 0 });
+    }
+
+    let devicesQuery = db('devices').where({ adms_status: true, user_id: req.userId });
+    if (target_device_sn) {
+      devicesQuery = devicesQuery.whereRaw('LOWER(sn) = ?', [target_device_sn.toLowerCase()]);
+    }
+    const devices = await devicesQuery;
+    
+    if (devices.length === 0) {
+      return res.json({ message: 'No active ADMS devices found matching criteria.', count: 0 });
+    }
+
+    const pin = tenant.biometric_pin || tenant.tenant_id.toString();
+    const commands = [];
+
+    for (const device of devices) {
+      if (!device.sn) continue;
+      for (const tpl of templates) {
+        if (tpl.type === 'fingerprint') {
+          commands.push({
+            device_sn: device.sn,
+            command: `DATA UPDATE FPTMP PIN=${pin}\tFID=${tpl.finger_index}\tSize=${tpl.template_data.length}\tValid=1\tTMP=${tpl.template_data}`,
+            user_id: req.userId
+          });
+        } else {
+          const bioType = tpl.type === 'face' ? '9' : (tpl.type === 'palm' ? '8' : '0');
+          commands.push({
+            device_sn: device.sn,
+            command: `DATA UPDATE BIODATA PIN=${pin}\tType=${bioType}\tSize=${tpl.template_data.length}\tContent=${tpl.template_data}`,
+            user_id: req.userId
+          });
+        }
+      }
+    }
+
+    if (commands.length > 0) {
+      await db('device_commands').insert(commands);
+    }
+
+    console.log(`[BIOMETRIC] Resynced ${templates.length} template(s) for tenant ${tenant.name} across ${devices.length} device(s)`);
+    res.json({ 
+      message: `Resynced ${templates.length} biometric(s) for ${tenant.name} to ${devices.length} device(s).`, 
+      count: commands.length 
+    });
+  } catch (err) {
+    console.error('[BIOMETRIC] Resync error:', err.message);
+    res.status(500).json({ error: 'Failed to resync biometrics' });
+  }
+});
+
 app.get('/api/devices/sync-history', async (req, res) => {
   try {
     const history = await db('device_commands')
@@ -1884,7 +2182,26 @@ app.all(/iclock\/cdata/i, async (req, res) => {
     res.set('Content-Type', 'text/plain');
     const d = new Date();
     const serverTime = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
-    const resp = `GET OPTION FROM: ${sn}\r\nStamp=9999\r\nOpStamp=9999\r\nErrorDelay=30\r\nDelay=10\r\nTransTimes=00:00;23:59\r\nTransInterval=1\r\nRealtime=1\r\nServerTime=${serverTime}\r\nEncrypt=0\r\n`;
+    const resp = [
+      `GET OPTION FROM: ${sn}`,
+      `ATTLOGStamp=9999`,
+      `OPERLOGStamp=9999`,
+      `ATTPHOTOStamp=0`,
+      `FPStamp=0`,
+      `UserCount=0`,
+      `FPCount=0`,
+      `BioDataStamp=0`,
+      `BioPhotoStamp=0`,
+      `TransFlag=1111111111`,
+      `Realtime=1`,
+      `Encrypt=0`,
+      `TransInterval=1`,
+      `TransTimes=00:00;23:59`,
+      `ErrorDelay=30`,
+      `Delay=10`,
+      `ServerTime=${serverTime}`,
+      ``
+    ].join('\r\n');
     return res.send(resp);
   }
 
@@ -1920,8 +2237,9 @@ app.all(/iclock\/cdata/i, async (req, res) => {
 
           if (tenant) {
             await db('attendance_logs').insert({
-              user_id: adminUserId,
+              admin_user_id: adminUserId,
               tenant_id: tenant.tenant_id,
+              biometric_pin: pin,
               device_sn: sn || 'unknown',
               punch_time: punchTime,
               verify_type: verifyType,
@@ -1946,9 +2264,59 @@ app.all(/iclock\/cdata/i, async (req, res) => {
       let count = 0;
       for (const line of lines) {
         if (!line.trim() || line.includes('PHOTO')) continue;
-        
-        // Split by tabs or multiple spaces
-        const parts = line.split(/[\t]+| {2,}/);
+        const cleanLine = line.trim();
+
+        // ── Case A: Fingerprint/Face Template embedded in OPERLOG ──────
+        if (cleanLine.startsWith('FP') || cleanLine.startsWith('FACE')) {
+          const isFace = cleanLine.startsWith('FACE');
+          const fields = {};
+          // Strip prefix "FP " or "FACE "
+          const dataContent = cleanLine.replace(/^(FP|FACE)\s+/i, '').trim();
+          dataContent.split(/[\t]+/).forEach(part => {
+             const [k, v] = part.split('=');
+             if (k) fields[k.toUpperCase()] = (v || '').trim();
+          });
+
+          const pin = fields.PIN || fields['PIN=']; // Handle possible PIN= as key
+          const tmpData = fields.TMP || fields.CONTENT || fields.Tmp;
+          const fingerIdx = parseInt(fields.FID || fields.INDEX || '0') || 0;
+
+          if (pin && tmpData) {
+            const adminUserId = device ? device.user_id : null;
+            let tenant = await db('tenants')
+              .where({ user_id: adminUserId })
+              .where(builder => {
+                builder.where('biometric_pin', pin).orWhere('tenant_id', isNaN(pin) ? -1 : Number(pin));
+              })
+              .first();
+
+            if (tenant) {
+              const type = isFace ? 'face' : 'fingerprint';
+              const existing = await db('biometric_templates').where({ tenant_id: tenant.tenant_id, type, finger_index: fingerIdx }).first();
+              const bioData = {
+                template_data: tmpData,
+                algorithm_ver: fields.ALGVER || (isFace ? '12.0' : '10.0'),
+                major_ver: fields.MAJORVER,
+                minor_ver: fields.MINORVER,
+                format: fields.FORMAT,
+                no_index: fields.FID || fields.INDEX,
+                source_device_sn: sn,
+                updated_at: new Date().toISOString()
+              };
+
+              if (existing) {
+                await db('biometric_templates').where('id', existing.id).update(bioData);
+              } else {
+                await db('biometric_templates').insert({ tenant_id: tenant.tenant_id, type, finger_index: fingerIdx, ...bioData, user_id: adminUserId });
+              }
+              count++;
+            }
+          }
+          continue; 
+        }
+
+        // ── Case B: Standard USERINFO / USER update ─────────────────────
+        const parts = cleanLine.split(/[\t]+| {2,}/);
         const userData = {};
         parts.forEach(p => {
           const part = p.trim();
@@ -2030,6 +2398,172 @@ app.all(/iclock\/cdata/i, async (req, res) => {
     // Handle PHOTO (User Profile Photos)
     else if (rawBody && (rawBody.includes('CMD=PIC') || rawBody.includes('FileName='))) {
       console.log(`[ADMS] Received photo update/data from device ${sn}`);
+    }
+
+    // ── Handle BIODATA (Face, Palm biometric templates) ──────────────
+    else if (table === 'BIODATA' || (rawBody && rawBody.includes('BIODATA'))) {
+      const lines = rawBody.split('\n');
+      let count = 0;
+      const adminUserId = device ? device.user_id : null;
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        // Only skip if the line is JUST the table name (header)
+        if (line.trim().toUpperCase() === 'BIODATA') continue;
+
+
+        // Parse key=value pairs separated by tabs
+        const fields = {};
+        // Strip out the table prefix (e.g., "BIODATA ") if it exists in the line
+        const cleanLine = line.replace(/^BIODATA\s+/i, '').trim();
+        
+        cleanLine.split('\t').forEach(part => {
+          const eqIdx = part.indexOf('=');
+          if (eqIdx > 0) {
+            const key = part.substring(0, eqIdx).trim().toUpperCase();
+            const val = part.substring(eqIdx + 1).trim();
+            fields[key] = val;
+          }
+        });
+
+        const pin = fields.PIN;
+        const content = fields.CONTENT || fields.TMP || fields.DATA;
+        const bioTypeNum = fields.TYPE || '0';
+
+        if (!pin || !content) continue;
+
+        // Map numeric type to string
+        let bioType = 'fingerprint';
+        if (bioTypeNum === '9') bioType = 'face';
+        else if (bioTypeNum === '8') bioType = 'palm';
+
+        // Find the tenant by PIN
+        let tenant = await db('tenants')
+          .where({ user_id: adminUserId })
+          .where(builder => {
+            builder.where('biometric_pin', pin).orWhere('tenant_id', isNaN(pin) ? -1 : Number(pin));
+          })
+          .first();
+
+        if (tenant) {
+          // Upsert: update if already exists, else insert
+          const existing = await db('biometric_templates').where({
+            tenant_id: tenant.tenant_id,
+            type: bioType,
+            finger_index: parseInt(fields.FID || fields.NO || '0') || 0
+          }).first();
+
+          if (existing) {
+            await db('biometric_templates').where('id', existing.id).update({
+              template_data: content,
+              algorithm_ver: fields.ALGVER || fields.ALGORITHMVER || '10.0',
+              major_ver: fields.MAJORVER,
+              minor_ver: fields.MINORVER,
+              format: fields.FORMAT,
+              no_index: fields.NO || fields.FID,
+              source_device_sn: sn,
+              updated_at: new Date().toISOString()
+            });
+          } else {
+            await db('biometric_templates').insert({
+              tenant_id: tenant.tenant_id,
+              type: bioType,
+              template_data: content,
+              finger_index: parseInt(fields.FID || fields.NO || '0') || 0,
+              algorithm_ver: fields.ALGVER || fields.ALGORITHMVER || '10.0',
+              major_ver: fields.MAJORVER,
+              minor_ver: fields.MINORVER,
+              format: fields.FORMAT,
+              no_index: fields.NO || fields.FID,
+              source_device_sn: sn,
+              user_id: adminUserId
+            });
+          }
+          count++;
+        }
+      }
+      console.log(`[ADMS] Stored ${count} BIODATA template(s) from device ${sn}`);
+    }
+
+    // ── Handle FPTMP (Fingerprint Templates) ─────────────────────────
+    else if (table === 'FPTMP' || (rawBody && rawBody.includes('FPTMP'))) {
+      const lines = rawBody.split('\n');
+      let count = 0;
+      const adminUserId = device ? device.user_id : null;
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        // Only skip if the line is JUST the table name (header)
+        if (line.trim().toUpperCase() === 'FPTMP') continue;
+
+
+        // Parse key=value pairs separated by tabs
+        const fields = {};
+        // Strip out the table prefix (e.g., "FPTMP ") if it exists in the line
+        const cleanLine = line.replace(/^FPTMP\s+/i, '').trim();
+
+        cleanLine.split('\t').forEach(part => {
+          const eqIdx = part.indexOf('=');
+          if (eqIdx > 0) {
+            const key = part.substring(0, eqIdx).trim().toUpperCase();
+            const val = part.substring(eqIdx + 1).trim();
+            fields[key] = val;
+          }
+        });
+
+        const pin = fields.PIN;
+        const tmpData = fields.TMP || fields.TEMPLATE;
+        const fingerIdx = parseInt(fields.FID || fields.FINGERID || '0') || 0;
+
+        if (!pin || !tmpData) continue;
+
+        // Find the tenant by PIN
+        let tenant = await db('tenants')
+          .where({ user_id: adminUserId })
+          .where(builder => {
+            builder.where('biometric_pin', pin).orWhere('tenant_id', isNaN(pin) ? -1 : Number(pin));
+          })
+          .first();
+
+        if (tenant) {
+          // Upsert: update if already exists, else insert
+          const existing = await db('biometric_templates').where({
+            tenant_id: tenant.tenant_id,
+            type: 'fingerprint',
+            finger_index: fingerIdx
+          }).first();
+
+          if (existing) {
+            await db('biometric_templates').where('id', existing.id).update({
+              template_data: tmpData,
+              algorithm_ver: fields.ALGVER || fields.ALGORITHMVER || '10.0',
+              major_ver: fields.MAJORVER || fields.MAJOR_VER,
+              minor_ver: fields.MINORVER || fields.MINOR_VER,
+              format: fields.FORMAT,
+              no_index: fields.FID || fields.FINGERID,
+              source_device_sn: sn,
+              updated_at: new Date().toISOString()
+            });
+          } else {
+            await db('biometric_templates').insert({
+              tenant_id: tenant.tenant_id,
+              type: 'fingerprint',
+              template_data: tmpData,
+              finger_index: fingerIdx,
+              algorithm_ver: fields.ALGVER || fields.ALGORITHMVER || '10.0',
+              major_ver: fields.MAJORVER || fields.MAJOR_VER,
+              minor_ver: fields.MINORVER || fields.MINOR_VER,
+              format: fields.FORMAT,
+              no_index: fields.FID || fields.FINGERID,
+              source_device_sn: sn,
+              user_id: adminUserId
+            });
+          }
+          count++;
+
+        }
+      }
+      console.log(`[ADMS] Stored ${count} FPTMP fingerprint template(s) from device ${sn}`);
     }
 
   } catch (err) {
@@ -2114,10 +2648,89 @@ app.all(/iclock\/devicecmd/i, async (req, res) => {
     await db('device_commands').where('id', parseInt(cmdId)).update({ executed: true }).catch();
     console.log(`[ADMS] Command ID ${cmdId} processed (Return: ${retCode}) for SN: ${sn}`);
   }
-  
+
+  // Parse FPTMP/BIODATA from command response
+  try {
+    const device = await db('devices').whereRaw('LOWER(sn) = ?', [sn.toLowerCase()]).first();
+    const adminUserId = device ? device.user_id : null;
+
+    if (rawBody.includes('FPTMP')) {
+      const lines = rawBody.split('\n');
+      let count = 0;
+      for (const line of lines) {
+        if (!line.trim() || line.includes('FPTMP') || line.includes('Return=')) continue;
+        
+        const fields = {};
+        line.split('\t').forEach(part => {
+          const eqIdx = part.indexOf('=');
+          if (eqIdx > 0) fields[part.substring(0, eqIdx).trim().toUpperCase()] = part.substring(eqIdx + 1).trim();
+        });
+
+        const pin = fields.PIN;
+        const tmpData = fields.TMP;
+        const fingerIdx = parseInt(fields.FID) || 0;
+
+        if (pin && tmpData) {
+          let tenant = await db('tenants').where({ user_id: adminUserId })
+            .where(builder => builder.where('biometric_pin', pin).orWhere('tenant_id', isNaN(pin) ? -1 : Number(pin))).first();
+            
+          if (tenant) {
+            const existing = await db('biometric_templates').where({ tenant_id: tenant.tenant_id, type: 'fingerprint', finger_index: fingerIdx }).first();
+            if (existing) {
+              await db('biometric_templates').where('id', existing.id).update({ template_data: tmpData, updated_at: new Date().toISOString() });
+            } else {
+              await db('biometric_templates').insert({ tenant_id: tenant.tenant_id, type: 'fingerprint', template_data: tmpData, finger_index: fingerIdx, user_id: adminUserId, source_device_sn: sn });
+            }
+            count++;
+          }
+        }
+      }
+      if (count > 0) console.log(`[ADMS] Saved ${count} FPTMP templates from devicecmd`);
+    }
+
+    if (rawBody.includes('BIODATA')) {
+      const lines = rawBody.split('\n');
+      let count = 0;
+      for (const line of lines) {
+        if (!line.trim() || line.includes('BIODATA') || line.includes('Return=')) continue;
+        
+        const fields = {};
+        line.split('\t').forEach(part => {
+          const eqIdx = part.indexOf('=');
+          if (eqIdx > 0) fields[part.substring(0, eqIdx).trim().toUpperCase()] = part.substring(eqIdx + 1).trim();
+        });
+
+        const pin = fields.PIN;
+        const content = fields.CONTENT || fields.TMP || fields.DATA;
+        const bioTypeNum = fields.TYPE || '0';
+        const typeStr = bioTypeNum === '9' ? 'face' : (bioTypeNum === '8' ? 'palm' : 'face');
+
+        if (pin && content) {
+          let tenant = await db('tenants').where({ user_id: adminUserId })
+            .where(builder => builder.where('biometric_pin', pin).orWhere('tenant_id', isNaN(pin) ? -1 : Number(pin))).first();
+            
+          if (tenant) {
+            const existing = await db('biometric_templates').where({ tenant_id: tenant.tenant_id, type: typeStr, finger_index: 0 }).first();
+            if (existing) {
+              await db('biometric_templates').where('id', existing.id).update({ template_data: content, updated_at: new Date().toISOString() });
+            } else {
+              await db('biometric_templates').insert({ tenant_id: tenant.tenant_id, type: typeStr, template_data: content, finger_index: 0, user_id: adminUserId, source_device_sn: sn });
+            }
+            count++;
+          }
+        }
+      }
+      if (count > 0) console.log(`[ADMS] Saved ${count} BIODATA templates from devicecmd`);
+    }
+  } catch (err) {
+    console.error('Error parsing devicecmd biometrics:', err);
+  }
+
   res.set('Content-Type', 'text/plain');
   res.send('OK');
 });
+
+
 
 // Basic Health Check
 app.get('/', (req, res) => {
@@ -2228,14 +2841,23 @@ app.post('/api/tenants/:id/set-pin', async (req, res) => {
   }
 });
 
-const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// Export functions for cron jobs
+app.enforceInactivityRules = enforceInactivityRules;
+app.checkPaymentStatusAndEnforceAccess = checkPaymentStatusAndEnforceAccess;
 
-server.on('error', (err) => {
-  console.error('Server error:', err);
-});
+// Only start the server if this file is run directly
+if (require.main === module) {
+  const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on port ${PORT}`);
+  });
 
-server.on('close', () => {
-  console.log('Server closed');
-});
+  server.on('error', (err) => {
+    console.error('Server error:', err);
+  });
+
+  server.on('close', () => {
+    console.log('Server closed');
+  });
+}
+
+module.exports = app;

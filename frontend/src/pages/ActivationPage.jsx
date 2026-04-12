@@ -28,7 +28,7 @@ const ActivationPage = () => {
     const fingerprint = btoa(navigator.userAgent + navigator.language + window.screen.width).slice(0, 32);
     
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/activate', {
+      const response = await axios.post('/api/auth/activate', {
         email: user.email,
         license_key: licenseKey,
         hardware_fingerprint: fingerprint

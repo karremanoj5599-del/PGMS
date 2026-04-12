@@ -42,7 +42,7 @@ const AccessSchedules = () => {
 
   const fetchGlobalOptions = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/system/access-options');
+      const res = await axios.get('/api/system/access-options');
       setGlobalOptions(res.data || {});
     } catch (err) { console.error(err); }
   };
@@ -50,7 +50,7 @@ const AccessSchedules = () => {
   const saveGlobalOptions = async () => {
     setLoading(true);
     try {
-      await axios.put('http://localhost:5000/api/system/access-options', globalOptions);
+      await axios.put('/api/system/access-options', globalOptions);
       alert('Global access options saved & queued for device push!');
     } catch (err) { alert('Failed to save global options'); }
     finally { setLoading(false); }
@@ -60,7 +60,7 @@ const AccessSchedules = () => {
     if (!revokeTenantId) return alert('Select a tenant first');
     if (!window.confirm('WARNING: This will instantly revoke biometric access and lock mobile app access. Continue?')) return;
     try {
-      const res = await axios.post(`http://localhost:5000/api/tenants/${revokeTenantId}/revoke`);
+      const res = await axios.post(`/api/tenants/${revokeTenantId}/revoke`);
       alert(res.data.message || 'Access completely revoked');
       setRevokeTenantId('');
     } catch (err) {
@@ -70,28 +70,28 @@ const AccessSchedules = () => {
 
   const fetchHolidays = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/holidays');
+      const res = await axios.get('/api/holidays');
       setHolidays(res.data);
     } catch (err) { console.error(err); }
   };
 
   const fetchGroups = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/access-groups');
+      const res = await axios.get('/api/access-groups');
       setGroups(res.data);
     } catch (err) { console.error(err); }
   };
 
   const fetchSchedules = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/access-schedules');
+      const res = await axios.get('/api/access-schedules');
       setSchedules(res.data);
     } catch (err) { console.error(err); }
   };
 
   const fetchTenants = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/payments/status');
+      const res = await axios.get('/api/payments/status');
       setTenants(res.data);
     } catch (err) { console.error(err); }
   };
@@ -105,7 +105,7 @@ const AccessSchedules = () => {
         valid_days: newSchedule.valid_days.join(''),
         timings: newSchedule.timings
       };
-      await axios.post('http://localhost:5000/api/access-schedules', payload);
+      await axios.post('/api/access-schedules', payload);
       setShowAddModal(false);
       // Reset state
       setNewSchedule({ 
@@ -130,7 +130,7 @@ const AccessSchedules = () => {
     if (id === 1) return alert('Cannot delete default schedule');
     if (!window.confirm('Are you sure? Tenants using this schedule will default to Full Access.')) return;
     try {
-      await axios.delete(`http://localhost:5000/api/access-schedules/${id}`);
+      await axios.delete(`/api/access-schedules/${id}`);
       fetchSchedules();
     } catch (err) { console.error(err); }
   };
@@ -139,7 +139,7 @@ const AccessSchedules = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await axios.post('http://localhost:5000/api/access-groups', newGroup);
+      await axios.post('/api/access-groups', newGroup);
       setShowGroupModal(false);
       setNewGroup({ name: '', timezone1_id: '', timezone2_id: '', timezone3_id: '', holiday_id: '' });
       fetchGroups();
@@ -151,7 +151,7 @@ const AccessSchedules = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await axios.post('http://localhost:5000/api/holidays', newHoliday);
+      await axios.post('/api/holidays', newHoliday);
       setShowHolidayModal(false);
       setNewHoliday({ name: '', start_date: '', end_date: '', timezone_id: '' });
       fetchHolidays();
@@ -162,7 +162,7 @@ const AccessSchedules = () => {
   const handleDeleteHoliday = async (id) => {
     if (!window.confirm('Are you sure?')) return;
     try {
-      await axios.delete(`http://localhost:5000/api/holidays/${id}`);
+      await axios.delete(`/api/holidays/${id}`);
       fetchHolidays();
     } catch (err) { console.error(err); }
   };
@@ -170,21 +170,21 @@ const AccessSchedules = () => {
   const handleDeleteGroup = async (id) => {
     if (!window.confirm('Are you sure you want to delete this group?')) return;
     try {
-      await axios.delete(`http://localhost:5000/api/access-groups/${id}`);
+      await axios.delete(`/api/access-groups/${id}`);
       fetchGroups();
     } catch (err) { console.error(err); }
   };
 
   const toggleAccess = async (tenant_id, currentAccess) => {
     try {
-      await axios.put(`http://localhost:5000/api/access-control/${tenant_id}`, { access_granted: !currentAccess });
+      await axios.put(`/api/access-control/${tenant_id}`, { access_granted: !currentAccess });
       fetchTenants();
     } catch (err) { console.error(err); }
   };
 
   const updateGroup = async (tenant_id, access_group_id) => {
     try {
-      await axios.put(`http://localhost:5000/api/access-control/${tenant_id}/group`, { access_group_id: access_group_id === 'none' ? null : access_group_id });
+      await axios.put(`/api/access-control/${tenant_id}/group`, { access_group_id: access_group_id === 'none' ? null : access_group_id });
       fetchTenants();
     } catch (err) { console.error(err); }
   };
@@ -192,7 +192,7 @@ const AccessSchedules = () => {
   const resyncAll = async () => {
     setSyncing(true);
     try {
-      const res = await axios.post('http://localhost:5000/api/access-schedules/resync-all');
+      const res = await axios.post('/api/access-schedules/resync-all');
       alert(res.data.message || 'Re-synced successfully!');
     } catch (err) { alert('Failed to re-sync schedules to devices'); }
     finally { setSyncing(false); }

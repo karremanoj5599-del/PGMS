@@ -1,3 +1,4 @@
+const { FileDiff } = require('lucide-react');
 const db = require('../db');
 
 async function checkDevices() {

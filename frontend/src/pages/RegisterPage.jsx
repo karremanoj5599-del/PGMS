@@ -23,7 +23,7 @@ const RegisterPage = () => {
     setError('');
 
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/register', { email: email.trim(), password });
+      const response = await axios.post('/api/auth/register', { email: email.trim(), password });
       setActivationCode(response.data.activation_code);
       setTrialExpiry(response.data.trial_expiry);
     } catch (err) {

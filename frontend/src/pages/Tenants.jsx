@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { UserPlus, Search, Filter, Smartphone } from 'lucide-react';
+import { UserPlus, Search, Filter, Smartphone, Fingerprint, Server, RefreshCw } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 
 const Tenants = () => {
@@ -12,6 +12,13 @@ const Tenants = () => {
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState(null);
+  
+  const [devices, setDevices] = useState([]);
+  const [syncModal, setSyncModal] = useState(false);
+  const [syncTargetTenant, setSyncTargetTenant] = useState(null);
+  const [targetDeviceSn, setTargetDeviceSn] = useState('');
+  const [syncUserInfo, setSyncUserInfo] = useState(true);
+  const [syncBiometrics, setSyncBiometrics] = useState(true);
   const [filters, setFilters] = useState({
     floor: '',
     room: '',
@@ -32,11 +39,12 @@ const Tenants = () => {
     fetchRooms();
     fetchFloors();
     fetchVacantBeds();
+    fetchDevices();
 
     // SSE for Real-time Punches
     const userString = localStorage.getItem('pgms_user');
     const user = userString ? JSON.parse(userString) : null;
-    const url = user && user.user_id ? `http://localhost:5000/api/events?user_id=${user.user_id}` : 'http://localhost:5000/api/events';
+    const url = user && user.user_id ? `/api/events?user_id=${user.user_id}` : '/api/events';
     
     const eventSource = new EventSource(url);
     eventSource.onmessage = (event) => {
@@ -56,16 +64,25 @@ const Tenants = () => {
 
   const fetchTenants = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/tenants');
+      const res = await axios.get('/api/tenants');
       setTenants(res.data);
     } catch (err) {
       console.error('Failed to fetch tenants');
     }
   };
 
+  const fetchDevices = async () => {
+    try {
+      const res = await axios.get('/api/devices');
+      setDevices(res.data.filter(d => d.adms_status));
+    } catch (err) {
+      console.error('Failed to fetch devices');
+    }
+  };
+
   const fetchRooms = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/rooms');
+      const res = await axios.get('/api/rooms');
       setRooms(res.data);
     } catch (err) {
       console.error('Failed to fetch rooms');
@@ -74,7 +91,7 @@ const Tenants = () => {
 
   const fetchVacantBeds = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/beds/vacant');
+      const res = await axios.get('/api/beds/vacant');
       setVacantBeds(res.data);
     } catch (err) {
       console.error('Failed to fetch vacant beds');
@@ -83,7 +100,7 @@ const Tenants = () => {
 
   const fetchFloors = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/floors');
+      const res = await axios.get('/api/floors');
       setFloors(res.data);
     } catch (err) {
       console.error('Failed to fetch floors');
@@ -93,7 +110,7 @@ const Tenants = () => {
   const handleDeleteTenant = async (id) => {
     if (!window.confirm('Are you sure you want to delete this tenant? This will also mark their bed as vacant.')) return;
     try {
-      await axios.delete(`http://localhost:5000/api/tenants/${id}`);
+      await axios.delete(`/api/tenants/${id}`);
       fetchTenants();
       fetchVacantBeds(); // Refresh bed availability
     } catch (err) {
@@ -103,7 +120,7 @@ const Tenants = () => {
 
   const handleSyncTenant = async (id) => {
     try {
-      const res = await axios.post('http://localhost:5000/api/devices/sync-user', { tenant_id: id });
+      const res = await axios.post('/api/devices/sync-user', { tenant_id: id });
       setToast(res.data.message || 'Sync command queued successfully');
       setTimeout(() => setToast(null), 5000);
     } catch (err) {
@@ -111,7 +128,47 @@ const Tenants = () => {
     }
   };
 
+  const handleResyncBiometrics = async (id, name) => {
+    try {
+      const res = await axios.post(`/api/tenants/${id}/resync-biometrics`);
+      setToast(res.data.message || `Biometrics resynced for ${name}`);
+      setTimeout(() => setToast(null), 6000);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to resync biometrics');
+    }
+  };
 
+  const handleExecuteSync = async () => {
+    if (!targetDeviceSn && targetDeviceSn !== 'ALL') {
+      alert('Please select a target device.');
+      return;
+    }
+    const targetPayload = targetDeviceSn === 'ALL' ? {} : { target_device_sn: targetDeviceSn };
+    try {
+      if (syncUserInfo) {
+        await axios.post('/api/devices/sync-user', { 
+          tenant_id: syncTargetTenant.tenant_id, 
+          ...targetPayload 
+        });
+      }
+      if (syncBiometrics && syncTargetTenant.biometric_count > 0) {
+        await axios.post(`/api/tenants/${syncTargetTenant.tenant_id}/resync-biometrics`, targetPayload);
+      }
+      setToast(`Sync commands queued for ${syncTargetTenant.name}`);
+      setTimeout(() => setToast(null), 5000);
+      setSyncModal(false);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to sync');
+    }
+  };
+
+  const openSyncModal = (tenant) => {
+    setSyncTargetTenant(tenant);
+    setTargetDeviceSn('ALL');
+    setSyncUserInfo(true);
+    setSyncBiometrics(tenant.biometric_count > 0);
+    setSyncModal(true);
+  };
 
   const handleEditClick = (tenant) => {
     setEditId(tenant.tenant_id);
@@ -137,9 +194,9 @@ const Tenants = () => {
     e.preventDefault();
     try {
       if (isEditing) {
-        await axios.put(`http://localhost:5000/api/tenants/${editId}`, newTenant);
+        await axios.put(`/api/tenants/${editId}`, newTenant);
       } else {
-        await axios.post('http://localhost:5000/api/tenants', newTenant);
+        await axios.post('/api/tenants', newTenant);
       }
       setShowModal(false);
       setIsEditing(false);
@@ -197,7 +254,7 @@ const Tenants = () => {
 
   const handleBulkSync = async () => {
     try {
-      const res = await axios.post('http://localhost:5000/api/devices/bulk-sync', { tenant_ids: selectedTenants });
+      const res = await axios.post('/api/devices/bulk-sync', { tenant_ids: selectedTenants });
       setToast(res.data.message || 'Bulk sync queued successfully');
       setSelectedTenants([]);
       setTimeout(() => setToast(null), 5000);
@@ -209,7 +266,7 @@ const Tenants = () => {
   const handleBulkDelete = async () => {
     if (!window.confirm(`Are you sure you want to delete ${selectedTenants.length} tenants?`)) return;
     try {
-      const res = await axios.post('http://localhost:5000/api/tenants/bulk-delete', { ids: selectedTenants });
+      const res = await axios.post('/api/tenants/bulk-delete', { ids: selectedTenants });
       setToast(res.data.message || 'Bulk delete successful');
       setSelectedTenants([]);
       fetchTenants();
@@ -318,7 +375,20 @@ const Tenants = () => {
                   </td>
                 )}
                 <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>#{t.tenant_id}</td>
-                <td style={{ fontWeight: 600 }}>{t.name}</td>
+                <td style={{ fontWeight: 600 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {t.name}
+                    {t.biometric_count > 0 ? (
+                      <span title={`${t.biometric_count} biometric template(s) saved`} style={{ color: '#10b981', display: 'flex', alignItems: 'center' }}>
+                        <Fingerprint size={16} />
+                      </span>
+                    ) : (
+                      <span title="No biometric templates saved" style={{ color: 'var(--text-muted)', opacity: 0.5, display: 'flex', alignItems: 'center' }}>
+                        <Fingerprint size={16} />
+                      </span>
+                    )}
+                  </div>
+                </td>
                 <td>{t.mobile}</td>
                 <td>
                   <span style={{
@@ -348,13 +418,12 @@ const Tenants = () => {
                       <Smartphone size={16} />
                     </button>
                     <button
-                      onClick={() => handleSyncTenant(t.tenant_id)}
+                      onClick={() => openSyncModal(t)}
                       className="btn btn-icon-only" style={{ color: 'var(--success)' }}
-                      title="Sync"
+                      title="Sync Configuration to Device"
                     >
-                      Sync
+                      <RefreshCw size={16} />
                     </button>
-
                     <button
                       onClick={() => handleDeleteTenant(t.tenant_id)}
                       className="btn btn-icon-only" style={{ color: 'var(--danger)' }}
@@ -670,7 +739,7 @@ const Tenants = () => {
                 disabled={newPin.length < 4}
                 onClick={async () => {
                   try {
-                    await axios.post(`http://localhost:5000/api/tenants/${pinTenant.tenant_id}/set-pin`, { pin: newPin });
+                    await axios.post(`/api/tenants/${pinTenant.tenant_id}/set-pin`, { pin: newPin });
                     setToast(`Mobile access enabled for ${pinTenant.name}`);
                     setShowPinModal(false);
                     fetchTenants();
@@ -681,6 +750,76 @@ const Tenants = () => {
                 }}
               >
                 Save & Enable
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sync Configuration to Device Modal */}
+      {syncModal && (
+        <div className="modal-overlay">
+          <div className="modal form-card" style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h2>Sync Identity/Biometrics</h2>
+              <button className="btn-icon" onClick={() => setSyncModal(false)}><X size={20} /></button>
+            </div>
+            <div className="modal-body">
+              <p style={{ marginBottom: '1rem', color: 'var(--text-muted)' }}>
+                Target: <strong style={{ color: 'var(--text)' }}>{syncTargetTenant?.name}</strong>
+              </p>
+              
+              <div className="form-group">
+                <label>Target Device</label>
+                <select 
+                  className="input" 
+                  value={targetDeviceSn} 
+                  onChange={(e) => setTargetDeviceSn(e.target.value)}
+                >
+                  <option value="ALL">All Active Devices</option>
+                  {devices.map(d => (
+                    <option key={d.device_id} value={d.sn}>{d.device_name} ({d.sn})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ marginTop: '1.5rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={syncUserInfo} onChange={(e) => setSyncUserInfo(e.target.checked)} />
+                  <span style={{ fontWeight: 600 }}>Sync User Identity & Access Rules</span>
+                </label>
+                <small style={{ display: 'block', marginLeft: '1.5rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                  Updates name, PIN, timezone, and holidays on the device.
+                </small>
+
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', cursor: syncTargetTenant?.biometric_count > 0 ? 'pointer' : 'not-allowed' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={syncBiometrics} 
+                    onChange={(e) => setSyncBiometrics(e.target.checked)} 
+                    disabled={!syncTargetTenant?.biometric_count}
+                  />
+                  <span style={{ fontWeight: 600, opacity: syncTargetTenant?.biometric_count > 0 ? 1 : 0.5 }}>Sync Biometric Templates</span>
+                </label>
+                {syncTargetTenant?.biometric_count > 0 ? (
+                  <small style={{ display: 'block', marginLeft: '1.5rem', color: '#10b981' }}>
+                    Push {syncTargetTenant.biometric_count} saved fingerprint/face/palm templates.
+                  </small>
+                ) : (
+                  <small style={{ display: 'block', marginLeft: '1.5rem', color: 'var(--danger)' }}>
+                    No biometric templates registered for this tenant. Enroll on a device first, then download it to software.
+                  </small>
+                )}
+              </div>
+            </div>
+            <div className="modal-footer" style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+              <button className="btn btn-outline" onClick={() => setSyncModal(false)}>Cancel</button>
+              <button 
+                className="btn btn-primary" 
+                onClick={handleExecuteSync}
+                disabled={!syncUserInfo && !syncBiometrics}
+              >
+                Execute Sync
               </button>
             </div>
           </div>

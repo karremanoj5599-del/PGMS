@@ -29,7 +29,7 @@ const Payments = () => {
 
   const fetchStatus = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/payments/status');
+      const res = await axios.get('/api/payments/status');
       setTenants(res.data);
     } catch (err) { console.error(err); }
   };
@@ -38,7 +38,7 @@ const Payments = () => {
     e.preventDefault();
     try {
       const { rent_charged, ...payload } = paymentData;
-      await axios.post('http://localhost:5000/api/payments', {
+      await axios.post('/api/payments', {
         tenant_id: selectedTenant.tenant_id,
         payment_date: new Date().toISOString().split('T')[0],
         ...payload,

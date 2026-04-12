@@ -16,7 +16,7 @@ const LoginPage = () => {
     setError('');
 
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/login', { email: email.trim(), password });
+      const response = await axios.post('/api/auth/login', { email: email.trim(), password });
       localStorage.setItem('pgms_user', JSON.stringify(response.data.user));
       
       if (response.data.user.status === 'expired') {

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Tablet, Wifi, WifiOff, Settings, ShieldCheck, X, CheckCircle, AlertCircle, Loader2, Server, Info } from 'lucide-react';
+import { Tablet, Wifi, WifiOff, Settings, ShieldCheck, X, CheckCircle, AlertCircle, Loader2, Server, Info, Fingerprint, RotateCcw, Trash2, Clock } from 'lucide-react';
 
-const API = 'http://localhost:5000';
+const API = '';
 
 const Devices = () => {
   const [devices, setDevices] = useState([]);
@@ -21,7 +21,9 @@ const Devices = () => {
     fetchDevices();
     
     // Live Monitoring SSE
-    const user_id = localStorage.getItem('user_id'); // If using localStorage for user scoping
+    const userString = localStorage.getItem('pgms_user');
+    const user = userString ? JSON.parse(userString) : null;
+    const user_id = user?.user_id;
     const url = user_id ? `${API}/api/events?user_id=${user_id}` : `${API}/api/events`;
     const es = new EventSource(url);
     es.onmessage = (e) => {
@@ -81,6 +83,35 @@ const Devices = () => {
     }
   };
 
+  const rebootDevice = async (id) => {
+    if (!window.confirm('Are you sure you want to reboot this device?')) return;
+    try {
+      const res = await axios.post(`${API}/api/devices/${id}/reboot`);
+      alert(res.data.message || 'Reboot command queued');
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to queue reboot');
+    }
+  };
+
+  const clearLogs = async (id) => {
+    if (!window.confirm('Are you sure you want to clear ALL attendance logs from this device? This cannot be undone.')) return;
+    try {
+      const res = await axios.post(`${API}/api/devices/${id}/clear-logs`);
+      alert(res.data.message || 'Clear logs command queued');
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to queue clear logs');
+    }
+  };
+
+  const syncTime = async (id) => {
+    try {
+      const res = await axios.post(`${API}/api/devices/${id}/sync-time`);
+      alert(res.data.message || 'Time sync command queued');
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to queue time sync');
+    }
+  };
+
   const openConfigModal = async (device) => {
     setConfigDevice({ ...device });
     setTestResult(null);
@@ -126,6 +157,16 @@ const Devices = () => {
       setShowHistoryModal(true);
     } catch (err) {
       alert('Failed to fetch sync history');
+    }
+  };
+
+  const broadcastTemplates = async (id, deviceName) => {
+    if (!window.confirm(`Broadcast all saved biometric templates to "${deviceName}"?\n\nThis will push all fingerprints, face, and palm data to this device.`)) return;
+    try {
+      const res = await axios.post(`${API}/api/devices/${id}/broadcast-templates`);
+      alert(res.data.message || 'Templates broadcast queued');
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to broadcast templates');
     }
   };
 
@@ -179,30 +220,64 @@ const Devices = () => {
                 <button 
                   onClick={() => downloadUsers(device.device_id)}
                   className="btn" 
+                  title="Download all users from physical device to software"
                   style={{ flex: 1, minWidth: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', fontSize: '0.85rem' }}
                 >
-                  Download Users
+                  Get Users
+                </button>
+                <button 
+                  onClick={() => broadcastTemplates(device.device_id, device.device_name)}
+                  className="btn" 
+                  id={`broadcast-btn-${device.device_id}`}
+                  title="Push all saved fingerprints/faces in DB to this device"
+                  style={{ flex: 1, minWidth: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', background: 'rgba(168, 85, 247, 0.1)', color: '#a855f7', fontSize: '0.85rem' }}
+                >
+                  <Fingerprint size={16} /> Sync Bio
                 </button>
                 <button 
                   onClick={() => triggerControl(device.device_id, 'unlock')}
                   className="btn" 
                   style={{ flex: 1, minWidth: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', fontSize: '0.85rem' }}
                 >
-                  Unlock Now
+                  Unlock
+                </button>
+                <button 
+                  onClick={() => syncTime(device.device_id)}
+                  className="btn" 
+                  title="Sync device clock with server time"
+                  style={{ flex: 1, minWidth: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', fontSize: '0.85rem' }}
+                >
+                  <Clock size={16} />
+                </button>
+                <button 
+                  onClick={() => rebootDevice(device.device_id)}
+                  className="btn" 
+                  title="Reboot Device"
+                  style={{ flex: 1, minWidth: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', fontSize: '0.85rem' }}
+                >
+                  <RotateCcw size={16} />
+                </button>
+                <button 
+                  onClick={() => clearLogs(device.device_id)}
+                  className="btn" 
+                  title="Clear Device Logs"
+                  style={{ flex: 1, minWidth: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', color: '#f59e0b', fontSize: '0.85rem' }}
+                >
+                  <Trash2 size={16} />
                 </button>
                 <button 
                   onClick={() => openConfigModal(device)}
                   className="btn" 
-                  style={{ flex: 1, minWidth: '90px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', fontSize: '0.85rem' }}
+                  style={{ flex: 1, minWidth: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', fontSize: '0.85rem' }}
                 >
-                  <Settings size={16} /> Config
+                  <Settings size={16} />
                 </button>
                 <button 
                   onClick={() => deleteDevice(device.device_id)}
                   className="btn" 
-                  style={{ flex: 1, minWidth: '90px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontSize: '0.85rem' }}
+                  style={{ flex: 1, minWidth: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontSize: '0.85rem' }}
                 >
-                  Delete
+                  <X size={16} />
                 </button>
               </div>
             </div>
