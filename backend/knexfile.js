@@ -26,14 +26,14 @@ module.exports = {
     },
     // FIX: Pool tuned for Supabase free tier (max 3 concurrent connections)
     pool: {
-      min: 0,           // Don't keep idle connections open (saves Supabase free-tier slots)
+      min: 0,           // Don't keep idle connections open
       max: 3,           // Supabase free tier supports up to 5
-      acquireTimeoutMillis: 30000,  // 30s to get a connection from pool
-      createTimeoutMillis: 15000,   // 15s to create a new connection
+      acquireTimeoutMillis: 5000,   // 5s to get a connection from pool
+      createTimeoutMillis: 5000,    // 5s to create a new connection
       destroyTimeoutMillis: 5000,
-      idleTimeoutMillis: 30000,     // Close idle connections after 30s
+      idleTimeoutMillis: 5000,      // Close idle connections after 5s
       reapIntervalMillis: 1000,
-      propagateCreateError: false,  // Don't crash if first connection fails
+      propagateCreateError: true,   // Let the error bubble up so we can rescue/log
     },
     migrations: {
       directory: './migrations'

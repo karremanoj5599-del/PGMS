@@ -1,8 +1,10 @@
 // ─── FIX for AggregateError [ETIMEDOUT] on Indian Networks (Jio/Airtel) ──────
 // Node.js 18/20+ resolves DNS for both IPv4 + IPv6 simultaneously.
 // Indian ISPs block/drop IPv6, causing both to fail → AggregateError.
-// Must be the VERY FIRST line before any network-using require().
-require('dns').setDefaultResultOrder('ipv4first');
+// Must be conditional to avoid breaking Vercel Serverless environment.
+if (process.env.VERCEL !== '1') {
+  require('dns').setDefaultResultOrder('ipv4first');
+}
 // ─────────────────────────────────────────────────────────────────────────────
 
 require('dotenv').config();
