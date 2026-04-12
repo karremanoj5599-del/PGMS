@@ -26,7 +26,11 @@ const LoginPage = () => {
       }
     } catch (err) {
       console.error('Login Error:', err);
-      const msg = err.response?.data?.error || 'Login failed. Please check your credentials.';
+      let msg = err.response?.data?.error || err.message || 'Login failed. Please check your credentials.';
+      // Ensure msg is a string to prevent React rendering errors (Minified React error #31)
+      if (typeof msg !== 'string') {
+        msg = JSON.stringify(msg);
+      }
       setError(msg);
     } finally {
       setLoading(false);

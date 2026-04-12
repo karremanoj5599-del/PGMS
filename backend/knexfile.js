@@ -19,10 +19,10 @@ module.exports = {
     connection: {
       connectionString: process.env.SUPABASE_DATABASE_URL,
       ssl: { rejectUnauthorized: false },
-      // FIX: Hard timeouts so a bad Jio/Airtel connection fails fast
-      connectionTimeoutMillis: 10000,  // 10s to establish TCP connection
-      query_timeout: 20000,            // 20s max per query
-      statement_timeout: 20000,
+      // FIX: Lower timeout (8s) so backend fails before Vercel (10s)
+      connectionTimeoutMillis: 8000,   // 8s to establish TCP connection
+      query_timeout: 15000,            // 15s max per query
+      statement_timeout: 15000,
     },
     // FIX: Pool tuned for Supabase free tier (max 3 concurrent connections)
     pool: {

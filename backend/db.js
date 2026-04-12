@@ -1,10 +1,11 @@
 require('dotenv').config();
 
-// ─── FIX: Force IPv4-only DNS resolution ────────────────────────────────────
 // Node.js 18/20+ tries IPv4 + IPv6 simultaneously. On Indian networks (Jio/Airtel)
 // IPv6 routes almost always fail, causing AggregateError [ETIMEDOUT].
-// This single line is the most reliable fix for Indian ISPs.
-require('dns').setDefaultResultOrder('ipv4first');
+// Only apply this fix locally, as Vercel infrastructure handles DNS differently.
+if (process.env.VERCEL !== '1') {
+  require('dns').setDefaultResultOrder('ipv4first');
+}
 // ─────────────────────────────────────────────────────────────────────────────
 
 const knex = require('knex');
