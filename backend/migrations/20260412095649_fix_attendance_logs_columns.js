@@ -2,14 +2,21 @@
  * @param { import("knex").Knex } knex
  * @returns { Promise<void> }
  */
-exports.up = function(knex) {
-  return knex.schema.table('attendance_logs', table => {
-    // Add missing columns
-    table.integer('tenant_id').unsigned().references('tenant_id').inTable('tenants').onDelete('SET NULL');
-    table.string('biometric_pin').nullable();
-    // Rename user_id to admin_user_id if it's currently holding admin ID
-    // Note: SQLite rename column is supported in recent Knex/SQLite versions
-    table.renameColumn('user_id', 'admin_user_id');
+exports.up = async function(knex) {
+  const hasTenant = await knex.schema.hasColumn('attendance_logs', 'tenant_id');
+  const hasPin = await knex.schema.hasColumn('attendance_logs', 'biometric_pin');
+  const hasUserId = await knex.schema.hasColumn('attendance_logs', 'user_id');
+
+  await knex.schema.alterTable('attendance_logs', table => {
+    if (!hasTenant) {
+      table.integer('tenant_id').unsigned().references('tenant_id').inTable('tenants').onDelete('SET NULL');
+    }
+    if (!hasPin) {
+      table.string('biometric_pin').nullable();
+    }
+    if (hasUserId) {
+      table.renameColumn('user_id', 'admin_user_id');
+    }
   });
 };
 

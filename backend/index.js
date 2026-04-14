@@ -62,7 +62,7 @@ const syncTenantAccess = async (tenant_id) => {
       // NEW: Clear any pending (executed=0) commands for this specific user on this device
       // to prevent queue bloating if sync is triggered multiple times.
       await db('device_commands')
-        .where({ device_sn: device.sn, executed: 0 })
+        .where({ device_sn: device.sn, executed: false })
         .andWhere(function() {
           this.where('command', 'like', `%Pin=${pin}\t%`)
               .orWhere('command', 'like', `%PIN=${pin}\t%`)
@@ -278,7 +278,7 @@ const enforceInactivityRules = async () => {
     for (const device of devices) {
       if (!device || !device.sn) continue;
       
-      const globalSettings = await db('device_settings').where({ device_id: 0, user_id: device.user_id }).first();
+      const globalSettings = await db('device_settings').where({ device_id: null, user_id: device.user_id }).first();
       if (!globalSettings || (!globalSettings.auto_block_enabled && !globalSettings.auto_delete_enabled)) continue;
 
       const tenants = await db('tenants').where('user_id', device.user_id);
@@ -369,7 +369,8 @@ app.use(extractUser);
 const logADMS = (req, msg, data = '') => {
   // Disable local file logging on Vercel (read-only filesystem)
   if (process.env.VERCEL === '1') {
-    console.log(`[ADMS] ${req.method} ${req.url} - ${msg} ${data.substring(0, 500)}`);
+    const dataStr = data ? (typeof data === 'string' ? data : JSON.stringify(data)) : '';
+    console.log(`[ADMS] ${req.method} ${req.url} - ${msg} ${dataStr.substring(0, 500)}`);
     return;
   }
   const logPath = path.join(__dirname, 'adms_packets.log');
@@ -899,6 +900,7 @@ app.get('/api/tenants', async (req, res) => {
     .leftJoin('beds', 'tenants.bed_id', '=', 'beds.bed_id')
     .leftJoin('rooms', 'beds.room_id', '=', 'rooms.room_id')
     .leftJoin('floors', 'rooms.floor_id', '=', 'floors.floor_id')
+    .where('tenants.user_id', req.userId)
     .select(
       'tenants.*', 
       'beds.bed_number', 
@@ -1701,6 +1703,15 @@ app.get('/api/devices', async (req, res) => {
 app.post('/api/devices', async (req, res) => {
   try {
     const { device_name, ip_address, port, machine_id, sn, comm_key, adms_status } = req.body;
+    
+    // Enforce unique SN across all users
+    if (sn) {
+      const existing = await db('devices').whereRaw('LOWER(sn) = ?', [sn.toLowerCase()]).first();
+      if (existing) {
+        return res.status(400).json({ error: 'Device with this Serial Number is already registered in the system.' });
+      }
+    }
+
     const [device] = await db('devices').insert({ 
       device_name,
       ip_address,
@@ -1723,6 +1734,14 @@ app.put('/api/devices/:id', async (req, res) => {
   if (isNaN(id)) return res.status(400).json({ error: 'Invalid Device ID' });
   const { device_name, ip_address, port, machine_id, sn, comm_key, adms_status } = req.body;
   try {
+    // Enforce unique SN across all users (excluding current device)
+    if (sn) {
+      const existing = await db('devices').whereRaw('LOWER(sn) = ?', [sn.toLowerCase()]).whereNot('device_id', id).first();
+      if (existing) {
+        return res.status(400).json({ error: 'Device with this Serial Number is already registered by another user.' });
+      }
+    }
+
     const [device] = await db('devices').where({ device_id: id, user_id: req.userId }).update({
       device_name,
       ip_address,
@@ -1783,9 +1802,9 @@ app.post('/api/devices/sync-user', async (req, res) => {
 // Global Access Settings route
 app.get('/api/system/access-options', async (req, res) => {
   try {
-    let settings = await db('device_settings').where({ device_id: 0, user_id: req.userId }).first();
+    let settings = await db('device_settings').where({ device_id: null, user_id: req.userId }).first();
     if (!settings) {
-      const [inserted] = await db('device_settings').insert({ device_id: 0, user_id: req.userId }).returning('*');
+      const [inserted] = await db('device_settings').insert({ device_id: null, user_id: req.userId }).returning('*');
       settings = inserted.id ? inserted : await db('device_settings').where('id', inserted).first();
     }
     res.json(settings);
@@ -1800,11 +1819,11 @@ app.put('/api/system/access-options', async (req, res) => {
     expire_action, auto_block_enabled, auto_block_days, auto_delete_enabled, auto_delete_days
   } = req.body;
   try {
-    let settings = await db('device_settings').where({ device_id: 0, user_id: req.userId }).first();
+    let settings = await db('device_settings').where({ device_id: null, user_id: req.userId }).first();
     if (!settings) {
-       await db('device_settings').insert({ device_id: 0, user_id: req.userId });
+       await db('device_settings').insert({ device_id: null, user_id: req.userId });
     }
-    await db('device_settings').where({ device_id: 0, user_id: req.userId }).update({
+    await db('device_settings').where({ device_id: null, user_id: req.userId }).update({
       lock_delay, sensor_type, door_mode, anti_passback,
       expire_action, auto_block_enabled, auto_block_days, auto_delete_enabled, auto_delete_days
     });
@@ -1821,14 +1840,14 @@ app.put('/api/system/access-options', async (req, res) => {
         }
     }
 
-    const updated = await db('device_settings').where({ device_id: 0, user_id: req.userId }).first();
+    const updated = await db('device_settings').where({ device_id: null, user_id: req.userId }).first();
     res.json(updated);
   } catch (err) {
     res.status(500).json({ error: 'Failed to update global settings' });
   }
 });
 
-// Remote Device Control (Unlock, etc)
+// Remote Device Control (Unlock, Lock, Hold Open, Alarm Cancel)
 app.post('/api/devices/:id/control', async (req, res) => {
   const id = Number(req.params.id);
   const action = req.body.action || 'unlock';
@@ -1838,8 +1857,14 @@ app.post('/api/devices/:id/control', async (req, res) => {
     const device = await db('devices').where({ device_id: id, user_id: req.userId }).first();
     if (!device || !device.sn) return res.status(404).json({ error: 'Device not found or not configured' });
     
-    let commandStr = 'ACUNLOCK';
-    if (action === 'alarm_cancel') commandStr = 'ACALARM';
+    const commandMap = {
+      'unlock':       'ACUNLOCK',                     // Proven to work on this device
+      'lock':         'ACUNLOCK CLOSE',                // Force lock
+      'hold_open':    'ACUNLOCK OPEN',                 // Hold door open
+      'alarm_cancel': 'ACALARM',                       // Cancel alarm
+    };
+    
+    const commandStr = commandMap[action] || commandMap['unlock'];
     
     await db('device_commands').insert({
       device_sn: device.sn,
@@ -1847,7 +1872,8 @@ app.post('/api/devices/:id/control', async (req, res) => {
       user_id: req.userId
     });
     
-    res.json({ message: `Queued remote ${action} command` });
+    const labels = { unlock: 'Unlock (5s)', lock: 'Force Lock', hold_open: 'Hold Open', alarm_cancel: 'Cancel Alarm' };
+    res.json({ message: `Queued: ${labels[action] || action}` });
   } catch (err) {
     res.status(500).json({ error: 'Failed to send remote command' });
   }
@@ -1884,6 +1910,74 @@ app.post('/api/devices/:id/sync-time', async (req, res) => {
     await db('device_commands').insert({ device_sn: device.sn, command: `SET OPTIONS Time=${serverTime}`, user_id: req.userId });
     res.json({ message: 'Time sync command queued' });
   } catch (err) { res.status(500).json({ error: 'Failed to queue time sync' }); }
+});
+
+// Delete specific user from device hardware
+app.post('/api/devices/:id/delete-user', async (req, res) => {
+  const id = Number(req.params.id);
+  const { pin } = req.body;
+  if (isNaN(id) || !pin) return res.status(400).json({ error: 'Device ID and PIN are required' });
+  try {
+    const device = await db('devices').where({ device_id: id, user_id: req.userId }).first();
+    if (!device || !device.sn) return res.status(404).json({ error: 'Device not found' });
+    await db('device_commands').insert([
+      { device_sn: device.sn, command: `DATA DELETE user Pin=${pin}`, user_id: req.userId },
+      { device_sn: device.sn, command: `DATA DELETE templatev10 Pin=${pin}`, user_id: req.userId },
+      { device_sn: device.sn, command: `DATA DELETE BIODATA Pin=${pin}`, user_id: req.userId }
+    ]);
+    res.json({ message: `Queued: Delete user PIN=${pin} + all biometrics from device` });
+  } catch (err) { res.status(500).json({ error: 'Failed to queue delete user' }); }
+});
+
+// Factory reset — clear ALL data from device (requires confirmation token)
+app.post('/api/devices/:id/clear-all-data', async (req, res) => {
+  const id = Number(req.params.id);
+  const { confirmToken } = req.body;
+  if (isNaN(id)) return res.status(400).json({ error: 'Invalid Device ID' });
+  if (confirmToken !== 'RESET') return res.status(400).json({ error: 'Type "RESET" to confirm factory reset' });
+  try {
+    const device = await db('devices').where({ device_id: id, user_id: req.userId }).first();
+    if (!device || !device.sn) return res.status(404).json({ error: 'Device not found' });
+    await db('device_commands').insert({ device_sn: device.sn, command: 'CLEAR DATA', user_id: req.userId });
+    res.json({ message: '⚠️ Factory reset command queued. ALL users, templates, and logs will be erased from the device.' });
+  } catch (err) { res.status(500).json({ error: 'Failed to queue factory reset' }); }
+});
+
+// Query device info (firmware, user count, capacity, etc.)
+app.post('/api/devices/:id/query-info', async (req, res) => {
+  const id = Number(req.params.id);
+  try {
+    const device = await db('devices').where({ device_id: id, user_id: req.userId }).first();
+    if (!device || !device.sn) return res.status(404).json({ error: 'Device not found' });
+    // CHECK forces the device to re-sync all data including user counts
+    await db('device_commands').insert({ device_sn: device.sn, command: 'CHECK', user_id: req.userId });
+    res.json({ message: 'Device check command queued. Device will re-report its status.' });
+  } catch (err) { res.status(500).json({ error: 'Failed to queue info query' }); }
+});
+
+// Set hardware options (Volume, Language, DateFormat, DoorSensor, etc.)
+app.post('/api/devices/:id/set-options', async (req, res) => {
+  const id = Number(req.params.id);
+  const options = req.body; // { Volume: 5, DateFormat: 0, Language: 0, ... }
+  if (isNaN(id)) return res.status(400).json({ error: 'Invalid Device ID' });
+  
+  // Build SET OPTIONS string from provided key-value pairs
+  const validKeys = ['Volume', 'DateFormat', 'Language', 'DoorSensorType', 'AntiPassback', 'LockDelay', 'ComPwd', 'FaceFunOn', 'FingerFunOn'];
+  const pairs = [];
+  for (const key of validKeys) {
+    if (options[key] !== undefined && options[key] !== null && options[key] !== '') {
+      pairs.push(`${key}=${options[key]}`);
+    }
+  }
+  
+  if (pairs.length === 0) return res.status(400).json({ error: 'No valid options provided' });
+  
+  try {
+    const device = await db('devices').where({ device_id: id, user_id: req.userId }).first();
+    if (!device || !device.sn) return res.status(404).json({ error: 'Device not found' });
+    await db('device_commands').insert({ device_sn: device.sn, command: `SET OPTIONS ${pairs.join(',')}`, user_id: req.userId });
+    res.json({ message: `Queued: SET OPTIONS ${pairs.join(', ')}` });
+  } catch (err) { res.status(500).json({ error: 'Failed to queue set options' }); }
 });
 
 // Device Test Connection — checks if device is reachable
@@ -2163,8 +2257,13 @@ app.get('/api/events', (req, res) => {
 // ADMS Handshake — Flexible route to handle case-insensitivity or trailing slashes
 // ADMS Handshake & Data Push — Flexible route to handle case-insensitivity or trailing slashes
 app.all(/iclock\/cdata/i, async (req, res) => {
-  const { SN, table } = req.query;
-  const sn = SN || req.query.sn;
+  const { SN, sn: snLowerParam, table } = req.query;
+  const sn = (SN || snLowerParam || req.headers['x-device-sn'] || req.headers['sn'] || '').trim();
+  
+  if (!sn) {
+    console.warn(`[ADMS] cdata hit without SN. Path: ${req.path}`);
+    return res.status(200).send('OK\r\n'); // Still send OK so device doesn't retry infinitely
+  }
   const logPath = path.join(__dirname, 'adms_packets.log');
 
   if (req.method === 'GET') {
@@ -2204,18 +2303,21 @@ app.all(/iclock\/cdata/i, async (req, res) => {
       `ServerTime=${serverTime}`,
       ``
     ].join('\r\n');
-    return res.send(resp);
+    res.set('Content-Type', 'text/plain');
+    return res.send(resp + '\n');
   }
 
   // POST handling (Data Push)
   const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
-  logADMS(req, `DATA PUSH - SN: ${sn} - Table: ${table}`, rawBody);
-
+  
   try {
-    const device = await db('devices').whereRaw('LOWER(sn) = ?', [sn.toLowerCase()]).first();
+    const snLower = sn.toLowerCase();
+    const device = await db('devices').whereRaw('LOWER(sn) = ?', [snLower]).first();
+    const adminUserId = device ? device.user_id : null;
+    logADMS(req, `DATA PUSH - SN: ${sn} (User: ${adminUserId}) - Table: ${table}`, rawBody);
 
     // Handle ATTLOG (Attendance Logs)
-    if (table === 'ATTLOG' || (rawBody && rawBody.includes('ATTLOG'))) {
+    if (table === 'ATTLOG' || (rawBody && (rawBody.includes('ATTLOG') || rawBody.includes('\t')))) {
       const lines = rawBody.split('\n');
       let count = 0;
       const adminUserId = device ? device.user_id : null;
@@ -2573,23 +2675,28 @@ app.all(/iclock\/cdata/i, async (req, res) => {
   }
 
   res.set('Content-Type', 'text/plain');
-  res.send('OK');
+  res.send('OK\r\n');
 });
 
 // ADMS Get Request — device polls this for pending commands
 app.all(/iclock\/getrequest/i, async (req, res) => {
-  const { SN } = req.query;
-  const sn = SN || req.query.sn;
+  const { SN, sn: snLowerParam } = req.query;
+  const sn = (SN || snLowerParam || req.headers['x-device-sn'] || req.headers['sn'] || '').trim();
+  
+  if (!sn) {
+    return res.status(200).send('OK\r\n');
+  }
 
   if (sn) {
-    await db('devices').whereRaw('LOWER(sn) = ?', [sn.toLowerCase()]).update({ 
+    const snLower = sn.toLowerCase();
+    await db('devices').whereRaw('LOWER(sn) = ?', [snLower]).update({ 
       adms_status: true,
       last_seen: new Date().toISOString()
     }).catch(() => {});
     
     // Check for pending command
     const cmd = await db('device_commands')
-      .whereRaw('LOWER(device_sn) = ?', [sn.toLowerCase()])
+      .whereRaw('LOWER(device_sn) = ?', [snLower])
       .where('executed', false)
       .orderBy('id', 'asc')
       .first();
@@ -2597,13 +2704,16 @@ app.all(/iclock\/getrequest/i, async (req, res) => {
     if (cmd) {
       logADMS(req, `COMMAND FETCH - SN: ${sn} - Found Cmd ID: ${cmd.id} (${cmd.command})`);
       res.set('Content-Type', 'text/plain');
-      return res.send(`C:${cmd.id}:${cmd.command}`);
+      // Format must be C:ID:COMMAND\r\n
+      res.set('Content-Type', 'text/plain');
+      return res.send(`C:${cmd.id}:${cmd.command}\n`);
     }
   }
 
   logADMS(req, `COMMAND POLL - SN: ${sn} - No commands`);
   res.set('Content-Type', 'text/plain');
-  res.send('OK');
+  res.set('Content-Type', 'text/plain');
+  res.send('OK\n');
 });
 
 // ADMS device info push
@@ -2611,7 +2721,7 @@ app.all(/iclock\/getrequest/i, async (req, res) => {
 // ADMS Device Command Response — device confirms command execution
 app.all(/iclock\/devicecmd/i, async (req, res) => {
   const { SN } = req.query;
-  const sn = SN || req.query.sn;
+  const sn = ((SN || req.query.sn || '')).trim();
   
   let cmdId = req.query.ID || req.query.id;
   let retCode = req.query.Return || req.query.return;
@@ -2624,31 +2734,25 @@ app.all(/iclock\/devicecmd/i, async (req, res) => {
   }
 
   let rawBody = '';
-  if (req.body && typeof req.body === 'string') rawBody = req.body;
-  else if (req.body && Object.keys(req.body).length > 0) rawBody = JSON.stringify(req.body);
-
-  if (!rawBody && !cmdId) {
-    rawBody = await new Promise((resolve) => {
-      let data = '';
-      req.on('data', chunk => { data += chunk; });
-      req.on('end', () => resolve(data));
-      setTimeout(() => resolve(data), 500);
-    });
+  if (req.body) {
+    if (typeof req.body === 'string') rawBody = req.body;
+    else rawBody = JSON.stringify(req.body);
   }
 
+  // Backup detection for Vercel: If body parser missed it, or if it's in query
   if (!cmdId && rawBody) {
-    const match = rawBody.match(/ID=(\d+)&Return=([-\d]+)/i);
-    if (match) {
-      cmdId = match[1];
-      retCode = match[2];
-    }
+    const match = rawBody.match(/ID=(\d+)/i);
+    if (match) cmdId = match[1];
+    const retMatch = rawBody.match(/Return=([-\d]+)/i);
+    if (retMatch) retCode = retMatch[1];
   }
 
   logADMS(req, `COMMAND RESPONSE - SN: ${sn} - ID: ${cmdId} - Ret: ${retCode}`, rawBody || '(EMPTY BODY)');
 
   if (sn && cmdId) {
-    await db('device_commands').where('id', parseInt(cmdId)).update({ executed: true }).catch();
-    console.log(`[ADMS] Command ID ${cmdId} processed (Return: ${retCode}) for SN: ${sn}`);
+    const snLower = sn.toLowerCase();
+    await db('device_commands').where('id', parseInt(cmdId)).update({ executed: true });
+    console.log(`[ADMS] Command ID ${cmdId} marked SUCCESS for SN: ${sn}`);
   }
 
   // Parse FPTMP/BIODATA from command response
@@ -2729,10 +2833,150 @@ app.all(/iclock\/devicecmd/i, async (req, res) => {
   }
 
   res.set('Content-Type', 'text/plain');
-  res.send('OK');
+  res.send('OK\n');
 });
 
 
+// ==========================================
+// ADMS Query Data Response — device sends DATA QUERY results here
+// ==========================================
+app.all(/iclock\/querydata/i, async (req, res) => {
+  const { SN, sn: snLowerParam, table, cmdid } = req.query;
+  const sn = SN || snLowerParam || req.headers['x-device-sn'];
+
+  const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+  logADMS(req, `QUERY RESPONSE - SN: ${sn} - Table: ${table} - CmdID: ${cmdid}`, rawBody);
+
+  if (!sn) {
+    res.set('Content-Type', 'text/plain');
+    return res.status(200).send('OK\n');
+  }
+
+  try {
+    const snLower = sn.toLowerCase();
+    const device = await db('devices').whereRaw('LOWER(sn) = ?', [snLower]).first();
+    const adminUserId = device ? device.user_id : null;
+
+    // Mark the originating command as executed if cmdid is present
+    if (cmdid) {
+      await db('device_commands').where('id', parseInt(cmdid)).update({ executed: true }).catch(() => {});
+      console.log(`[ADMS] QueryData: Command ID ${cmdid} marked SUCCESS for SN: ${sn}`);
+    }
+
+    // Parse USERINFO responses
+    if (table === 'USERINFO' || table === 'user' || (rawBody && rawBody.includes('PIN='))) {
+      const lines = rawBody.split('\n');
+      let count = 0;
+      for (const line of lines) {
+        if (!line.trim() || line.startsWith('USERINFO') || line.startsWith('user')) continue;
+        const fields = {};
+        line.split('\t').forEach(part => {
+          const eqIdx = part.indexOf('=');
+          if (eqIdx > 0) fields[part.substring(0, eqIdx).trim().toUpperCase()] = part.substring(eqIdx + 1).trim();
+        });
+
+        const pin = fields.PIN;
+        const name = fields.NAME || fields.Name || '';
+        if (pin && adminUserId) {
+          // Try to match to existing tenant
+          let tenant = await db('tenants')
+            .where({ user_id: adminUserId })
+            .where(builder => builder.where('biometric_pin', pin).orWhere('tenant_id', isNaN(pin) ? -1 : Number(pin)))
+            .first();
+
+          if (tenant) {
+            console.log(`[ADMS] QueryData: Matched user PIN=${pin} to tenant ${tenant.name}`);
+          } else {
+            console.log(`[ADMS] QueryData: Received user PIN=${pin} Name=${name} (no tenant match)`);
+          }
+          count++;
+        }
+      }
+      console.log(`[ADMS] QueryData: Parsed ${count} USERINFO records from SN: ${sn}`);
+    }
+
+    // Parse BIODATA / FPTMP responses (fingerprint/face templates from device)
+    if (rawBody && (rawBody.includes('TMP=') || rawBody.includes('CONTENT=') || rawBody.includes('Tmp='))) {
+      const lines = rawBody.split('\n');
+      let count = 0;
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        const fields = {};
+        line.split('\t').forEach(part => {
+          const eqIdx = part.indexOf('=');
+          if (eqIdx > 0) fields[part.substring(0, eqIdx).trim().toUpperCase()] = part.substring(eqIdx + 1).trim();
+        });
+
+        const pin = fields.PIN || fields.Pin;
+        const tmpData = fields.TMP || fields.CONTENT || fields.DATA;
+        const bioType = parseInt(fields.TYPE) || 0;
+        const fingerIdx = parseInt(fields.FID || fields.INDEX || fields.FINGERID || '0') || 0;
+
+        if (pin && tmpData && adminUserId) {
+          const typeStr = bioType === 9 ? 'face' : (bioType === 8 ? 'palm' : 'fingerprint');
+
+          let tenant = await db('tenants')
+            .where({ user_id: adminUserId })
+            .where(builder => builder.where('biometric_pin', pin).orWhere('tenant_id', isNaN(pin) ? -1 : Number(pin)))
+            .first();
+
+          if (tenant) {
+            const existing = await db('biometric_templates')
+              .where({ tenant_id: tenant.tenant_id, type: typeStr, finger_index: fingerIdx }).first();
+            if (existing) {
+              await db('biometric_templates').where('id', existing.id).update({
+                template_data: tmpData, updated_at: new Date().toISOString()
+              });
+            } else {
+              await db('biometric_templates').insert({
+                tenant_id: tenant.tenant_id, type: typeStr, template_data: tmpData,
+                finger_index: fingerIdx, user_id: adminUserId, source_device_sn: sn
+              });
+            }
+            count++;
+          }
+        }
+      }
+      if (count > 0) console.log(`[ADMS] QueryData: Saved ${count} biometric templates from SN: ${sn}`);
+    }
+
+    // Parse device info/options (UserCount, FPCount, FaceCount, FirmVer, etc.)
+    if (rawBody && (rawBody.includes('~SerialNumber') || rawBody.includes('FirmVer') || rawBody.includes('UserCount') || rawBody.includes('FPCount'))) {
+      const infoFields = {};
+      rawBody.split('\n').forEach(line => {
+        const parts = line.split('=');
+        if (parts.length >= 2) {
+          infoFields[parts[0].trim().replace('~', '')] = parts.slice(1).join('=').trim();
+        }
+      });
+
+      const updateData = {};
+      if (infoFields.FirmVer) updateData.firmware_ver = infoFields.FirmVer;
+      if (infoFields.Platform) updateData.platform = infoFields.Platform;
+      if (infoFields.UserCount) updateData.user_count = parseInt(infoFields.UserCount) || 0;
+      if (infoFields.FPCount) updateData.fp_count = parseInt(infoFields.FPCount) || 0;
+      if (infoFields.FaceCount) updateData.face_count = parseInt(infoFields.FaceCount) || 0;
+      if (infoFields.TransactionCount || infoFields.AttLogCount) updateData.att_log_count = parseInt(infoFields.TransactionCount || infoFields.AttLogCount) || 0;
+      if (infoFields.UserCapacity) updateData.user_capacity = parseInt(infoFields.UserCapacity) || 0;
+      if (infoFields.FPCapacity) updateData.fp_capacity = parseInt(infoFields.FPCapacity) || 0;
+      if (infoFields.FaceCapacity) updateData.face_capacity = parseInt(infoFields.FaceCapacity) || 0;
+      updateData.device_options_json = JSON.stringify(infoFields);
+      updateData.info_updated_at = new Date().toISOString();
+
+      if (Object.keys(updateData).length > 0 && device) {
+        await db('devices').where('device_id', device.device_id).update(updateData).catch(err => {
+          console.warn('[ADMS] Could not save device info (migration may not have run yet):', err.message);
+        });
+        console.log(`[ADMS] QueryData: Updated device info for SN: ${sn}`, JSON.stringify(updateData).substring(0, 200));
+      }
+    }
+  } catch (err) {
+    console.error('[ADMS] Error processing querydata:', err.message);
+  }
+
+  res.set('Content-Type', 'text/plain');
+  res.send('OK\n');
+});
 
 // Basic Health Check
 app.get('/', (req, res) => {
