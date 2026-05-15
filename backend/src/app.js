@@ -10,6 +10,10 @@ const app = express();
 
 // ── Body Parsers ─────────────────────────────────────────────────────────────
 app.use(cors());
+
+// ADMS Protocol Raw Body Fix: Devices often send plain text with urlencoded headers
+app.use('/iclock', express.text({ type: '*/*', limit: '50mb' }));
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.text({ type: ['text/*', 'application/octet-stream'], limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));

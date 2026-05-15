@@ -54,7 +54,7 @@ exports.setOptions = async (req, res, next) => {
 exports.unknownPolls = async (req, res, next) => {
   try {
     const db = require('../../config/database');
-    const logs = await db('unknown_device_logs').orderBy('created_at', 'desc').limit(50);
+    const logs = await db('unregistered_devices').orderBy('created_at', 'desc').limit(50);
     res.json(logs);
   } catch(e){ res.status(500).json({ error: 'Failed to fetch logs' }); }
 };

@@ -112,7 +112,9 @@ exports.processUserInfo = async (sn, rawBody, device) => {
         const newId = typeof inserted === 'object' ? inserted.tenant_id : inserted;
 
         if (!isNaN(pinNum)) {
+        if (db.client.config.client === 'pg' || db.client.config.client === 'postgresql') {
           await db.raw(`SELECT setval(pg_get_serial_sequence('tenants', 'tenant_id'), max(tenant_id)) FROM tenants`).catch(e => console.error('Sequence Fix Error:', e));
+        }
         }
 
         await db('access_control').insert({ tenant_id: newId, access_granted: true, device_id: device ? device.device_id : null });

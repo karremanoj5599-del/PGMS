@@ -1,11 +1,12 @@
 const db = require('../../../config/database');
 const { logADMS } = require('../../../middleware/requestLogger');
 const admsService = require('./adms.service');
+const { extractSN, getCommandId, sendADMSResponse } = require('./adms.utils');
 
 // /iclock/cdata — device pushes attendance, user, and biometric data
 const handleCData = async (req, res) => {
-  const { SN, sn: snLower, table } = req.query;
-  const sn = (SN || snLower || req.headers['x-device-sn'] || req.headers['sn'] || '').trim();
+  const sn = extractSN(req);
+  const { table } = req.query;
 
   let rawBody = '';
   if (req.body) {
@@ -52,16 +53,13 @@ const handleCData = async (req, res) => {
     console.error('[ADMS] Error processing data:', err.message);
   }
 
-  res.set('Content-Type', 'text/plain');
-  res.send('OK\r\n');
+  sendADMSResponse(res, 'OK');
 };
 
 // /iclock/getrequest — device polls for pending commands
 const handleGetRequest = async (req, res) => {
-  const { SN, sn: snLowerParam } = req.query;
-  const sn = (SN || snLowerParam || req.headers['x-device-sn'] || req.headers['sn'] || '').trim();
-
-  if (!sn) return res.status(200).send('OK\r\n');
+  const sn = extractSN(req);
+  if (!sn) return sendADMSResponse(res, 'OK');
 
   const snLower = sn.toLowerCase();
   const updated = await db('devices').whereRaw('LOWER(sn) = ?', [snLower]).update({
@@ -70,7 +68,7 @@ const handleGetRequest = async (req, res) => {
 
   if (!updated) {
     console.log(`[ADMS] getrequest SN not found in DB: "${sn}"`);
-    await db('unknown_device_logs').insert({
+    await db('unregistered_devices').insert({
       sn, path: req.path, headers: JSON.stringify(req.headers),
       query: JSON.stringify(req.query), created_at: new Date().toISOString()
     }).catch(err => console.error('[DB] Failed to log unknown poll:', err.message));
@@ -93,27 +91,18 @@ const handleGetRequest = async (req, res) => {
       await db('device_commands').where('id', cmd.id).update({ executed: true }).catch(() => {});
       console.log(`[ADMS] [AUTO-CONFIRM] SN: ${sn} - Command: ${cmd.command} (ID: ${cmd.id})`);
     }
-    return res.send(`C:${cmd.id}:${cmd.command}\r\n`);
+    return sendADMSResponse(res, `C:${cmd.id}:${cmd.command}`);
   }
 
   logADMS(req, `COMMAND POLL - SN: ${sn} - No commands`);
-  res.set('Content-Type', 'text/plain');
-  res.send('OK\r\n');
+  sendADMSResponse(res, 'OK');
 };
 
 // /iclock/devicecmd — device confirms command execution
 const handleDeviceCmd = async (req, res) => {
-  const { SN } = req.query;
-  const sn = (SN || req.query.sn || '').trim();
-  let cmdId = req.query.ID || req.query.id;
-  let retCode = req.query.Return || req.query.return;
-
-  if (req.body && typeof req.body === 'object') {
-    if (req.body.ID) cmdId = req.body.ID;
-    if (req.body.id) cmdId = req.body.id;
-    if (req.body.Return !== undefined) retCode = req.body.Return;
-    if (req.body.return !== undefined) retCode = req.body.return;
-  }
+  const sn = extractSN(req);
+  let cmdId = getCommandId(req);
+  let retCode = req.query.Return || req.query.return || (req.body && (req.body.Return || req.body.return));
 
   let rawBody = '';
   if (req.body) { rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body); }
@@ -128,7 +117,7 @@ const handleDeviceCmd = async (req, res) => {
   logADMS(req, `COMMAND RESPONSE - SN: ${sn} - ID: ${cmdId} - Ret: ${retCode}`, rawBody || '(EMPTY BODY)');
 
   if (sn && cmdId) {
-    await db('device_commands').where('id', parseInt(cmdId)).update({ executed: true });
+    await db('device_commands').where('id', parseInt(cmdId)).update({ executed: true }).catch(() => {});
     console.log(`[ADMS] Command ID ${cmdId} marked SUCCESS for SN: ${sn}`);
   }
 
@@ -147,19 +136,19 @@ const handleDeviceCmd = async (req, res) => {
     console.error('Error parsing devicecmd biometrics:', err);
   }
 
-  res.set('Content-Type', 'text/plain');
-  res.send('OK\r\n');
+  sendADMSResponse(res, 'OK');
 };
 
 // /iclock/querydata — device sends query results
 const handleQueryData = async (req, res) => {
-  const { SN, sn: snLowerParam, table, cmdid } = req.query;
-  const sn = SN || snLowerParam || req.headers['x-device-sn'];
+  const sn = extractSN(req);
+  const { table } = req.query;
+  const cmdid = getCommandId(req);
   const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
 
   logADMS(req, `QUERY RESPONSE - SN: ${sn} - Table: ${table} - CmdID: ${cmdid}`, rawBody);
 
-  if (!sn) { res.set('Content-Type', 'text/plain'); return res.status(200).send('OK\n'); }
+  if (!sn) return sendADMSResponse(res, 'OK');
 
   try {
     const snLower = sn.toLowerCase();
@@ -188,8 +177,7 @@ const handleQueryData = async (req, res) => {
     console.error('[ADMS] Error processing querydata:', err.message);
   }
 
-  res.set('Content-Type', 'text/plain');
-  res.send('OK\r\n');
+  sendADMSResponse(res, 'OK');
 };
 
 module.exports = { handleCData, handleGetRequest, handleDeviceCmd, handleQueryData };
