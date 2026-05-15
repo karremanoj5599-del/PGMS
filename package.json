@@ -5,7 +5,19 @@
   "scripts": {
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
-    "build": "cd backend && npm install && cd ../frontend && npm install && npm run build",
+    "build": "cd frontend && npm install && npm run build",
     "install-all": "npm install && cd frontend && npm install && cd ../backend && npm install"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.99.3",
+    "axios": "^1.13.6",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "knex": "^3.1.0",
+    "pg": "^8.20.0",
+    "sqlite3": "^6.0.1"
   }
 }
