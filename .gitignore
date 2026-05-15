@@ -129,3 +129,10 @@ x86/
 # Publish Web Output
 *.[Pp]ublish.xml
 .vercel
+
+# Database
+*.sqlite
+*.sqlite3
+dev.sqlite3
+dev.sqlite3-shm
+dev.sqlite3-wal

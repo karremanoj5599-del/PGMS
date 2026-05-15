@@ -9,7 +9,7 @@ communication via HTTP.
 
 - Benefit: Works behind firewalls/NAT without port forwarding.
 - Requirement: The device must have a URL pointing to the PGMS Backend 
-  (e.g., an ngrok tunnel or public IP).
+  (e.g., a hosted domain or public IP).
 
 2. KEY ENDPOINTS (BACKEND)
 --------------------------

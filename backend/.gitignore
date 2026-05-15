@@ -5,3 +5,10 @@ node_modules
 /src/generated/prisma
 
 .vercel
+
+# Database
+*.sqlite
+*.sqlite3
+dev.sqlite3
+dev.sqlite3-shm
+dev.sqlite3-wal
