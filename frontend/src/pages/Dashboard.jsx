@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import { Bed, Users, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -16,16 +16,18 @@ const Dashboard = () => {
     const fetchStats = async () => {
       try {
         const [bedsRes, tenantsRes] = await Promise.all([
-          axios.get('/api/beds'),
-          axios.get('/api/tenants')
+          api.get('/api/beds'),
+          api.get('/api/tenants')
         ]);
         
-        const beds = bedsRes.data;
+        const beds = Array.isArray(bedsRes.data) ? bedsRes.data : [];
+        const tenants = Array.isArray(tenantsRes.data) ? tenantsRes.data : [];
+
         setStats({
           occupied: beds.filter(b => b.status === 'Occupied').length,
           vacant: beds.filter(b => b.status === 'Vacant').length,
           maintenance: beds.filter(b => b.status === 'Maintenance').length,
-          totalTenants: tenantsRes.data.length
+          totalTenants: tenants.length
         });
       } catch (err) {
         console.error('Failed to fetch stats', err);

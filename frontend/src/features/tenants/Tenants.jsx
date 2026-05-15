@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../../services/api';
 import { UserPlus, Search, Filter, Smartphone, Fingerprint, Server, RefreshCw } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 
@@ -64,8 +64,8 @@ const Tenants = () => {
 
   const fetchTenants = async () => {
     try {
-      const res = await axios.get('/api/tenants');
-      setTenants(res.data);
+      const res = await api.get('/api/tenants');
+      setTenants(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error('Failed to fetch tenants');
     }
@@ -73,8 +73,9 @@ const Tenants = () => {
 
   const fetchDevices = async () => {
     try {
-      const res = await axios.get('/api/devices');
-      setDevices(res.data.filter(d => d.adms_status));
+      const res = await api.get('/api/devices');
+      const data = Array.isArray(res.data) ? res.data : [];
+      setDevices(data.filter(d => d.adms_status));
     } catch (err) {
       console.error('Failed to fetch devices');
     }
@@ -82,7 +83,7 @@ const Tenants = () => {
 
   const fetchRooms = async () => {
     try {
-      const res = await axios.get('/api/rooms');
+      const res = await api.get('/api/rooms');
       setRooms(res.data);
     } catch (err) {
       console.error('Failed to fetch rooms');
@@ -91,7 +92,7 @@ const Tenants = () => {
 
   const fetchVacantBeds = async () => {
     try {
-      const res = await axios.get('/api/beds/vacant');
+      const res = await api.get('/api/beds/vacant');
       setVacantBeds(res.data);
     } catch (err) {
       console.error('Failed to fetch vacant beds');
@@ -100,8 +101,8 @@ const Tenants = () => {
 
   const fetchFloors = async () => {
     try {
-      const res = await axios.get('/api/floors');
-      setFloors(res.data);
+      const res = await api.get('/api/floors');
+      setFloors(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error('Failed to fetch floors');
     }
@@ -110,7 +111,7 @@ const Tenants = () => {
   const handleDeleteTenant = async (id) => {
     if (!window.confirm('Are you sure you want to delete this tenant? This will also mark their bed as vacant.')) return;
     try {
-      await axios.delete(`/api/tenants/${id}`);
+      await api.delete(`/api/tenants/${id}`);
       fetchTenants();
       fetchVacantBeds(); // Refresh bed availability
     } catch (err) {
@@ -120,7 +121,7 @@ const Tenants = () => {
 
   const handleSyncTenant = async (id) => {
     try {
-      const res = await axios.post('/api/devices/sync-user', { tenant_id: id });
+      const res = await api.post('/api/devices/sync-user', { tenant_id: id });
       setToast(res.data.message || 'Sync command queued successfully');
       setTimeout(() => setToast(null), 5000);
     } catch (err) {
@@ -130,7 +131,7 @@ const Tenants = () => {
 
   const handleResyncBiometrics = async (id, name) => {
     try {
-      const res = await axios.post(`/api/tenants/${id}/resync-biometrics`);
+      const res = await api.post(`/api/tenants/${id}/resync-biometrics`);
       setToast(res.data.message || `Biometrics resynced for ${name}`);
       setTimeout(() => setToast(null), 6000);
     } catch (err) {
@@ -146,13 +147,13 @@ const Tenants = () => {
     const targetPayload = targetDeviceSn === 'ALL' ? {} : { target_device_sn: targetDeviceSn };
     try {
       if (syncUserInfo) {
-        await axios.post('/api/devices/sync-user', { 
+        await api.post('/api/devices/sync-user', { 
           tenant_id: syncTargetTenant.tenant_id, 
           ...targetPayload 
         });
       }
       if (syncBiometrics && syncTargetTenant.biometric_count > 0) {
-        await axios.post(`/api/tenants/${syncTargetTenant.tenant_id}/resync-biometrics`, targetPayload);
+        await api.post(`/api/tenants/${syncTargetTenant.tenant_id}/resync-biometrics`, targetPayload);
       }
       setToast(`Sync commands queued for ${syncTargetTenant.name}`);
       setTimeout(() => setToast(null), 5000);
@@ -194,9 +195,9 @@ const Tenants = () => {
     e.preventDefault();
     try {
       if (isEditing) {
-        await axios.put(`/api/tenants/${editId}`, newTenant);
+        await api.put(`/api/tenants/${editId}`, newTenant);
       } else {
-        await axios.post('/api/tenants', newTenant);
+        await api.post('/api/tenants', newTenant);
       }
       setShowModal(false);
       setIsEditing(false);
@@ -254,7 +255,7 @@ const Tenants = () => {
 
   const handleBulkSync = async () => {
     try {
-      const res = await axios.post('/api/devices/bulk-sync', { tenant_ids: selectedTenants });
+      const res = await api.post('/api/devices/bulk-sync', { tenant_ids: selectedTenants });
       setToast(res.data.message || 'Bulk sync queued successfully');
       setSelectedTenants([]);
       setTimeout(() => setToast(null), 5000);
@@ -266,7 +267,7 @@ const Tenants = () => {
   const handleBulkDelete = async () => {
     if (!window.confirm(`Are you sure you want to delete ${selectedTenants.length} tenants?`)) return;
     try {
-      const res = await axios.post('/api/tenants/bulk-delete', { ids: selectedTenants });
+      const res = await api.post('/api/tenants/bulk-delete', { ids: selectedTenants });
       setToast(res.data.message || 'Bulk delete successful');
       setSelectedTenants([]);
       fetchTenants();
@@ -739,7 +740,7 @@ const Tenants = () => {
                 disabled={newPin.length < 4}
                 onClick={async () => {
                   try {
-                    await axios.post(`/api/tenants/${pinTenant.tenant_id}/set-pin`, { pin: newPin });
+                    await api.post(`/api/tenants/${pinTenant.tenant_id}/set-pin`, { pin: newPin });
                     setToast(`Mobile access enabled for ${pinTenant.name}`);
                     setShowPinModal(false);
                     fetchTenants();

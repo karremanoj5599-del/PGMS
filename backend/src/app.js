@@ -40,6 +40,7 @@ app.use('/api/licenses',            require('./modules/licenses/licenses.routes'
 app.use('/api/admin',               require('./modules/billing/billing.routes'));
 app.use('/api/admin',               require('./modules/tickets/tickets.routes'));
 app.use('/api/tenant',              require('./modules/tenant-app/tenant-app.routes'));
+app.use('/api/events',              require('./modules/events/events.routes'));
 
 // ── ADMS Protocol (Device Communication) ─────────────────────────────────────
 require('./modules/devices/adms/adms.routes')(app);

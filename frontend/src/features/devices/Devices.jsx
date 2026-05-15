@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../../services/api';
 import { Tablet, Wifi, WifiOff, Settings, ShieldCheck, X, CheckCircle, AlertCircle, Loader2, Server, Info, Fingerprint, RotateCcw, Trash2, Clock, Lock, Unlock, DoorOpen, BellOff, Cpu, UserMinus, AlertTriangle, Volume2, Sliders } from 'lucide-react';
 
 const API = '';
@@ -32,19 +32,23 @@ const Devices = () => {
     const userString = localStorage.getItem('pgms_user');
     const user = userString ? JSON.parse(userString) : null;
     const user_id = user?.user_id;
-    const url = user_id ? `${API}/api/events?user_id=${user_id}` : `${API}/api/events`;
+    const url = user_id ? `/api/events?user_id=${user_id}` : `/api/events`;
     const es = new EventSource(url);
     es.onmessage = (e) => {
-       const data = JSON.parse(e.data);
-       setLiveEvents(prev => [data, ...prev].slice(0, 50));
+       try {
+         const data = JSON.parse(e.data);
+         setLiveEvents(prev => [data, ...prev].slice(0, 50));
+       } catch (err) {
+         console.error('Error parsing SSE event', err);
+       }
     };
     return () => es.close();
   }, []);
 
   const fetchDevices = async () => {
     try {
-      const res = await axios.get(`${API}/api/devices`);
-      setDevices(res.data);
+      const res = await api.get('/api/devices');
+      setDevices(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error('Failed to fetch devices');
     }
@@ -53,7 +57,7 @@ const Devices = () => {
   const handleAddDevice = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`${API}/api/devices`, newDevice);
+      await api.post(`${API}/api/devices`, newDevice);
       setShowAddModal(false);
       setNewDevice({ device_name: '', ip_address: '', adms_status: false });
       fetchDevices();
@@ -65,7 +69,7 @@ const Devices = () => {
   const deleteDevice = async (id) => {
     if (window.confirm('Are you sure you want to delete this device?')) {
       try {
-        await axios.delete(`${API}/api/devices/${id}`);
+        await api.delete(`${API}/api/devices/${id}`);
         fetchDevices();
       } catch (err) {
         alert('Failed to delete device');
@@ -75,7 +79,7 @@ const Devices = () => {
 
   const downloadUsers = async (id) => {
     try {
-      const res = await axios.post(`${API}/api/devices/${id}/download-users`);
+      const res = await api.post(`${API}/api/devices/${id}/download-users`);
       alert(res.data.message || 'Download users command queued');
     } catch (err) {
       alert(err.response?.data?.error || 'Failed to queue download users command');
@@ -84,7 +88,7 @@ const Devices = () => {
 
   const triggerControl = async (id, action) => {
     try {
-      const res = await axios.post(`${API}/api/devices/${id}/control`, { action });
+      const res = await api.post(`${API}/api/devices/${id}/control`, { action });
       alert(res.data.message);
     } catch (err) {
        alert(err.response?.data?.error || 'Failed to send command');
@@ -94,7 +98,7 @@ const Devices = () => {
   const rebootDevice = async (id) => {
     if (!window.confirm('Are you sure you want to reboot this device?')) return;
     try {
-      const res = await axios.post(`${API}/api/devices/${id}/reboot`);
+      const res = await api.post(`${API}/api/devices/${id}/reboot`);
       alert(res.data.message || 'Reboot command queued');
     } catch (err) {
       alert(err.response?.data?.error || 'Failed to queue reboot');
@@ -104,7 +108,7 @@ const Devices = () => {
   const clearLogs = async (id) => {
     if (!window.confirm('Are you sure you want to clear ALL attendance logs from this device? This cannot be undone.')) return;
     try {
-      const res = await axios.post(`${API}/api/devices/${id}/clear-logs`);
+      const res = await api.post(`${API}/api/devices/${id}/clear-logs`);
       alert(res.data.message || 'Clear logs command queued');
     } catch (err) {
       alert(err.response?.data?.error || 'Failed to queue clear logs');
@@ -113,7 +117,7 @@ const Devices = () => {
 
   const syncTime = async (id) => {
     try {
-      const res = await axios.post(`${API}/api/devices/${id}/sync-time`);
+      const res = await api.post(`${API}/api/devices/${id}/sync-time`);
       alert(res.data.message || 'Time sync command queued');
     } catch (err) {
       alert(err.response?.data?.error || 'Failed to queue time sync');
@@ -122,7 +126,7 @@ const Devices = () => {
 
   const queryDeviceInfo = async (id) => {
     try {
-      const res = await axios.post(`${API}/api/devices/${id}/query-info`);
+      const res = await api.post(`${API}/api/devices/${id}/query-info`);
       alert(res.data.message);
       setTimeout(fetchDevices, 5000);
     } catch (err) {
@@ -133,7 +137,7 @@ const Devices = () => {
   const handleDeleteUser = async () => {
     if (!targetDevice || !deletePin) return;
     try {
-      const res = await axios.post(`${API}/api/devices/${targetDevice.device_id}/delete-user`, { pin: deletePin });
+      const res = await api.post(`${API}/api/devices/${targetDevice.device_id}/delete-user`, { pin: deletePin });
       alert(res.data.message);
       setShowDeleteUserModal(false);
       setDeletePin('');
@@ -145,7 +149,7 @@ const Devices = () => {
   const handleFactoryReset = async () => {
     if (!targetDevice || resetConfirm !== 'RESET') return;
     try {
-      const res = await axios.post(`${API}/api/devices/${targetDevice.device_id}/clear-all-data`, { confirmToken: 'RESET' });
+      const res = await api.post(`${API}/api/devices/${targetDevice.device_id}/clear-all-data`, { confirmToken: 'RESET' });
       alert(res.data.message);
       setShowFactoryResetModal(false);
       setResetConfirm('');
@@ -157,7 +161,7 @@ const Devices = () => {
   const handleSetOptions = async () => {
     if (!targetDevice) return;
     try {
-      const res = await axios.post(`${API}/api/devices/${targetDevice.device_id}/set-options`, hwSettings);
+      const res = await api.post(`${API}/api/devices/${targetDevice.device_id}/set-options`, hwSettings);
       alert(res.data.message);
       setShowHwSettingsModal(false);
     } catch (err) {
@@ -175,7 +179,7 @@ const Devices = () => {
     e.preventDefault();
     setSaving(true);
     try {
-      await axios.put(`${API}/api/devices/${configDevice.device_id}`, configDevice);
+      await api.put(`${API}/api/devices/${configDevice.device_id}`, configDevice);
       setShowConfigModal(false);
       fetchDevices();
     } catch (err) {
@@ -189,7 +193,7 @@ const Devices = () => {
     setTesting(true);
     setTestResult(null);
     try {
-      const res = await axios.get(`${API}/api/devices/${configDevice.device_id}/test`);
+      const res = await api.get(`${API}/api/devices/${configDevice.device_id}/test`);
       setTestResult(res.data);
     } catch (err) {
       setTestResult({ status: 'error', message: err.response?.data?.error || 'Test failed' });
@@ -202,7 +206,7 @@ const Devices = () => {
 
   const fetchSyncHistory = async () => {
     try {
-      const res = await axios.get(`${API}/api/devices/sync-history`);
+      const res = await api.get(`${API}/api/devices/sync-history`);
       setSyncHistory(res.data);
       setShowHistoryModal(true);
     } catch (err) {
@@ -213,7 +217,7 @@ const Devices = () => {
   const broadcastTemplates = async (id, deviceName) => {
     if (!window.confirm(`Broadcast all saved biometric templates to "${deviceName}"?\n\nThis will push all fingerprints, face, and palm data to this device.`)) return;
     try {
-      const res = await axios.post(`${API}/api/devices/${id}/broadcast-templates`);
+      const res = await api.post(`${API}/api/devices/${id}/broadcast-templates`);
       alert(res.data.message || 'Templates broadcast queued');
     } catch (err) {
       alert(err.response?.data?.error || 'Failed to broadcast templates');

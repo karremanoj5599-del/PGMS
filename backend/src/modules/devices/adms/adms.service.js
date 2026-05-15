@@ -1,4 +1,5 @@
 const db = require('../../../config/database');
+const eventBus = require('../../../shared/events');
 const { findTenantByPin } = require('../../../shared/helpers/tenantLookup');
 const { parseATTLOG, parseKeyValueLines, upsertBiometricTemplate } = require('./adms.parser');
 
@@ -27,6 +28,15 @@ exports.processAttendanceLogs = async (sn, rawBody, device) => {
         device_sn: sn,
         user_id: adminUserId
       }).catch(err => console.error('[ADMS] Insert attendance error:', err.message));
+      
+      // Emit event for real-time UI monitoring
+      eventBus.emit('punch', {
+        user_id: tenant.name || rec.pin,
+        punch_time: rec.time,
+        device_sn: sn,
+        admin_user_id: adminUserId
+      });
+      
       count++;
     }
   }
