@@ -2,12 +2,12 @@
   "outputDirectory": "frontend/dist",
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api"
+      "source": "/api/:path*",
+      "destination": "/api/index.js"
     },
     {
-      "source": "/iclock/(.*)",
-      "destination": "/api"
+      "source": "/iclock/:path*",
+      "destination": "/api/index.js"
     },
     {
       "source": "/((?!api|iclock).*)",
