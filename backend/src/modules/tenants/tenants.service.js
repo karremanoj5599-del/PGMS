@@ -18,17 +18,21 @@ exports.getAll = (userId) => {
 
 exports.create = async (data, userId) => {
   const { name, mobile, bed_id, joining_date, id_proof, photo, biometric_pin, status,
-          access_expiry_date, punch_limit, advance_amount, daily_cost, weekly_cost } = data;
+          access_expiry_date, punch_limit, gender, occupation, expiry_date, tenant_type } = data;
 
   const bedId = toNull(bed_id);
   const insertData = {
     name, mobile, bed_id: bedId,
     joining_date: joining_date || new Date().toISOString().split('T')[0],
-    id_proof: toNull(id_proof), photo: toNull(photo),
+    proof_doc_url: toNull(id_proof), photo: toNull(photo),
     biometric_pin: toNull(biometric_pin),
     status: status || 'Staying', user_id: userId,
     access_expiry_date: toNull(access_expiry_date),
-    punch_limit: toNull(punch_limit)
+    punch_limit: toNull(punch_limit),
+    gender: toNull(gender),
+    occupation: toNull(occupation),
+    expiry_date: toNull(expiry_date),
+    tenant_type: tenant_type || 'Permanent'
   };
 
   const [inserted] = await db('tenants').insert(insertData).returning('tenant_id');
@@ -47,7 +51,7 @@ exports.create = async (data, userId) => {
 
 exports.update = async (id, data, userId) => {
   const { name, mobile, bed_id, joining_date, id_proof, photo, biometric_pin, status,
-          access_expiry_date, punch_limit } = data;
+          access_expiry_date, punch_limit, gender, occupation, expiry_date, tenant_type } = data;
 
   const tenant = await db('tenants').where({ tenant_id: id, user_id: userId }).first();
   if (!tenant) {
@@ -71,12 +75,16 @@ exports.update = async (id, data, userId) => {
     mobile: mobile || tenant.mobile,
     bed_id: newBedId,
     joining_date: joining_date || tenant.joining_date,
-    id_proof: toNull(id_proof),
+    proof_doc_url: toNull(id_proof),
     photo: toNull(photo),
     biometric_pin: toNull(biometric_pin),
     status: status || tenant.status,
     access_expiry_date: toNull(access_expiry_date),
-    punch_limit: toNull(punch_limit)
+    punch_limit: toNull(punch_limit),
+    gender: toNull(gender),
+    occupation: toNull(occupation),
+    expiry_date: toNull(expiry_date),
+    tenant_type: tenant_type || tenant.tenant_type
   });
 
   return db('tenants').where('tenant_id', id).first();
