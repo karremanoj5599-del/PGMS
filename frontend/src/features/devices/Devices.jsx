@@ -77,56 +77,56 @@ const Devices = () => {
     }
   };
 
-  const downloadUsers = async (id) => {
+  const downloadUsers = async (sn) => {
     try {
-      const res = await api.post(`${API}/api/devices/${id}/download-users`);
+      const res = await api.post(`${API}/api/devices/${sn}/download-users`);
       alert(res.data.message || 'Download users command queued');
     } catch (err) {
       alert(err.response?.data?.error || 'Failed to queue download users command');
     }
   };
 
-  const triggerControl = async (id, action) => {
+  const triggerControl = async (sn, command) => {
     try {
-      const res = await api.post(`${API}/api/devices/${id}/control`, { action });
+      const res = await api.post(`${API}/api/devices/control`, { sn, command });
       alert(res.data.message);
     } catch (err) {
        alert(err.response?.data?.error || 'Failed to send command');
     }
   };
 
-  const rebootDevice = async (id) => {
+  const rebootDevice = async (sn) => {
     if (!window.confirm('Are you sure you want to reboot this device?')) return;
     try {
-      const res = await api.post(`${API}/api/devices/${id}/reboot`);
+      const res = await api.post(`${API}/api/devices/${sn}/reboot`);
       alert(res.data.message || 'Reboot command queued');
     } catch (err) {
       alert(err.response?.data?.error || 'Failed to queue reboot');
     }
   };
 
-  const clearLogs = async (id) => {
+  const clearLogs = async (sn) => {
     if (!window.confirm('Are you sure you want to clear ALL attendance logs from this device? This cannot be undone.')) return;
     try {
-      const res = await api.post(`${API}/api/devices/${id}/clear-logs`);
+      const res = await api.post(`${API}/api/devices/${sn}/clear-logs`);
       alert(res.data.message || 'Clear logs command queued');
     } catch (err) {
       alert(err.response?.data?.error || 'Failed to queue clear logs');
     }
   };
 
-  const syncTime = async (id) => {
+  const syncTime = async (sn) => {
     try {
-      const res = await api.post(`${API}/api/devices/${id}/sync-time`);
+      const res = await api.post(`${API}/api/devices/${sn}/sync-time`);
       alert(res.data.message || 'Time sync command queued');
     } catch (err) {
       alert(err.response?.data?.error || 'Failed to queue time sync');
     }
   };
 
-  const queryDeviceInfo = async (id) => {
+  const queryDeviceInfo = async (sn) => {
     try {
-      const res = await api.post(`${API}/api/devices/${id}/query-info`);
+      const res = await api.post(`${API}/api/devices/${sn}/query-info`);
       alert(res.data.message);
       setTimeout(fetchDevices, 5000);
     } catch (err) {
@@ -137,7 +137,7 @@ const Devices = () => {
   const handleDeleteUser = async () => {
     if (!targetDevice || !deletePin) return;
     try {
-      const res = await api.post(`${API}/api/devices/${targetDevice.device_id}/delete-user`, { pin: deletePin });
+      const res = await api.post(`${API}/api/devices/delete-user`, { sn: targetDevice.sn, pin: deletePin });
       alert(res.data.message);
       setShowDeleteUserModal(false);
       setDeletePin('');
@@ -149,7 +149,7 @@ const Devices = () => {
   const handleFactoryReset = async () => {
     if (!targetDevice || resetConfirm !== 'RESET') return;
     try {
-      const res = await api.post(`${API}/api/devices/${targetDevice.device_id}/clear-all-data`, { confirmToken: 'RESET' });
+      const res = await api.post(`${API}/api/devices/${targetDevice.sn}/clear-all-data`, { confirmToken: 'RESET' });
       alert(res.data.message);
       setShowFactoryResetModal(false);
       setResetConfirm('');
@@ -161,7 +161,9 @@ const Devices = () => {
   const handleSetOptions = async () => {
     if (!targetDevice) return;
     try {
-      const res = await api.post(`${API}/api/devices/${targetDevice.device_id}/set-options`, hwSettings);
+      // Need to format hwSettings as a string of key=value comma separated, or backend expects an options string
+      const optionsString = Object.entries(hwSettings).map(([k, v]) => `${k}=${v}`).join(',');
+      const res = await api.post(`${API}/api/devices/set-options`, { sn: targetDevice.sn, options: optionsString });
       alert(res.data.message);
       setShowHwSettingsModal(false);
     } catch (err) {
@@ -214,10 +216,10 @@ const Devices = () => {
     }
   };
 
-  const broadcastTemplates = async (id, deviceName) => {
+  const broadcastTemplates = async (sn, deviceName) => {
     if (!window.confirm(`Broadcast all saved biometric templates to "${deviceName}"?\n\nThis will push all fingerprints, face, and palm data to this device.`)) return;
     try {
-      const res = await api.post(`${API}/api/devices/${id}/broadcast-templates`);
+      const res = await api.post(`${API}/api/devices/${sn}/broadcast-templates`);
       alert(res.data.message || 'Templates broadcast queued');
     } catch (err) {
       alert(err.response?.data?.error || 'Failed to broadcast templates');
@@ -306,15 +308,15 @@ const Devices = () => {
               
               {/* Row 1: Primary Actions */}
               <div style={{ display: 'flex', gap: '0.4rem', marginTop: '1rem', flexWrap: 'wrap' }}>
-                <button onClick={() => downloadUsers(device.device_id)} className="btn" title="Download all users from device"
+                <button onClick={() => downloadUsers(device.sn)} className="btn" title="Download all users from device"
                   style={{ flex: 1, minWidth: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', fontSize: '0.8rem', padding: '0.5rem' }}>
                   Get Users
                 </button>
-                <button onClick={() => broadcastTemplates(device.device_id, device.device_name)} className="btn" title="Push all biometrics to device"
+                <button onClick={() => broadcastTemplates(device.sn, device.device_name)} className="btn" title="Push all biometrics to device"
                   style={{ flex: 1, minWidth: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', background: 'rgba(168, 85, 247, 0.1)', color: '#a855f7', fontSize: '0.8rem', padding: '0.5rem' }}>
                   <Fingerprint size={14} /> Sync Bio
                 </button>
-                <button onClick={() => queryDeviceInfo(device.device_id)} className="btn" title="Query firmware & capacity info"
+                <button onClick={() => queryDeviceInfo(device.sn)} className="btn" title="Query firmware & capacity info"
                   style={{ flex: 1, minWidth: '70px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1', fontSize: '0.8rem', padding: '0.5rem' }}>
                   <Cpu size={14} /> Info
                 </button>
@@ -322,19 +324,19 @@ const Devices = () => {
 
               {/* Row 2: Door Controls */}
               <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.4rem', flexWrap: 'wrap' }}>
-                <button onClick={() => triggerControl(device.device_id, 'unlock')} className="btn" title="Unlock door for 5 seconds"
+                <button onClick={() => triggerControl(device.sn, 'ACUNLOCK')} className="btn" title="Unlock door for 5 seconds"
                   style={{ flex: 1, minWidth: '70px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', fontSize: '0.8rem', padding: '0.5rem' }}>
                   <Unlock size={14} /> Unlock
                 </button>
-                <button onClick={() => triggerControl(device.device_id, 'lock')} className="btn" title="Force lock door"
+                <button onClick={() => triggerControl(device.sn, 'ACUNALARM')} className="btn" title="Force lock door"
                   style={{ flex: 1, minWidth: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontSize: '0.8rem', padding: '0.5rem' }}>
                   <Lock size={14} /> Lock
                 </button>
-                <button onClick={() => triggerControl(device.device_id, 'hold_open')} className="btn" title="Hold door open indefinitely"
+                <button onClick={() => triggerControl(device.sn, 'ACUNLOCK')} className="btn" title="Hold door open indefinitely"
                   style={{ flex: 1, minWidth: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', fontSize: '0.8rem', padding: '0.5rem' }}>
                   <DoorOpen size={14} /> Hold Open
                 </button>
-                <button onClick={() => triggerControl(device.device_id, 'alarm_cancel')} className="btn" title="Cancel active alarm"
+                <button onClick={() => triggerControl(device.sn, 'ACUNALARM')} className="btn" title="Cancel active alarm"
                   style={{ flex: 1, minWidth: '70px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', fontSize: '0.8rem', padding: '0.5rem' }}>
                   <BellOff size={14} /> Alarm
                 </button>
@@ -342,15 +344,15 @@ const Devices = () => {
 
               {/* Row 3: Maintenance */}
               <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.4rem', flexWrap: 'wrap' }}>
-                <button onClick={() => syncTime(device.device_id)} className="btn" title="Sync device clock"
+                <button onClick={() => syncTime(device.sn)} className="btn" title="Sync device clock"
                   style={{ flex: 1, minWidth: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', fontSize: '0.8rem', padding: '0.5rem' }}>
                   <Clock size={14} />
                 </button>
-                <button onClick={() => rebootDevice(device.device_id)} className="btn" title="Reboot Device"
+                <button onClick={() => rebootDevice(device.sn)} className="btn" title="Reboot Device"
                   style={{ flex: 1, minWidth: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', fontSize: '0.8rem', padding: '0.5rem' }}>
                   <RotateCcw size={14} />
                 </button>
-                <button onClick={() => clearLogs(device.device_id)} className="btn" title="Clear Device Logs"
+                <button onClick={() => clearLogs(device.sn)} className="btn" title="Clear Device Logs"
                   style={{ flex: 1, minWidth: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', color: '#f59e0b', fontSize: '0.8rem', padding: '0.5rem' }}>
                   <Trash2 size={14} />
                 </button>
