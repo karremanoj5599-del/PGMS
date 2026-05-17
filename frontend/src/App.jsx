@@ -8,6 +8,7 @@ import Rooms from './features/rooms/Rooms';
 import Devices from './features/devices/Devices';
 import Payments from './features/payments/Payments';
 import Reports from './features/reports/Reports';
+import TenantAttendance from './features/reports/TenantAttendance';
 import SupportTickets from './features/tickets/SupportTickets';
 import LoginPage from './features/auth/LoginPage';
 import RegisterPage from './features/auth/RegisterPage';
@@ -36,6 +37,7 @@ function App() {
         <Route path="/tickets" element={<ProtectedRoute><DashboardLayout><SupportTickets /></DashboardLayout></ProtectedRoute>} />
         <Route path="/schedules" element={<ProtectedRoute><DashboardLayout><AccessSchedules /></DashboardLayout></ProtectedRoute>} />
         <Route path="/reports" element={<ProtectedRoute><DashboardLayout><Reports /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/tenants/:id/attendance" element={<ProtectedRoute><DashboardLayout><TenantAttendance /></DashboardLayout></ProtectedRoute>} />
       </Routes>
     </Router>
   );

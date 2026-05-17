@@ -127,6 +127,7 @@ exports.getTenantAttendance = async (userId, filters) => {
       if (punches.length === 0) continue;
       punches.sort((a, b) => a - b);
       reportData.push({
+        tenant_id: parseInt(tId),
         tenant_name: tenant.name,
         room_number: tenant.room_number || 'N/A',
         floor_name: tenant.floor_name || 'N/A',

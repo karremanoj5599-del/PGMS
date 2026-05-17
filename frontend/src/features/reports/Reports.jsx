@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { FileText, Download, Printer, Filter, Calendar, Search } from 'lucide-react';
 
@@ -12,6 +13,7 @@ class ErrorBoundary extends React.Component {
 }
 
 const Reports = () => {
+  const navigate = useNavigate();
   const [reportType, setReportType] = useState('summary'); // summary | tenant
   const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
@@ -340,7 +342,16 @@ const Reports = () => {
                 filteredAttendanceData.map((t, idx) => (
                   <tr key={idx}>
                     <td><div style={{ fontWeight: 600 }}>{formatDate(t.date)}</div></td>
-                    <td><div style={{ fontWeight: 600 }}>{t.tenant_name}</div></td>
+                    <td>
+                      <div 
+                        onClick={() => t.tenant_id && navigate(`/tenants/${t.tenant_id}/attendance`)}
+                        style={{ fontWeight: 600, cursor: 'pointer', color: '#818cf8', transition: 'color 0.2s' }}
+                        onMouseEnter={e => e.target.style.textDecoration = 'underline'}
+                        onMouseLeave={e => e.target.style.textDecoration = 'none'}
+                      >
+                        {t.tenant_name}
+                      </div>
+                    </td>
                     <td>{t.room_number}</td>
                     <td>{t.floor_name}</td>
                     <td><span style={{ color: 'var(--success)' }}>{new Date(t.first_punch).toLocaleTimeString()}</span></td>
