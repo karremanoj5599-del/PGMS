@@ -26,9 +26,9 @@ exports.getCommands = async (req, res, next) => {
 exports.reboot = async (req, res, next) => { try { await service.queueCommand(req.params.sn, 'REBOOT', req.userId); res.json({ message: 'Reboot queued' }); } catch(e){next(e);} };
 exports.clearLogs = async (req, res, next) => { try { await service.queueCommand(req.params.sn, 'CLEAR LOG', req.userId); res.json({ message: 'Clear logs queued' }); } catch(e){next(e);} };
 exports.syncTime = async (req, res, next) => { try { const now = new Date().toISOString().replace('T',' ').substring(0,19); await service.queueCommand(req.params.sn, `SET OPTION ServerTime=${now}`, req.userId); res.json({ message: 'Time sync queued' }); } catch(e){next(e);} };
-exports.downloadUsers = async (req, res, next) => { try { await service.downloadUsers(req.params.sn); res.json({ message: 'Download users command queued' }); } catch(e){next(e);} };
-exports.syncHistory = async (req, res, next) => { try { await service.syncHistory(req.params.sn); res.json({ message: 'Sync history queued' }); } catch(e){next(e);} };
-exports.queryInfo = async (req, res, next) => { try { await service.queryInfo(req.params.sn); res.json({ message: 'Device info query queued' }); } catch(e){next(e);} };
+exports.downloadUsers = async (req, res, next) => { try { await service.downloadUsers(req.params.sn, req.userId); res.json({ message: 'Download users command queued' }); } catch(e){next(e);} };
+exports.syncHistory = async (req, res, next) => { try { await service.syncHistory(req.params.sn, req.userId); res.json({ message: 'Sync history queued' }); } catch(e){next(e);} };
+exports.queryInfo = async (req, res, next) => { try { await service.queryInfo(req.params.sn, req.userId); res.json({ message: 'Device info query queued' }); } catch(e){next(e);} };
 
 exports.deleteUser = async (req, res, next) => {
   try {

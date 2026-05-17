@@ -63,14 +63,14 @@ exports.syncUser = async (sn, tenantId, userId) => {
   return tenant;
 };
 
-exports.downloadUsers = async (sn) => {
-  await db('device_commands').insert({ device_sn: sn, command: 'DATA QUERY USERINFO PIN=\tName=\tPri=\tPasswd=\tCard=\tGrp=\tTZ=\tVerify=\tViceCard=' });
+exports.downloadUsers = async (sn, userId) => {
+  await db('device_commands').insert({ device_sn: sn, command: 'DATA QUERY USERINFO PIN=\tName=\tPri=\tPasswd=\tCard=\tGrp=\tTZ=\tVerify=\tViceCard=', user_id: userId });
 };
 
-exports.syncHistory = async (sn) => {
-  await db('device_commands').insert({ device_sn: sn, command: 'DATA QUERY ATTLOG StartTime=\tEndTime=' });
+exports.syncHistory = async (sn, userId) => {
+  await db('device_commands').insert({ device_sn: sn, command: 'DATA QUERY ATTLOG StartTime=\tEndTime=', user_id: userId });
 };
 
-exports.queryInfo = async (sn) => {
-  await db('device_commands').insert({ device_sn: sn, command: 'INFO' });
+exports.queryInfo = async (sn, userId) => {
+  await db('device_commands').insert({ device_sn: sn, command: 'INFO', user_id: userId });
 };
