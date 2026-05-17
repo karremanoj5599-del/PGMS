@@ -19,6 +19,18 @@ const handleCData = async (req, res) => {
 
   logADMS(req, `PUSH DATA - SN: ${sn} - Table: ${table}`, rawBody ? rawBody.substring(0, 300) : '');
 
+  // Temporary diagnostic logging in database to capture raw uploads
+  await db('unknown_device_logs').insert({
+    sn: sn || 'UNKNOWN',
+    path: `${req.path} (${table || 'no-table'})`,
+    headers: JSON.stringify(req.headers),
+    query: JSON.stringify({
+      query: req.query,
+      bodyPreview: rawBody ? rawBody.substring(0, 800) : ''
+    }),
+    created_at: new Date().toISOString()
+  }).catch(() => {});
+
   try {
     const device = sn ? await db('devices').whereRaw('LOWER(sn) = ?', [sn.toLowerCase()]).first() : null;
 
@@ -65,7 +77,7 @@ const handleGetRequest = async (req, res) => {
 
   if (!updated) {
     console.log(`[ADMS] getrequest SN not found in DB: "${sn}"`);
-    await db('unregistered_devices').insert({
+    await db('unknown_device_logs').insert({
       sn, path: req.path, headers: JSON.stringify(req.headers),
       query: JSON.stringify(req.query), created_at: new Date().toISOString()
     }).catch(err => console.error('[DB] Failed to log unknown poll:', err.message));
