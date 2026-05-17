@@ -10,7 +10,19 @@ const syncTenantAccess = async (tenant_id) => {
     const tenant = await db('tenants').where('tenant_id', tenant_id).first();
     if (!tenant) return;
 
-    const access = await db('access_control').where('tenant_id', tenant_id).first();
+    let access = await db('access_control').where('tenant_id', tenant_id).first();
+    if (!access && tenant.status === 'Staying') {
+      try {
+        await db('access_control').insert({
+          tenant_id,
+          access_granted: true,
+          user_id: tenant.user_id
+        });
+        access = await db('access_control').where('tenant_id', tenant_id).first();
+      } catch (e) {
+        console.error('[ADMS] Self-healing access insert failed:', e.message);
+      }
+    }
     const isApproved = access ? !!access.access_granted : false;
 
     const devices = await db('devices').where({ adms_status: true, user_id: tenant.user_id });
