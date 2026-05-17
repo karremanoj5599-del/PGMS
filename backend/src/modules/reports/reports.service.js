@@ -52,16 +52,32 @@ exports.getTenantWise = async (userId, filters) => {
     'rooms.room_number', 'rooms.sharing_capacity', 'floors.floor_name'
   );
 
-  return Promise.all(tenants.map(async (t) => {
-    let payQuery = db('payments').where({ tenant_id: t.tenant_id, user_id: userId });
-    if (startDate) payQuery = payQuery.where('payment_date', '>=', startDate);
-    if (endDate) payQuery = payQuery.where('payment_date', '<=', endDate);
-    if (payment_via) payQuery = payQuery.where('payment_via', payment_via);
+  if (tenants.length === 0) return [];
 
-    let lastPayQuery = db('payments').where({ tenant_id: t.tenant_id, user_id: userId });
-    if (payment_via) lastPayQuery = lastPayQuery.where('payment_via', payment_via);
-    const lastPay = await lastPayQuery.orderBy('payment_date', 'desc').first();
+  const tenantIds = tenants.map(t => t.tenant_id);
 
+  let allPaymentsQuery = db('payments')
+    .whereIn('tenant_id', tenantIds)
+    .where('user_id', userId)
+    .orderBy('payment_date', 'desc');
+
+  if (payment_via) allPaymentsQuery = allPaymentsQuery.where('payment_via', payment_via);
+  // Note: Previous implementation had a 'payQuery' that used startDate/endDate but was never executed. 
+  // If we should apply date filters to the last payment check:
+  if (startDate) allPaymentsQuery = allPaymentsQuery.where('payment_date', '>=', startDate);
+  if (endDate) allPaymentsQuery = allPaymentsQuery.where('payment_date', '<=', endDate);
+
+  const allPayments = await allPaymentsQuery.select('*');
+
+  const latestPaymentsMap = {};
+  for (const pay of allPayments) {
+    if (!latestPaymentsMap[pay.tenant_id]) {
+      latestPaymentsMap[pay.tenant_id] = pay;
+    }
+  }
+
+  return tenants.map(t => {
+    const lastPay = latestPaymentsMap[t.tenant_id];
     return {
       ...t,
       last_payment_date: lastPay ? lastPay.payment_date : null,
@@ -69,7 +85,7 @@ exports.getTenantWise = async (userId, filters) => {
       present_month_balance: lastPay ? lastPay.balance : 0,
       total_balance: lastPay ? lastPay.balance : 0
     };
-  }));
+  });
 };
 
 exports.getTenantAttendance = async (userId, filters) => {
