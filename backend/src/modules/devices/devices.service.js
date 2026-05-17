@@ -4,18 +4,35 @@ const { toNull } = require('../../shared/utils/toNull');
 exports.getAll = (userId) => db('devices').where('user_id', userId);
 
 exports.create = async (data, userId) => {
-  const { sn, name, type } = data;
-  if (!sn) { const err = new Error('Device SN required'); err.statusCode = 400; throw err; }
-  const existing = await db('devices').where('sn', sn).first();
-  if (existing) { const err = new Error('Device SN already registered'); err.statusCode = 400; throw err; }
-  const [inserted] = await db('devices').insert({ sn, name: name || sn, type: type || 'attendance', user_id: userId, adms_status: false }).returning('device_id');
+  const { device_name, ip_address, port, machine_id, adms_status, sn } = data;
+  if (!device_name) { const err = new Error('Device name is required'); err.statusCode = 400; throw err; }
+  const insertData = {
+    device_name,
+    ip_address: ip_address || null,
+    port: port || 4370,
+    machine_id: machine_id || 1,
+    adms_status: adms_status ? true : false,
+    user_id: userId,
+  };
+  if (sn) {
+    const existing = await db('devices').where({ sn, user_id: userId }).first();
+    if (existing) { const err = new Error('Device SN already registered'); err.statusCode = 400; throw err; }
+    insertData.sn = sn;
+  }
+  const [inserted] = await db('devices').insert(insertData).returning('device_id');
   return typeof inserted === 'object' ? inserted.device_id : inserted;
 };
 
 exports.update = async (id, data, userId) => {
-  await db('devices').where({ device_id: id, user_id: userId }).update({
-    name: data.name, sn: data.sn, type: data.type
-  });
+  const updateData = {};
+  if (data.device_name !== undefined) updateData.device_name = data.device_name;
+  if (data.ip_address !== undefined) updateData.ip_address = data.ip_address;
+  if (data.port !== undefined) updateData.port = data.port;
+  if (data.machine_id !== undefined) updateData.machine_id = data.machine_id;
+  if (data.adms_status !== undefined) updateData.adms_status = data.adms_status ? true : false;
+  if (data.sn !== undefined) updateData.sn = data.sn;
+  if (data.comm_key !== undefined) updateData.comm_key = data.comm_key;
+  await db('devices').where({ device_id: id, user_id: userId }).update(updateData);
   return db('devices').where('device_id', id).first();
 };
 
