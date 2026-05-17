@@ -33,6 +33,7 @@ const Tenants = () => {
   const [showPinModal, setShowPinModal] = useState(false);
   const [pinTenant, setPinTenant] = useState(null);
   const [newPin, setNewPin] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     fetchTenants();
@@ -220,7 +221,12 @@ const Tenants = () => {
     const matchesPayment = !filters.payment ||
       (filters.payment === 'Paid' ? (t.payment_status === 'Paid') : (t.payment_status !== 'Paid'));
 
-    return matchesFloor && matchesRoom && matchesStatus && matchesPayment;
+    const matchesSearch = !searchTerm || 
+      (t.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+       t.mobile?.includes(searchTerm) || 
+       t.tenant_id?.toString().includes(searchTerm));
+
+    return matchesFloor && matchesRoom && matchesStatus && matchesPayment && matchesSearch;
   });
 
   const [selectedTenants, setSelectedTenants] = useState([]);
@@ -318,7 +324,13 @@ const Tenants = () => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
         <div style={{ position: 'relative' }}>
           <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-          <input type="text" placeholder="Search..." style={{ paddingLeft: '3rem' }} />
+          <input 
+            type="text" 
+            placeholder="Search..." 
+            style={{ paddingLeft: '3rem' }} 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
         <select onChange={e => setFilters({ ...filters, floor: e.target.value })}>
           <option value="">All Floors</option>
