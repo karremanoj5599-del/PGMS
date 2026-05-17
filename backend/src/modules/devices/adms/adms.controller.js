@@ -124,6 +124,15 @@ const handleDeviceCmd = async (req, res) => {
 
   logADMS(req, `COMMAND RESPONSE - SN: ${sn} - ID: ${cmdId} - Ret: ${retCode}`, rawBody || '(EMPTY BODY)');
 
+  // Temporary diagnostic logging
+  await db('unknown_device_logs').insert({
+    sn: sn || 'UNKNOWN',
+    path: `${req.path} (CMD_RESP ID:${cmdId} Ret:${retCode})`,
+    headers: JSON.stringify(req.headers),
+    query: JSON.stringify(req.query),
+    created_at: new Date().toISOString()
+  }).catch(err => console.error('[DB] Failed to log devicecmd:', err.message));
+
   if (sn && cmdId) {
     await db('device_commands').where('id', parseInt(cmdId)).update({ executed: true }).catch(() => {});
     console.log(`[ADMS] Command ID ${cmdId} marked SUCCESS for SN: ${sn}`);
@@ -155,6 +164,15 @@ const handleQueryData = async (req, res) => {
   const rawBody = extractRawBody(req);
 
   logADMS(req, `QUERY RESPONSE - SN: ${sn} - Table: ${table} - CmdID: ${cmdid}`, rawBody);
+
+  // Temporary diagnostic logging
+  await db('unknown_device_logs').insert({
+    sn: sn || 'UNKNOWN',
+    path: `${req.path} (QUERYDATA Table:${table} CmdID:${cmdid})`,
+    headers: JSON.stringify(req.headers),
+    query: JSON.stringify(req.query),
+    created_at: new Date().toISOString()
+  }).catch(err => console.error('[DB] Failed to log querydata:', err.message));
 
   if (!sn) return sendADMSResponse(res, 'OK');
 
