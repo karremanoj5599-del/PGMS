@@ -88,7 +88,7 @@ const Devices = () => {
 
   const triggerControl = async (sn, command) => {
     try {
-      const res = await api.post(`${API}/api/devices/control`, { sn, command });
+      const res = await api.post(`${API}/api/devices/${sn}/control`, { command });
       alert(res.data.message);
     } catch (err) {
        alert(err.response?.data?.error || 'Failed to send command');

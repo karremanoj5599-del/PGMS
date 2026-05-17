@@ -74,3 +74,11 @@ exports.syncHistory = async (sn, userId) => {
 exports.queryInfo = async (sn, userId) => {
   await db('device_commands').insert({ device_sn: sn, command: 'INFO', user_id: userId });
 };
+
+exports.broadcastTemplates = async (sn, userId) => {
+  const tenants = await db('tenants').where({ user_id: userId, status: 'Staying' });
+  const { syncTenantAccess } = require('../access-control/access.service');
+  for (const tenant of tenants) {
+    await syncTenantAccess(tenant.tenant_id);
+  }
+};

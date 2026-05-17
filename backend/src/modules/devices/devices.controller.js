@@ -12,10 +12,18 @@ exports.syncUser = async (req, res, next) => {
 
 exports.control = async (req, res, next) => {
   try {
-    const { sn, command } = req.body;
+    const sn = req.params.sn;
+    const { command } = req.body;
     if (!sn || !command) return res.status(400).json({ error: 'SN and command required' });
     await service.queueCommand(sn, command, req.userId);
     res.json({ message: 'Command queued' });
+  } catch(e){next(e);}
+};
+
+exports.broadcastTemplates = async (req, res, next) => {
+  try {
+    await service.broadcastTemplates(req.params.sn, req.userId);
+    res.json({ message: 'Biometric broadcast queued' });
   } catch(e){next(e);}
 };
 
