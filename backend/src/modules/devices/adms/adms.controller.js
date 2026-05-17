@@ -129,7 +129,10 @@ const handleDeviceCmd = async (req, res) => {
     sn: sn || 'UNKNOWN',
     path: `${req.path} (CMD_RESP ID:${cmdId} Ret:${retCode})`,
     headers: JSON.stringify(req.headers),
-    query: JSON.stringify(req.query),
+    query: JSON.stringify({
+      query: req.query,
+      bodyPreview: rawBody ? rawBody.substring(0, 2000) : ''
+    }),
     created_at: new Date().toISOString()
   }).catch(err => console.error('[DB] Failed to log devicecmd:', err.message));
 
@@ -170,7 +173,10 @@ const handleQueryData = async (req, res) => {
     sn: sn || 'UNKNOWN',
     path: `${req.path} (QUERYDATA Table:${table} CmdID:${cmdid})`,
     headers: JSON.stringify(req.headers),
-    query: JSON.stringify(req.query),
+    query: JSON.stringify({
+      query: req.query,
+      bodyPreview: rawBody ? rawBody.substring(0, 2000) : ''
+    }),
     created_at: new Date().toISOString()
   }).catch(err => console.error('[DB] Failed to log querydata:', err.message));
 
