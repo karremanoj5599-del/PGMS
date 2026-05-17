@@ -171,6 +171,12 @@ const handleQueryData = async (req, res) => {
       await admsService.processUserInfo(sn, rawBody, device);
     }
 
+    // Parse ATTLOG (Attendance Logs)
+    if (table === 'ATTLOG' || (rawBody && !rawBody.includes('OPERLOG') && !rawBody.includes('BIODATA') && !rawBody.includes('FPTMP') && !rawBody.includes('PIN=') && !rawBody.includes('~SerialNumber') && !rawBody.includes('FirmVer'))) {
+      const count = await admsService.processAttendanceLogs(sn, rawBody, device);
+      if (count > 0) console.log(`[ADMS] QueryData: Saved ${count} attendance records from SN: ${sn}`);
+    }
+
     // Parse biometric templates
     if (rawBody && (rawBody.includes('TMP=') || rawBody.includes('CONTENT=') || rawBody.includes('Tmp='))) {
       const count = await admsService.processBioData(sn, rawBody, device, null);
