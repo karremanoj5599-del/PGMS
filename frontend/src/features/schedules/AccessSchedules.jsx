@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import axios from '../../services/api';
 import { Clock, Plus, Trash2, ShieldCheck, AlertCircle, Users, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 
 const AccessSchedules = () => {

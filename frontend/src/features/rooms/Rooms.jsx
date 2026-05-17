@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import axios from '../../services/api';
 import { LayoutGrid, Bed, Plus, Trash2, X, Pencil, Building2, Map as MapIcon, Users } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
