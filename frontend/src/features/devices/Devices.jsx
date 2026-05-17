@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
-import { Tablet, Wifi, WifiOff, Settings, ShieldCheck, X, CheckCircle, AlertCircle, Loader2, Server, Info, Fingerprint, RotateCcw, Trash2, Clock, Lock, Unlock, DoorOpen, BellOff, Cpu, UserMinus, AlertTriangle, Volume2, Sliders } from 'lucide-react';
+import { Tablet, Wifi, WifiOff, Settings, ShieldCheck, X, CheckCircle, AlertCircle, Loader2, Server, Info, Fingerprint, RotateCcw, Trash2, Clock, Lock, Unlock, DoorOpen, BellOff, Cpu, UserMinus, AlertTriangle, Volume2, Sliders, RefreshCw } from 'lucide-react';
 
 const API = '';
 
@@ -121,6 +121,15 @@ const Devices = () => {
       alert(res.data.message || 'Time sync command queued');
     } catch (err) {
       alert(err.response?.data?.error || 'Failed to queue time sync');
+    }
+  };
+
+  const syncLogs = async (sn) => {
+    try {
+      const res = await api.post(`${API}/api/devices/${sn}/sync-history`);
+      alert(res.data.message || 'Sync logs command queued');
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to queue sync logs');
     }
   };
 
@@ -355,6 +364,10 @@ const Devices = () => {
                 <button onClick={() => clearLogs(device.sn)} className="btn" title="Clear Device Logs"
                   style={{ flex: 1, minWidth: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', color: '#f59e0b', fontSize: '0.8rem', padding: '0.5rem' }}>
                   <Trash2 size={14} />
+                </button>
+                <button onClick={() => syncLogs(device.sn)} className="btn" title="Sync all attendance logs from device"
+                  style={{ flex: 1, minWidth: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', fontSize: '0.8rem', padding: '0.5rem' }}>
+                  <RefreshCw size={14} />
                 </button>
                 <button onClick={() => { setTargetDevice(device); setShowHwSettingsModal(true); }} className="btn" title="Hardware Settings"
                   style={{ flex: 1, minWidth: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1', fontSize: '0.8rem', padding: '0.5rem' }}>
