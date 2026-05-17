@@ -1,17 +1,14 @@
 const db = require('../../../config/database');
 const { logADMS } = require('../../../middleware/requestLogger');
 const admsService = require('./adms.service');
-const { extractSN, getCommandId, sendADMSResponse } = require('./adms.utils');
+const { extractSN, getCommandId, sendADMSResponse, extractRawBody } = require('./adms.utils');
 
 // /iclock/cdata — device pushes attendance, user, and biometric data
 const handleCData = async (req, res) => {
   const sn = extractSN(req);
   const { table } = req.query;
 
-  let rawBody = '';
-  if (req.body) {
-    rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
-  }
+  let rawBody = extractRawBody(req);
 
   if (sn) {
     const snLc = sn.toLowerCase();
@@ -104,8 +101,7 @@ const handleDeviceCmd = async (req, res) => {
   let cmdId = getCommandId(req);
   let retCode = req.query.Return || req.query.return || (req.body && (req.body.Return || req.body.return));
 
-  let rawBody = '';
-  if (req.body) { rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body); }
+  let rawBody = extractRawBody(req);
 
   if (!cmdId && rawBody) {
     const match = rawBody.match(/ID=(\d+)/i);
@@ -144,7 +140,7 @@ const handleQueryData = async (req, res) => {
   const sn = extractSN(req);
   const { table } = req.query;
   const cmdid = getCommandId(req);
-  const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+  const rawBody = extractRawBody(req);
 
   logADMS(req, `QUERY RESPONSE - SN: ${sn} - Table: ${table} - CmdID: ${cmdid}`, rawBody);
 

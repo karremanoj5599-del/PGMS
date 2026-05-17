@@ -37,8 +37,32 @@ const sendADMSResponse = (res, content = 'OK', status = 200) => {
   res.status(status).send(responseText);
 };
 
+/**
+ * Safely extract raw body, handling Vercel Serverless Function automatic urlencoded parsing.
+ * @param {import('express').Request} req 
+ * @returns {string} The raw body string.
+ */
+const extractRawBody = (req) => {
+  if (!req.body) return '';
+  if (typeof req.body === 'string') return req.body;
+  if (Buffer.isBuffer(req.body)) return req.body.toString('utf8');
+  if (typeof req.body === 'object') {
+    const lines = [];
+    for (const [key, value] of Object.entries(req.body)) {
+      if (value === '') {
+        lines.push(key);
+      } else {
+        lines.push(`${key}=${value}`);
+      }
+    }
+    return lines.join('\n');
+  }
+  return String(req.body);
+};
+
 module.exports = {
   extractSN,
   getCommandId,
-  sendADMSResponse
+  sendADMSResponse,
+  extractRawBody
 };
