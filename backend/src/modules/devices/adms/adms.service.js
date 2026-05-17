@@ -15,18 +15,18 @@ exports.processAttendanceLogs = async (sn, rawBody, device) => {
     if (!tenant) continue;
 
     const exists = await db('attendance_logs')
-      .where({ tenant_id: tenant.tenant_id, punch_time: rec.time })
+      .where({ tenant_id: tenant.tenant_id.toString(), punch_time: rec.time })
       .first();
 
     if (!exists) {
       await db('attendance_logs').insert({
-        tenant_id: tenant.tenant_id,
+        tenant_id: tenant.tenant_id.toString(),
         punch_time: rec.time,
         status: rec.status,
         verify_type: rec.verify,
-        work_code: rec.workcode,
         device_sn: sn,
-        user_id: adminUserId
+        admin_user_id: adminUserId,
+        biometric_pin: rec.pin
       }).catch(err => console.error('[ADMS] Insert attendance error:', err.message));
       
       // Emit event for real-time UI monitoring
