@@ -51,6 +51,10 @@ exports.getCommands = (sn, userId) => {
   return db('device_commands').where({ device_sn: sn, user_id: userId }).orderBy('id', 'desc').limit(50);
 };
 
+exports.getSyncHistory = (userId) => {
+  return db('device_commands').where({ user_id: userId }).orderBy('id', 'desc').limit(100);
+};
+
 exports.syncUser = async (sn, tenantId, userId) => {
   const tenant = await db('tenants').where({ tenant_id: tenantId, user_id: userId }).first();
   if (!tenant) { const err = new Error('Tenant not found'); err.statusCode = 404; throw err; }

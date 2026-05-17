@@ -4,6 +4,7 @@ exports.list = async (req, res, next) => { try { res.json(await service.getAll(r
 exports.create = async (req, res, next) => { try { const id = await service.create(req.body, req.userId); res.json({ device_id: id, message: 'Device registered' }); } catch(e){next(e);} };
 exports.update = async (req, res, next) => { try { const d = await service.update(req.params.id, req.body, req.userId); res.json(d); } catch(e){next(e);} };
 exports.remove = async (req, res, next) => { try { await service.remove(req.params.id, req.userId); res.json({ message: 'Device removed' }); } catch(e){next(e);} };
+exports.getSyncHistory = async (req, res, next) => { try { res.json(await service.getSyncHistory(req.userId)); } catch(e){next(e);} };
 
 exports.syncUser = async (req, res, next) => {
   try { const t = await service.syncUser(req.body.sn, req.body.tenant_id, req.userId); res.json({ message: `Sync queued for ${t.name}` }); } catch(e){next(e);}

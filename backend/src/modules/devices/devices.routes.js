@@ -7,6 +7,7 @@ router.put('/:id', c.update);
 router.delete('/:id', c.remove);
 router.post('/sync-user', c.syncUser);
 router.post('/control', c.control);
+router.get('/sync-history', c.getSyncHistory);
 router.get('/:sn/commands', c.getCommands);
 router.post('/:sn/reboot', c.reboot);
 router.post('/:sn/clear-logs', c.clearLogs);
