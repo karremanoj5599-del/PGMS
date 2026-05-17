@@ -49,10 +49,20 @@ const extractRawBody = (req) => {
   if (typeof req.body === 'object') {
     const lines = [];
     for (const [key, value] of Object.entries(req.body)) {
-      if (value === '') {
-        lines.push(key);
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          if (item === '') {
+            lines.push(key);
+          } else {
+            lines.push(`${key}=${item}`);
+          }
+        }
       } else {
-        lines.push(`${key}=${value}`);
+        if (value === '') {
+          lines.push(key);
+        } else {
+          lines.push(`${key}=${value}`);
+        }
       }
     }
     return lines.join('\n');
