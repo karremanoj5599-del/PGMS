@@ -11,8 +11,8 @@ exports.getAll = (userId) => {
     .where('tenants.user_id', userId)
     .select(
       'tenants.*', 'beds.bed_number', 'beds.bed_cost', 'beds.advance_amount',
-      'rooms.room_number', 'rooms.sharing_capacity',
-      'floors.floor_name', 'access_control.access_granted'
+      'rooms.room_id', 'rooms.room_number', 'rooms.sharing_capacity',
+      'floors.floor_id', 'floors.floor_name', 'access_control.access_granted'
     );
 };
 
