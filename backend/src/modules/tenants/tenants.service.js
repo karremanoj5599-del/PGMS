@@ -17,7 +17,7 @@ exports.getAll = (userId) => {
 };
 
 exports.create = async (data, userId) => {
-  const { name, mobile, bed_id, joining_date, id_proof, photo, biometric_pin, status,
+  const { tenant_id, name, mobile, bed_id, joining_date, id_proof, photo, biometric_pin, status,
           access_expiry_date, punch_limit, gender, occupation, expiry_date, tenant_type } = data;
 
   const bedId = toNull(bed_id);
@@ -34,6 +34,10 @@ exports.create = async (data, userId) => {
     expiry_date: toNull(expiry_date),
     tenant_type: tenant_type || 'Permanent'
   };
+
+  if (tenant_id) {
+    insertData.tenant_id = Number(tenant_id);
+  }
 
   const [inserted] = await db('tenants').insert(insertData).returning('tenant_id');
   const newId = typeof inserted === 'object' ? inserted.tenant_id : inserted;

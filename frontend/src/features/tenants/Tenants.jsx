@@ -198,7 +198,8 @@ const Tenants = () => {
       bed_id: tenant.bed_id || '',
       status: tenant.status || 'Staying',
       initial_payment: 'Pending',
-      tenant_type: tenant.tenant_type || 'Permanent'
+      tenant_type: tenant.tenant_type || 'Permanent',
+      biometric_pin: tenant.biometric_pin || ''
     });
     setIsEditing(true);
     setShowModal(true);
@@ -327,7 +328,7 @@ const Tenants = () => {
           >
             {selectionMode === 'delete' ? 'Exit Delete Mode' : 'Select & Delete'}
           </button>
-          <button className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => { setIsEditing(false); setNewTenant({ name: '', mobile: '', occupation: '', gender: 'Male', joining_date: new Date().toISOString().split('T')[0], expiry_date: '', access_expiry_date: '', punch_limit: '', bed_id: '', status: 'Staying', initial_payment: 'Pending', tenant_type: 'Permanent' }); setShowModal(true); }}>
+          <button className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => { setIsEditing(false); setNewTenant({ name: '', mobile: '', occupation: '', gender: 'Male', joining_date: new Date().toISOString().split('T')[0], expiry_date: '', access_expiry_date: '', punch_limit: '', bed_id: '', status: 'Staying', initial_payment: 'Pending', tenant_type: 'Permanent', biometric_pin: '' }); setShowModal(true); }}>
             <UserPlus size={18} /> Add Tenant
           </button>
         </div>
@@ -517,26 +518,24 @@ const Tenants = () => {
                 </small>
               </div>
 
-              {isEditing && (
-                <div className="form-group" style={{ 
-                  background: 'rgba(245, 158, 11, 0.05)', 
-                  padding: '1rem', 
-                  borderRadius: '8px', 
-                  border: '1px solid rgba(245, 158, 11, 0.2)',
-                  marginBottom: '1.5rem'
-                }}>
-                  <label style={{ color: '#f59e0b', fontSize: '0.85rem' }}>Change Biometric Device PIN</label>
-                  <input 
-                    type="number" 
-                    placeholder={newTenant.tenant_id}
-                    value={newTenant.biometric_pin || ''} 
-                    onChange={e => setNewTenant({ ...newTenant, biometric_pin: e.target.value })} 
-                  />
-                  <small style={{ color: 'var(--text-muted)', display: 'block', marginTop: '0.5rem' }}>
-                    Only use this if you want the ID on the machine (e.g. 69) to be different from the Software ID (#{newTenant.tenant_id}).
-                  </small>
-                </div>
-              )}
+              <div className="form-group" style={{ 
+                background: 'rgba(245, 158, 11, 0.05)', 
+                padding: '1rem', 
+                borderRadius: '8px', 
+                border: '1px solid rgba(245, 158, 11, 0.2)',
+                marginBottom: '1.5rem'
+              }}>
+                <label style={{ color: '#f59e0b', fontSize: '0.85rem', fontWeight: 600 }}>Device Biometric PIN / Machine ID (Optional)</label>
+                <input 
+                  type="text" 
+                  placeholder={isEditing ? newTenant.tenant_id : "Enter machine ID (e.g. 69 or HY0069)"}
+                  value={newTenant.biometric_pin || ''} 
+                  onChange={e => setNewTenant({ ...newTenant, biometric_pin: e.target.value })} 
+                />
+                <small style={{ color: 'var(--text-muted)', display: 'block', marginTop: '0.5rem' }}>
+                  If the tenant is already registered on the machine with a custom ID (like 69 or HY0069), enter it here. Otherwise, leave blank to use the standard Software ID.
+                </small>
+              </div>
               <div className="form-group">
                 <label>Full Name</label>
                 <input type="text" required value={newTenant.name} onChange={e => setNewTenant({ ...newTenant, name: e.target.value })} />
