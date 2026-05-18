@@ -164,11 +164,10 @@ const syncTenantAccess = async (tenant_id) => {
           }
         }
       } else {
-        // Restrict: block access
-        const cleanName = tenant.name.replace(/[^\w]/g, '');
+        // Restrict: block access by deleting the user from the device (universal lockout)
         commands.push({
           device_sn: device.sn,
-          command: `DATA UPDATE USERINFO PIN=${pin}\tName=${cleanName}\tPri=0\tPass=\tCard=\tGrp=99\tTZ=0000000000000000\tPIN2=${pin}`,
+          command: `DATA DELETE USERINFO PIN=${pin}`,
           user_id: tenant.user_id
         });
       }

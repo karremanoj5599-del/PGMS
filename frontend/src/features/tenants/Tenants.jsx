@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
-import { UserPlus, Search, Filter, Smartphone, Fingerprint, Server, RefreshCw, X } from 'lucide-react';
+import { UserPlus, Search, Filter, Smartphone, Fingerprint, Server, RefreshCw, X, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 
 const Tenants = () => {
@@ -137,6 +137,18 @@ const Tenants = () => {
       setTimeout(() => setToast(null), 6000);
     } catch (err) {
       alert(err.response?.data?.error || 'Failed to resync biometrics');
+    }
+  };
+
+  const handleToggleAccess = async (tenantId, currentStatus) => {
+    const newStatus = currentStatus === false; // Toggle
+    try {
+      const res = await api.put(`/api/access/${tenantId}`, { access_granted: newStatus });
+      setToast(res.data.message || 'Access rule updated successfully');
+      setTimeout(() => setToast(null), 5000);
+      fetchTenants();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to update biometric access');
     }
   };
 
@@ -429,6 +441,14 @@ const Tenants = () => {
                     <button onClick={() => handleEditClick(t)} className="btn btn-icon-only" title="Edit">Edit</button>
                     <button onClick={() => { setPinTenant(t); setNewPin(t.biometric_pin || ''); setShowPinModal(true); }} className="btn btn-icon-only" style={{ color: 'var(--primary)' }} title="Mobile App Access">
                       <Smartphone size={16} />
+                    </button>
+                    <button
+                      onClick={() => handleToggleAccess(t.tenant_id, t.access_granted)}
+                      className="btn btn-icon-only" 
+                      style={{ color: t.access_granted !== false ? '#10b981' : '#ef4444' }}
+                      title={t.access_granted !== false ? "Biometric Access: Allowed (Click to Restrict)" : "Biometric Access: Restricted (Click to Allow)"}
+                    >
+                      {t.access_granted !== false ? <ShieldCheck size={16} /> : <ShieldAlert size={16} />}
                     </button>
                     <button
                       onClick={() => openSyncModal(t)}
