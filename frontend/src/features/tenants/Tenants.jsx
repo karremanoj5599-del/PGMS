@@ -143,7 +143,7 @@ const Tenants = () => {
   const handleToggleAccess = async (tenantId, currentStatus) => {
     const newStatus = currentStatus === false; // Toggle
     try {
-      const res = await api.put(`/api/access/${tenantId}`, { access_granted: newStatus });
+      const res = await api.put(`/api/access-control/${tenantId}`, { access_granted: newStatus });
       setToast(res.data.message || 'Access rule updated successfully');
       setTimeout(() => setToast(null), 5000);
       fetchTenants();
