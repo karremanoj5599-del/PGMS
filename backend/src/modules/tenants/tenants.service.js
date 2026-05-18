@@ -107,11 +107,11 @@ exports.remove = async (id, userId) => {
   const devices = await db('devices').where({ user_id: userId, adms_status: true });
   for (const device of devices) {
     if (!device.sn) continue;
-    await db('device_commands').insert({
-      device_sn: device.sn,
-      command: `DATA DELETE USERINFO PIN=${pin}`,
-      user_id: userId
-    });
+    await db('device_commands').insert([
+      { device_sn: device.sn, command: `DATA DELETE USERINFO PIN=${pin}`, user_id: userId },
+      { device_sn: device.sn, command: `DATA DELETE BIODATA PIN=${pin}`, user_id: userId },
+      { device_sn: device.sn, command: `DATA DELETE FINGERTMP PIN=${pin}`, user_id: userId }
+    ]);
   }
 
   await db('access_control').where('tenant_id', id).del().catch(() => {});
@@ -151,11 +151,11 @@ exports.revokeTenant = async (id, userId) => {
   const devices = await db('devices').where({ user_id: userId, adms_status: true });
   for (const device of devices) {
     if (!device.sn) continue;
-    await db('device_commands').insert({
-      device_sn: device.sn,
-      command: `DATA DELETE USERINFO PIN=${pin}`,
-      user_id: userId
-    });
+    await db('device_commands').insert([
+      { device_sn: device.sn, command: `DATA DELETE USERINFO PIN=${pin}`, user_id: userId },
+      { device_sn: device.sn, command: `DATA DELETE BIODATA PIN=${pin}`, user_id: userId },
+      { device_sn: device.sn, command: `DATA DELETE FINGERTMP PIN=${pin}`, user_id: userId }
+    ]);
   }
 };
 

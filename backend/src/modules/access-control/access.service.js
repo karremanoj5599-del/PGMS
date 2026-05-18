@@ -164,10 +164,20 @@ const syncTenantAccess = async (tenant_id) => {
           }
         }
       } else {
-        // Restrict: block access by deleting the user from the device (universal lockout)
+        // Restrict: block access by deleting the user and all templates from the device (bulletproof lockout)
         commands.push({
           device_sn: device.sn,
           command: `DATA DELETE USERINFO PIN=${pin}`,
+          user_id: tenant.user_id
+        });
+        commands.push({
+          device_sn: device.sn,
+          command: `DATA DELETE BIODATA PIN=${pin}`,
+          user_id: tenant.user_id
+        });
+        commands.push({
+          device_sn: device.sn,
+          command: `DATA DELETE FINGERTMP PIN=${pin}`,
           user_id: tenant.user_id
         });
       }
