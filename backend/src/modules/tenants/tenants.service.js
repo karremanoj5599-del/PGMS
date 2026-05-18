@@ -42,6 +42,13 @@ exports.create = async (data, userId) => {
   const [inserted] = await db('tenants').insert(insertData).returning('tenant_id');
   const newId = typeof inserted === 'object' ? inserted.tenant_id : inserted;
 
+  // Sync sequence in PostgreSQL after manual ID insertion to prevent future duplicate key violations
+  if (tenant_id && db.client.config.client === 'pg') {
+    await db.raw(`SELECT setval('tenants_tenant_id_seq', COALESCE((SELECT MAX(tenant_id) FROM tenants), 1))`).catch(err => {
+      console.error('Failed to sync tenants sequence after manual insert:', err.message);
+    });
+  }
+
   // Update bed status
   if (bedId) {
     await db('beds').where('bed_id', bedId).update({ status: 'Occupied' });
