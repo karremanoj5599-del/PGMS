@@ -14,14 +14,16 @@ exports.processAttendanceLogs = async (sn, rawBody, device) => {
     const tenant = await findTenantByPin(rec.pin, adminUserId);
     if (!tenant) continue;
 
+    const formattedTime = rec.time.includes('+') ? rec.time : `${rec.time}+05:30`;
+
     const exists = await db('attendance_logs')
-      .where({ tenant_id: tenant.tenant_id.toString(), punch_time: rec.time })
+      .where({ tenant_id: tenant.tenant_id.toString(), punch_time: formattedTime })
       .first();
 
     if (!exists) {
       await db('attendance_logs').insert({
         tenant_id: tenant.tenant_id.toString(),
-        punch_time: rec.time,
+        punch_time: formattedTime,
         status: rec.status,
         verify_type: rec.verify,
         device_sn: sn,
