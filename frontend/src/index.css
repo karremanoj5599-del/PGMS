@@ -11,11 +11,38 @@
   --sidebar-width: 260px;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom Sleek & Modern Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-dark);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 8px;
+  border: 2px solid var(--bg-dark);
+  transition: all 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) var(--bg-dark);
 }
 
 body {
