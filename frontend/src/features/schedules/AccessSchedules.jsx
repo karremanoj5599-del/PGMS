@@ -235,7 +235,8 @@ const AccessSchedules = () => {
           { id: 'global', label: 'Global Access Configuration' },
           { id: 'holidays', label: 'Holiday Access Rules' },
           { id: 'groups', label: 'Access Groups' },
-          { id: 'tenants', label: 'Tenant Access Control' }
+          { id: 'tenants', label: 'Tenant Access Control' },
+          { id: 'revoke', label: 'Instant Revoke Tool' }
         ].map(tab => {
           const isActive = activeTab === tab.id;
           return (
@@ -274,144 +275,143 @@ const AccessSchedules = () => {
 
       {/* Tab Contents */}
       {activeTab === 'global' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '1.5rem' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            {/* Global Access Configuration */}
-            <div className="card" style={{ margin: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem' }}>
-                <ShieldCheck size={20} color="var(--primary)" />
-                <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Global Access Configuration</h2>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-                <div className="form-group">
-                  <label>Lock Delay (Seconds)</label>
-                  <input 
-                    type="number" min="1" max="255"
-                    value={globalOptions.lock_delay || 5}
-                    onChange={e => setGlobalOptions({...globalOptions, lock_delay: parseInt(e.target.value)})}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Anti-Passback</label>
-                  <div style={{ padding: '0.6rem', borderRadius: '8px', background: '#2d3748', border: '1px solid rgba(255,255,255,0.1)' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', margin: 0, fontSize: '0.85rem' }}>
-                      <input 
-                        type="checkbox" 
-                        checked={!!globalOptions.anti_passback}
-                        onChange={e => setGlobalOptions({...globalOptions, anti_passback: e.target.checked})}
-                      />
-                      Enable Network Anti-Passback
-                    </label>
-                  </div>
-                </div>
-                <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                  <label>Device Expiration Action</label>
-                  <select 
-                    value={globalOptions.expire_action ?? 0}
-                    onChange={e => setGlobalOptions({...globalOptions, expire_action: parseInt(e.target.value)})}
-                  >
-                    <option value={0}>Retain User, Stop Saving Logs</option>
-                    <option value={1}>Retain User, Continue Saving Logs</option>
-                    <option value={2}>Delete User Record Completely</option>
-                  </select>
-                </div>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', gridColumn: 'span 2' }}>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginBottom: '0.5rem', fontSize: '0.85rem' }}>
-                      <input 
-                        type="checkbox" 
-                        checked={!!globalOptions.auto_block_enabled}
-                        onChange={e => setGlobalOptions({...globalOptions, auto_block_enabled: e.target.checked})}
-                      />
-                      Auto-Block
-                    </label>
-                    <input 
-                      type="number" placeholder="Days"
-                      disabled={!globalOptions.auto_block_enabled}
-                      value={globalOptions.auto_block_days || ''}
-                      onChange={e => setGlobalOptions({...globalOptions, auto_block_days: parseInt(e.target.value)})}
-                    />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginBottom: '0.5rem', fontSize: '0.85rem' }}>
-                      <input 
-                        type="checkbox" 
-                        checked={!!globalOptions.auto_delete_enabled}
-                        onChange={e => setGlobalOptions({...globalOptions, auto_delete_enabled: e.target.checked})}
-                      />
-                      Auto-Delete
-                    </label>
-                    <input 
-                      type="number" placeholder="Days"
-                      disabled={!globalOptions.auto_delete_enabled}
-                      value={globalOptions.auto_delete_days || ''}
-                      onChange={e => setGlobalOptions({...globalOptions, auto_delete_days: parseInt(e.target.value)})}
-                    />
-                  </div>
-                </div>
-              </div>
-              <button className="btn btn-primary" onClick={saveGlobalOptions} disabled={loading} style={{ width: '100%' }}>
-                Save Global Settings
-              </button>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+          {/* Global Access Configuration */}
+          <div className="card" style={{ margin: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem' }}>
+              <ShieldCheck size={20} color="var(--primary)" />
+              <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Global Access Configuration</h2>
             </div>
-
-            {/* Time Schedules Card */}
-            <div className="card" style={{ margin: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem' }}>
-                <Clock size={20} color="var(--primary)" />
-                <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Time Schedules</h2>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.2rem' }}>
-                {schedules.map(s => (
-                  <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: s.id === 1 ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.05)' }}>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{s.name}</div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--accent)', fontWeight: 600, marginTop: '2px' }}>
-                        {s.start_time} — {s.end_time}
-                      </div>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                        {s.valid_days ? ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].filter((_, i) => s.valid_days[i] === '1').join(' • ') : 'Everyday'}
-                      </div>
-                    </div>
-                    {s.id !== 1 && (
-                      <button onClick={() => handleDelete(s.id)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '4px' }}>
-                        <Trash2 size={15} />
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div>
-            {/* Revoke Tool Card */}
-            <div className="card" style={{ margin: 0, border: '1px solid rgba(239, 68, 68, 0.2)', background: 'linear-gradient(to bottom, rgba(239, 68, 68, 0.05), transparent)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem' }}>
-                <AlertCircle size={20} color="var(--danger)" />
-                <h2 style={{ margin: 0, color: 'var(--danger)', fontSize: '1.25rem' }}>Instant Revoke Tool</h2>
-              </div>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem', lineHeight: '1.5' }}>
-                Immediately force delete a user's biometric signature from all hardware and lock their mobile app access.
-              </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
               <div className="form-group">
-                <label>Select Tenant to Revoke</label>
-                <select value={revokeTenantId} onChange={e => setRevokeTenantId(e.target.value)}>
-                  <option value="">-- Choose Tenant --</option>
-                  {tenants.map(t => (
-                    <option key={t.tenant_id} value={t.tenant_id}>{t.name} (Room {t.room_number || 'NA'})</option>
-                  ))}
+                <label>Lock Delay (Seconds)</label>
+                <input 
+                  type="number" min="1" max="255"
+                  value={globalOptions.lock_delay || 5}
+                  onChange={e => setGlobalOptions({...globalOptions, lock_delay: parseInt(e.target.value)})}
+                />
+              </div>
+              <div className="form-group">
+                <label>Anti-Passback</label>
+                <div style={{ padding: '0.6rem', borderRadius: '8px', background: '#2d3748', border: '1px solid rgba(255,255,255,0.1)' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', margin: 0, fontSize: '0.85rem' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={!!globalOptions.anti_passback}
+                      onChange={e => setGlobalOptions({...globalOptions, anti_passback: e.target.checked})}
+                    />
+                    Enable Network Anti-Passback
+                  </label>
+                </div>
+              </div>
+              <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                <label>Device Expiration Action</label>
+                <select 
+                  value={globalOptions.expire_action ?? 0}
+                  onChange={e => setGlobalOptions({...globalOptions, expire_action: parseInt(e.target.value)})}
+                >
+                  <option value={0}>Retain User, Stop Saving Logs</option>
+                  <option value={1}>Retain User, Continue Saving Logs</option>
+                  <option value={2}>Delete User Record Completely</option>
                 </select>
               </div>
-              <button 
-                className="btn" 
-                onClick={handleRevokeAccess} 
-                disabled={!revokeTenantId || loading}
-                style={{ width: '100%', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', border: '1px solid rgba(239, 68, 68, 0.5)', marginTop: '0.5rem' }}
-              >
-                REVOKE ACCESS
-              </button>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', gridColumn: 'span 2' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginBottom: '0.5rem', fontSize: '0.85rem' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={!!globalOptions.auto_block_enabled}
+                      onChange={e => setGlobalOptions({...globalOptions, auto_block_enabled: e.target.checked})}
+                    />
+                    Auto-Block
+                  </label>
+                  <input 
+                    type="number" placeholder="Days"
+                    disabled={!globalOptions.auto_block_enabled}
+                    value={globalOptions.auto_block_days || ''}
+                    onChange={e => setGlobalOptions({...globalOptions, auto_block_days: parseInt(e.target.value)})}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginBottom: '0.5rem', fontSize: '0.85rem' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={!!globalOptions.auto_delete_enabled}
+                      onChange={e => setGlobalOptions({...globalOptions, auto_delete_enabled: e.target.checked})}
+                    />
+                    Auto-Delete
+                  </label>
+                  <input 
+                    type="number" placeholder="Days"
+                    disabled={!globalOptions.auto_delete_enabled}
+                    value={globalOptions.auto_delete_days || ''}
+                    onChange={e => setGlobalOptions({...globalOptions, auto_delete_days: parseInt(e.target.value)})}
+                  />
+                </div>
+              </div>
             </div>
+            <button className="btn btn-primary" onClick={saveGlobalOptions} disabled={loading} style={{ width: '100%' }}>
+              Save Global Settings
+            </button>
+          </div>
+
+          {/* Time Schedules Card */}
+          <div className="card" style={{ margin: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem' }}>
+              <Clock size={20} color="var(--primary)" />
+              <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Time Schedules</h2>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.2rem' }}>
+              {schedules.map(s => (
+                <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: s.id === 1 ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.05)' }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{s.name}</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--accent)', fontWeight: 600, marginTop: '2px' }}>
+                      {s.start_time} — {s.end_time}
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                      {s.valid_days ? ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].filter((_, i) => s.valid_days[i] === '1').join(' • ') : 'Everyday'}
+                    </div>
+                  </div>
+                  {s.id !== 1 && (
+                    <button onClick={() => handleDelete(s.id)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '4px' }}>
+                      <Trash2 size={15} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'revoke' && (
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1rem' }}>
+          <div className="card" style={{ maxWidth: '600px', width: '100%', border: '1px solid rgba(239, 68, 68, 0.2)', background: 'linear-gradient(to bottom, rgba(239, 68, 68, 0.05), transparent)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem' }}>
+              <AlertCircle size={20} color="var(--danger)" />
+              <h2 style={{ margin: 0, color: 'var(--danger)', fontSize: '1.25rem' }}>Instant Revoke Tool</h2>
+            </div>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem', lineHeight: '1.5' }}>
+              Immediately force delete a user's biometric signature from all hardware and lock their mobile app access.
+            </p>
+            <div className="form-group">
+              <label>Select Tenant to Revoke</label>
+              <select value={revokeTenantId} onChange={e => setRevokeTenantId(e.target.value)}>
+                <option value="">-- Choose Tenant --</option>
+                {tenants.map(t => (
+                  <option key={t.tenant_id} value={t.tenant_id}>{t.name} (Room {t.room_number || 'NA'})</option>
+                ))}
+              </select>
+            </div>
+            <button 
+              className="btn" 
+              onClick={handleRevokeAccess} 
+              disabled={!revokeTenantId || loading}
+              style={{ width: '100%', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', border: '1px solid rgba(239, 68, 68, 0.5)', marginTop: '0.5rem' }}
+            >
+              REVOKE ACCESS
+            </button>
           </div>
         </div>
       )}
