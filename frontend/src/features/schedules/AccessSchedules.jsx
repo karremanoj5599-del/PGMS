@@ -32,6 +32,8 @@ const AccessSchedules = () => {
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [activeTab, setActiveTab] = useState('global');
+  const [tenantSearchQuery, setTenantSearchQuery] = useState('');
+  const [revokeSearchQuery, setRevokeSearchQuery] = useState('');
 
   useEffect(() => {
     fetchSchedules();
@@ -385,36 +387,67 @@ const AccessSchedules = () => {
         </div>
       )}
 
-      {activeTab === 'revoke' && (
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1rem' }}>
-          <div className="card" style={{ maxWidth: '600px', width: '100%', border: '1px solid rgba(239, 68, 68, 0.2)', background: 'linear-gradient(to bottom, rgba(239, 68, 68, 0.05), transparent)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem' }}>
-              <AlertCircle size={20} color="var(--danger)" />
-              <h2 style={{ margin: 0, color: 'var(--danger)', fontSize: '1.25rem' }}>Instant Revoke Tool</h2>
+      {activeTab === 'revoke' && (() => {
+        const filteredRevokeTenants = tenants.filter(t => {
+          const query = revokeSearchQuery.toLowerCase();
+          return (
+            t.name?.toLowerCase().includes(query) ||
+            (t.room_number && `room ${t.room_number}`.toLowerCase().includes(query)) ||
+            (t.room_number && String(t.room_number).includes(query))
+          );
+        });
+        return (
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1rem' }}>
+            <div className="card" style={{ maxWidth: '600px', width: '100%', border: '1px solid rgba(239, 68, 68, 0.2)', background: 'linear-gradient(to bottom, rgba(239, 68, 68, 0.05), transparent)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem' }}>
+                <AlertCircle size={20} color="var(--danger)" />
+                <h2 style={{ margin: 0, color: 'var(--danger)', fontSize: '1.25rem' }}>Instant Revoke Tool</h2>
+              </div>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem', lineHeight: '1.5' }}>
+                Immediately force delete a user's biometric signature from all hardware and lock their mobile app access.
+              </p>
+              
+              <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                <label>Search Tenant</label>
+                <input 
+                  type="text" 
+                  placeholder="Type name or room number to search..." 
+                  value={revokeSearchQuery}
+                  onChange={e => setRevokeSearchQuery(e.target.value)}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    borderRadius: '8px',
+                    background: '#2d3748',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    color: 'white',
+                    outline: 'none',
+                    width: '100%'
+                  }}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Select Tenant to Revoke ({filteredRevokeTenants.length} found)</label>
+                <select value={revokeTenantId} onChange={e => setRevokeTenantId(e.target.value)}>
+                  <option value="">-- Choose Tenant --</option>
+                  {filteredRevokeTenants.map(t => (
+                    <option key={t.tenant_id} value={t.tenant_id}>{t.name} (Room {t.room_number || 'NA'})</option>
+                  ))}
+                </select>
+              </div>
+              
+              <button 
+                className="btn" 
+                onClick={handleRevokeAccess} 
+                disabled={!revokeTenantId || loading}
+                style={{ width: '100%', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', border: '1px solid rgba(239, 68, 68, 0.5)', marginTop: '0.5rem' }}
+              >
+                REVOKE ACCESS
+              </button>
             </div>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem', lineHeight: '1.5' }}>
-              Immediately force delete a user's biometric signature from all hardware and lock their mobile app access.
-            </p>
-            <div className="form-group">
-              <label>Select Tenant to Revoke</label>
-              <select value={revokeTenantId} onChange={e => setRevokeTenantId(e.target.value)}>
-                <option value="">-- Choose Tenant --</option>
-                {tenants.map(t => (
-                  <option key={t.tenant_id} value={t.tenant_id}>{t.name} (Room {t.room_number || 'NA'})</option>
-                ))}
-              </select>
-            </div>
-            <button 
-              className="btn" 
-              onClick={handleRevokeAccess} 
-              disabled={!revokeTenantId || loading}
-              style={{ width: '100%', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', border: '1px solid rgba(239, 68, 68, 0.5)', marginTop: '0.5rem' }}
-            >
-              REVOKE ACCESS
-            </button>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {activeTab === 'holidays' && (
         <div>
@@ -497,87 +530,123 @@ const AccessSchedules = () => {
         </div>
       )}
 
-      {activeTab === 'tenants' && (
-        <div className="card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem' }}>
-            <Users size={20} color="var(--accent)" />
-            <h2 style={{ margin: 0 }}>Tenant Access Control</h2>
-          </div>
-          
-          <div className="data-table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>Tenant Name</th>
-                  <th>Room</th>
-                  <th>Access Status</th>
-                  <th>Assigned Access Group</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tenants.map(t => (
-                  <tr key={t.tenant_id}>
-                    <td>
-                      <div style={{ fontWeight: 600 }}>{t.name}</div>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>ID: {t.tenant_id}</div>
-                    </td>
-                    <td>Room {t.room_number || 'N/A'}</td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '4px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                          <button 
-                            onClick={() => !t.access_granted && toggleAccess(t.tenant_id, false)}
-                            style={{ 
-                              padding: '6px 12px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 700,
-                              background: t.access_granted ? 'var(--success)' : 'transparent',
-                              color: t.access_granted ? 'white' : 'var(--text-muted)',
-                              transition: '0.2s', display: 'flex', alignItems: 'center', gap: '4px'
-                            }}
-                          >
-                            <CheckCircle size={14} /> Allowed
-                          </button>
-                          <button 
-                            onClick={() => t.access_granted && toggleAccess(t.tenant_id, true)}
-                            style={{ 
-                              padding: '6px 12px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 700,
-                              background: !t.access_granted ? 'var(--danger)' : 'transparent',
-                              color: !t.access_granted ? 'white' : 'var(--text-muted)',
-                              transition: '0.2s', display: 'flex', alignItems: 'center', gap: '4px'
-                            }}
-                          >
-                            <XCircle size={14} /> Restricted
-                          </button>
-                        </div>
-                        
-                        {/* Auto-Blocked Warning */}
-                        {!t.access_granted && t.pending_balance >= (t.bed_cost * 1.2) && t.bed_cost > 0 && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--danger)', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase' }}>
-                            <AlertCircle size={12} /> Overdue lock
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      <select 
-                        value={t.access_group_id || 'none'}
-                        onChange={(e) => updateGroup(t.tenant_id, e.target.value)}
-                        style={{ padding: '0.5rem', borderRadius: '6px', background: '#2d3748', color: 'white', border: '1px solid rgba(255,255,255,0.1)', width: '100%' }}
-                      >
-                        <option value="none" style={{ background: '#2d3748' }}>No Group (Default)</option>
-                        {groups.map(g => (
-                          <option key={g.id} value={g.id} style={{ background: '#2d3748', color: 'white' }}>
-                            {g.name}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
+      {activeTab === 'tenants' && (() => {
+        const filteredTenants = tenants.filter(t => {
+          const query = tenantSearchQuery.toLowerCase();
+          return (
+            t.name?.toLowerCase().includes(query) ||
+            (t.room_number && `room ${t.room_number}`.toLowerCase().includes(query)) ||
+            (t.room_number && String(t.room_number).includes(query))
+          );
+        });
+        return (
+          <div className="card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Users size={20} color="var(--accent)" />
+                <h2 style={{ margin: 0 }}>Tenant Access Control</h2>
+              </div>
+              <input 
+                type="text" 
+                placeholder="Search tenants by name or room..." 
+                value={tenantSearchQuery}
+                onChange={e => setTenantSearchQuery(e.target.value)}
+                style={{
+                  maxWidth: '300px',
+                  width: '100%',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '8px',
+                  background: '#2d3748',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  color: 'white',
+                  outline: 'none',
+                  fontSize: '0.9rem'
+                }}
+              />
+            </div>
+            
+            <div className="data-table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Tenant Name</th>
+                    <th>Room</th>
+                    <th>Access Status</th>
+                    <th>Assigned Access Group</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filteredTenants.map(t => (
+                    <tr key={t.tenant_id}>
+                      <td>
+                        <div style={{ fontWeight: 600 }}>{t.name}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>ID: {t.tenant_id}</div>
+                      </td>
+                      <td>Room {t.room_number || 'N/A'}</td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '4px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                            <button 
+                              onClick={() => !t.access_granted && toggleAccess(t.tenant_id, false)}
+                              style={{ 
+                                padding: '6px 12px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 700,
+                                background: t.access_granted ? 'var(--success)' : 'transparent',
+                                color: t.access_granted ? 'white' : 'var(--text-muted)',
+                                transition: '0.2s', display: 'flex', alignItems: 'center', gap: '4px'
+                              }}
+                            >
+                              <CheckCircle size={14} /> Allowed
+                            </button>
+                            <button 
+                              onClick={() => t.access_granted && toggleAccess(t.tenant_id, true)}
+                              style={{ 
+                                padding: '6px 12px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 700,
+                                background: !t.access_granted ? 'var(--danger)' : 'transparent',
+                                color: !t.access_granted ? 'white' : 'var(--text-muted)',
+                                transition: '0.2s', display: 'flex', alignItems: 'center', gap: '4px'
+                              }}
+                            >
+                              <XCircle size={14} /> Restricted
+                            </button>
+                          </div>
+                          
+                          {/* Auto-Blocked Warning */}
+                          {!t.access_granted && t.pending_balance >= (t.bed_cost * 1.2) && t.bed_cost > 0 && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--danger)', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase' }}>
+                              <AlertCircle size={12} /> Overdue lock
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        <select 
+                          value={t.access_group_id || 'none'}
+                          onChange={(e) => updateGroup(t.tenant_id, e.target.value)}
+                          style={{ padding: '0.5rem', borderRadius: '6px', background: '#2d3748', color: 'white', border: '1px solid rgba(255,255,255,0.1)', width: '100%' }}
+                        >
+                          <option value="none" style={{ background: '#2d3748' }}>No Group (Default)</option>
+                          {groups.map(g => (
+                            <option key={g.id} value={g.id} style={{ background: '#2d3748', color: 'white' }}>
+                              {g.name}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredTenants.length === 0 && (
+                    <tr>
+                      <td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                        No tenants matched your search.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {showAddModal && (
         <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
