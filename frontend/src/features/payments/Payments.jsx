@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import axios from '../../services/api';
-import { CreditCard, CheckCircle, XCircle, Search } from 'lucide-react';
+import { CreditCard, CheckCircle, XCircle, Search, AlertCircle } from 'lucide-react';
 
 const Payments = () => {
   const [tenants, setTenants] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('All'); // All | Pending | Balance | Completed
+  const [filterStatus, setFilterStatus] = useState('All'); // All | Pending | Balance | Completed | Advances
+  const [advanceSubTab, setAdvanceSubTab] = useState('paid'); // paid | pending | returnable
   const [showPayModal, setShowPayModal] = useState(false);
+  const [showRefundModal, setShowRefundModal] = useState(false);
   const [selectedTenant, setSelectedTenant] = useState(null);
   const [paymentData, setPaymentData] = useState({ 
     rent_charged: '', 
@@ -16,6 +18,8 @@ const Payments = () => {
     utr_number: '', 
     payment_via: 'Cash' 
   });
+  const [refundData, setRefundData] = useState({ deduction: 0, remarks: '', payment_via: 'UPI', utr_number: '' });
+  const [loading, setLoading] = useState(false);
 
   const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
   const now = new Date();
@@ -52,7 +56,7 @@ const Payments = () => {
   const processedTenants = tenants.map(t => ({
     ...t,
     computed_balance: !t.last_payment_date ? 0 : (t.pending_balance || 0),
-    total_pending: !t.last_payment_date ? ((t.bed_cost || 0) + (t.advance_amount || 0)) : (t.pending_balance || 0)
+    total_pending: !t.last_payment_date ? (t.bed_cost || 0) : (t.pending_balance || 0)
   }));
 
   const filtered = processedTenants.filter(t => {
@@ -102,84 +106,238 @@ const Payments = () => {
         <button className={`btn ${filterStatus === 'Balance' ? 'btn-primary' : ''}`} onClick={() => setFilterStatus('Balance')} style={{ fontSize: '0.8rem', padding: '0.4rem 1rem' }}>Balance Due</button>
         <button className={`btn ${filterStatus === 'Upcoming' ? 'btn-primary' : ''}`} onClick={() => setFilterStatus('Upcoming')} style={{ fontSize: '0.8rem', padding: '0.4rem 1rem', background: filterStatus === 'Upcoming' ? 'var(--primary)' : 'var(--accent)', color: 'white' }}>Upcoming Rent</button>
         <button className={`btn ${filterStatus === 'Completed' ? 'btn-primary' : ''}`} onClick={() => setFilterStatus('Completed')} style={{ fontSize: '0.8rem', padding: '0.4rem 1rem' }}>Completed</button>
+        <button className={`btn ${filterStatus === 'Advances' ? 'btn-primary' : ''}`} onClick={() => setFilterStatus('Advances')} style={{ fontSize: '0.8rem', padding: '0.4rem 1rem', background: filterStatus === 'Advances' ? '#6366f1' : '', color: 'white' }}>Advances</button>
       </div>
 
-      <div className="data-table-container">
-        <table>
-          <thead>
-            <tr>
-              <th style={{ width: '60px' }}>ID</th>
-              <th>Room & Bed</th>
-              <th>Tenant Name</th>
-              <th>Last Paid Date</th>
-              <th>Monthly Rent</th>
-              <th>Total Pending</th>
-              <th>Status</th>
-              {filterStatus !== 'All' && filterStatus !== 'Completed' && <th>Payment Action</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map(t => (
-              <tr key={t.tenant_id}>
-                <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>#{t.tenant_id}</td>
-                <td>
-                  <div style={{ fontWeight: 600 }}>Room {t.room_number || 'N/A'}</div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Bed {t.bed_number || 'N/A'}</div>
-                </td>
-                <td>
-                  <div style={{ fontWeight: 600 }}>{t.name}</div>
-                  {t.expiry_date && (
-                    <div style={{ fontSize: '0.7rem', color: new Date(t.expiry_date) < new Date() ? 'var(--danger)' : 'var(--text-muted)' }}>
-                      Expires: {new Date(t.expiry_date).toLocaleDateString()}
-                    </div>
-                  )}
-                </td>
-                <td>{t.last_payment_date ? new Date(t.last_payment_date).toLocaleDateString() : 'Never'}</td>
-                <td>
-                  ₹{t.bed_cost ? t.bed_cost.toLocaleString() : 0}
-                  {t.advance_amount && !t.last_payment_date ? <div style={{fontSize: '0.7rem', color: 'var(--text-muted)'}}>+ ₹{t.advance_amount.toLocaleString()} Adv</div> : null}
-                </td>
-                <td style={{ fontWeight: 600, color: t.total_pending > 0 ? 'var(--danger)' : 'var(--success)' }}>
-                  ₹{(t.total_pending).toLocaleString()}
-                </td>
-                <td>
-                  {(t.total_pending === 0) ? (
-                    <span style={{ fontSize: '0.75rem', background: 'var(--success)', color: 'white', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>Completed</span>
-                  ) : t.total_pending >= (t.bed_cost || 0) && t.bed_cost > 0 ? (
-                    <span style={{ fontSize: '0.75rem', background: 'var(--danger)', color: 'white', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>Pending</span>
-                  ) : (
-                    <span style={{ fontSize: '0.75rem', background: 'var(--accent)', color: 'white', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>Balance</span>
-                  )}
-                </td>
-                {filterStatus !== 'All' && filterStatus !== 'Completed' && (
-                  <td>
-                    <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={() => { 
-                      setSelectedTenant(t); 
-                      const rent = (t.bed_cost || 0);
-                      const advance = !t.last_payment_date ? (t.advance_amount || 0) : 0;
-                      const initial_charge = rent + advance;
-                      setPaymentData({ 
-                        rent_charged: initial_charge.toString(), 
-                        amount_paid: initial_charge.toString(), 
-                        payment_type: !t.last_payment_date ? 'Rent + Advance' : 'Rent', 
-                        balance: 0, // This is the delta we save (Rent - Paid)
-                        utr_number: '', 
-                        payment_via: 'Cash' 
-                      });
-                      setShowPayModal(true); 
-                    }}>
-                      Record Pay
-                    </button>
-                  </td>
+      {filterStatus === 'Advances' && (
+        <div style={{ 
+          display: 'flex', 
+          gap: '2.5rem', 
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)', 
+          marginBottom: '2rem', 
+          paddingBottom: '0.1rem',
+          alignItems: 'center'
+        }}>
+          {[
+            { id: 'paid', label: 'Paid Advance' },
+            { id: 'pending', label: 'Pending Advance' },
+            { id: 'returnable', label: 'Returnable Advance' }
+          ].map(subTab => {
+            const isActive = advanceSubTab === subTab.id;
+            return (
+              <button
+                key={subTab.id}
+                onClick={() => setAdvanceSubTab(subTab.id)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: isActive ? '#6366f1' : 'rgba(255, 255, 255, 0.5)',
+                  fontSize: '0.95rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  padding: '0.8rem 0',
+                  position: 'relative',
+                  transition: 'color 0.2s',
+                  outline: 'none'
+                }}
+              >
+                {subTab.label}
+                {isActive && (
+                  <div style={{
+                    position: 'absolute',
+                    bottom: '-2px',
+                    left: 0,
+                    right: 0,
+                    height: '2px',
+                    background: '#6366f1',
+                    borderRadius: '2px'
+                  }} />
                 )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {filterStatus === 'Advances' ? (
+        <div className="data-table-container">
+          <table>
+            <thead>
+              <tr>
+                <th style={{ width: '60px' }}>ID</th>
+                <th>Room & Bed</th>
+                <th>Tenant Name</th>
+                {advanceSubTab === 'paid' && <th>Date Paid</th>}
+                {advanceSubTab === 'pending' && <th>Joining Date</th>}
+                {advanceSubTab === 'returnable' && <th>Date Paid</th>}
+                <th>Advance Amount</th>
+                <th>Status</th>
+                {advanceSubTab !== 'paid' && <th>Advance Action</th>}
               </tr>
-            ))}
-            {filtered.length === 0 && (
-              <tr><td colSpan={filterStatus !== 'All' && filterStatus !== 'Completed' ? "8" : "7"} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No tenants found.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {(() => {
+                const list = processedTenants.filter(t => {
+                  const searchMatch = t.name.toLowerCase().includes(searchTerm.toLowerCase()) || (t.room_number?.toString() || '').includes(searchTerm);
+                  if (!searchMatch) return false;
+                  if (t.advance_amount <= 0 || !t.advance_amount) return false;
+
+                  if (advanceSubTab === 'paid') {
+                    return t.last_payment_date !== null;
+                  } else if (advanceSubTab === 'pending') {
+                    return t.last_payment_date === null;
+                  } else if (advanceSubTab === 'returnable') {
+                    return t.last_payment_date !== null && t.status === 'Staying';
+                  }
+                  return true;
+                });
+
+                return (
+                  <>
+                    {list.map(t => (
+                      <tr key={t.tenant_id}>
+                        <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>#{t.tenant_id}</td>
+                        <td>
+                          <div style={{ fontWeight: 600 }}>Room {t.room_number || 'N/A'}</div>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Bed {t.bed_number || 'N/A'}</div>
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: 600 }}>{t.name}</div>
+                        </td>
+                        {advanceSubTab === 'paid' && <td>{t.last_payment_date ? new Date(t.last_payment_date).toLocaleDateString() : 'N/A'}</td>}
+                        {advanceSubTab === 'pending' && <td>{t.joining_date ? new Date(t.joining_date).toLocaleDateString() : 'N/A'}</td>}
+                        {advanceSubTab === 'returnable' && <td>{t.last_payment_date ? new Date(t.last_payment_date).toLocaleDateString() : 'N/A'}</td>}
+                        <td style={{ fontWeight: 600 }}>
+                          ₹{t.advance_amount.toLocaleString()}
+                        </td>
+                        <td>
+                          {advanceSubTab === 'paid' && <span style={{ fontSize: '0.75rem', background: 'var(--success)', color: 'white', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>Paid</span>}
+                          {advanceSubTab === 'pending' && <span style={{ fontSize: '0.75rem', background: 'var(--danger)', color: 'white', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>Pending</span>}
+                          {advanceSubTab === 'returnable' && <span style={{ fontSize: '0.75rem', background: 'var(--accent)', color: 'white', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>Refundable</span>}
+                        </td>
+                        {advanceSubTab === 'pending' && (
+                          <td>
+                            <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={() => { 
+                              setSelectedTenant(t); 
+                              setPaymentData({ 
+                                rent_charged: t.advance_amount.toString(), 
+                                amount_paid: t.advance_amount.toString(), 
+                                payment_type: 'Advance', 
+                                balance: 0, 
+                                utr_number: '', 
+                                payment_via: 'Cash' 
+                              });
+                              setShowPayModal(true); 
+                            }}>
+                              Record Advance Pay
+                            </button>
+                          </td>
+                        )}
+                        {advanceSubTab === 'returnable' && (
+                          <td>
+                            <button 
+                              className="btn" 
+                              style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', border: '1px solid rgba(239, 68, 68, 0.5)' }} 
+                              onClick={() => { 
+                                setSelectedTenant(t); 
+                                setRefundData({ deduction: 0, remarks: '', payment_via: 'UPI', utr_number: '' });
+                                setShowRefundModal(true); 
+                              }}
+                            >
+                              Process Refund & Vacate
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                    {list.length === 0 && (
+                      <tr>
+                        <td colSpan={advanceSubTab === 'paid' ? "7" : "8"} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                          No advances found.
+                        </td>
+                      </tr>
+                    )}
+                  </>
+                );
+              })()}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="data-table-container">
+          <table>
+            <thead>
+              <tr>
+                <th style={{ width: '60px' }}>ID</th>
+                <th>Room & Bed</th>
+                <th>Tenant Name</th>
+                <th>Last Paid Date</th>
+                <th>Monthly Rent</th>
+                <th>Total Pending</th>
+                <th>Status</th>
+                {filterStatus !== 'All' && filterStatus !== 'Completed' && <th>Payment Action</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(t => (
+                <tr key={t.tenant_id}>
+                  <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>#{t.tenant_id}</td>
+                  <td>
+                    <div style={{ fontWeight: 600 }}>Room {t.room_number || 'N/A'}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Bed {t.bed_number || 'N/A'}</div>
+                  </td>
+                  <td>
+                    <div style={{ fontWeight: 600 }}>{t.name}</div>
+                    {t.expiry_date && (
+                      <div style={{ fontSize: '0.7rem', color: new Date(t.expiry_date) < new Date() ? 'var(--danger)' : 'var(--text-muted)' }}>
+                        Expires: {new Date(t.expiry_date).toLocaleDateString()}
+                      </div>
+                    )}
+                  </td>
+                  <td>{t.last_payment_date ? new Date(t.last_payment_date).toLocaleDateString() : 'Never'}</td>
+                  <td>
+                    ₹{t.bed_cost ? t.bed_cost.toLocaleString() : 0}
+                  </td>
+                  <td style={{ fontWeight: 600, color: t.total_pending > 0 ? 'var(--danger)' : 'var(--success)' }}>
+                    ₹{(t.total_pending).toLocaleString()}
+                  </td>
+                  <td>
+                    {(t.total_pending === 0) ? (
+                      <span style={{ fontSize: '0.75rem', background: 'var(--success)', color: 'white', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>Completed</span>
+                    ) : t.total_pending >= (t.bed_cost || 0) && t.bed_cost > 0 ? (
+                      <span style={{ fontSize: '0.75rem', background: 'var(--danger)', color: 'white', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>Pending</span>
+                    ) : (
+                      <span style={{ fontSize: '0.75rem', background: 'var(--accent)', color: 'white', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>Balance</span>
+                    )}
+                  </td>
+                  {filterStatus !== 'All' && filterStatus !== 'Completed' && (
+                    <td>
+                      <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={() => { 
+                        setSelectedTenant(t); 
+                        const rent = (t.bed_cost || 0);
+                        setPaymentData({ 
+                          rent_charged: rent.toString(), 
+                          amount_paid: rent.toString(), 
+                          payment_type: 'Rent', 
+                          balance: 0, 
+                          utr_number: '', 
+                          payment_via: 'Cash' 
+                        });
+                        setShowPayModal(true); 
+                      }}>
+                        Record Pay
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              ))}
+              {filtered.length === 0 && (
+                <tr><td colSpan={filterStatus !== 'All' && filterStatus !== 'Completed' ? "8" : "7"} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No tenants found.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {showPayModal && selectedTenant && (
         <div className="modal-overlay" onClick={() => setShowPayModal(false)}>
@@ -281,6 +439,132 @@ const Payments = () => {
               )}
               <button type="submit" className="btn btn-primary" style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
                 <CheckCircle size={18} /> Submit Payment & Auto-Approve Access
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showRefundModal && selectedTenant && (
+        <div className="modal-overlay" onClick={() => setShowRefundModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ color: 'var(--danger)', margin: 0 }}>Process Refund & Vacate</h2>
+              <button className="btn" onClick={() => setShowRefundModal(false)}>Close</button>
+            </div>
+            
+            <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.15)', borderRadius: '0.5rem' }}>
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Tenant</div>
+              <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>{selectedTenant.name} (Room {selectedTenant.room_number})</div>
+              <div style={{ marginTop: '0.5rem', color: 'white', fontSize: '0.9rem' }}>
+                Paid Advance Amount: <strong>₹{(selectedTenant.advance_amount || 0).toLocaleString()}</strong>
+              </div>
+            </div>
+
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              setLoading(true);
+              try {
+                const originalAdvance = selectedTenant.advance_amount || 0;
+                const deduction = parseFloat(refundData.deduction) || 0;
+                const refundAmount = Math.max(0, originalAdvance - deduction);
+
+                // 1. Record refund in payments (negative amount)
+                await axios.post('/api/payments', {
+                  tenant_id: selectedTenant.tenant_id,
+                  payment_date: new Date().toISOString().split('T')[0],
+                  amount_paid: -refundAmount,
+                  payment_type: 'Advance Refund',
+                  payment_via: refundData.payment_via,
+                  utr_number: refundData.utr_number,
+                  balance: 0,
+                  remarks: refundData.remarks || `Advance return with ₹${deduction} deductions`
+                });
+
+                // 2. Vacate tenant and free bed
+                await axios.post(`/api/tenants/${selectedTenant.tenant_id}/revoke`);
+
+                alert('Advance refund processed and tenant vacated successfully!');
+                setShowRefundModal(false);
+                setRefundData({ deduction: 0, remarks: '', payment_via: 'UPI', utr_number: '' });
+                fetchStatus();
+              } catch (err) {
+                console.error(err);
+                alert('Failed to process refund');
+              } finally {
+                setLoading(false);
+              }
+            }}>
+              <div className="form-group">
+                <label>Deduction Amount (₹)</label>
+                <input 
+                  type="number" 
+                  value={refundData.deduction} 
+                  onChange={e => setRefundData({...refundData, deduction: e.target.value})} 
+                  placeholder="0"
+                  min="0"
+                  max={selectedTenant.advance_amount || 0}
+                  onFocus={e => e.target.select()}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Deduction Remarks</label>
+                <textarea 
+                  value={refundData.remarks} 
+                  onChange={e => setRefundData({...refundData, remarks: e.target.value})} 
+                  placeholder="e.g. Room damage repairs or outstanding dues"
+                  style={{
+                    width: '100%',
+                    padding: '0.6rem 0.8rem',
+                    borderRadius: '6px',
+                    background: '#2d3748',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    color: 'white',
+                    minHeight: '80px',
+                    outline: 'none',
+                    fontFamily: 'inherit'
+                  }}
+                />
+              </div>
+
+              <div style={{ background: 'rgba(255, 255, 255, 0.05)', padding: '1rem', borderRadius: '4px', marginBottom: '1.25rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem', fontWeight: 'bold' }}>
+                  <span>Net Refund Amount:</span>
+                  <span style={{ color: 'var(--success)' }}>
+                    ₹{(Math.max(0, (selectedTenant.advance_amount || 0) - (parseFloat(refundData.deduction) || 0))).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="form-group">
+                  <label>Refund Paid Via</label>
+                  <select value={refundData.payment_via} onChange={e => setRefundData({...refundData, payment_via: e.target.value})}>
+                    <option value="UPI">UPI</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Card">Card</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>UTR / URN Transaction #</label>
+                  <input 
+                    type="text" 
+                    value={refundData.utr_number} 
+                    onChange={e => setRefundData({...refundData, utr_number: e.target.value})} 
+                    placeholder="Reference ID" 
+                  />
+                </div>
+              </div>
+
+              <button 
+                type="submit" 
+                className="btn btn-primary" 
+                style={{ width: '100%', background: 'var(--danger)', borderColor: 'var(--danger)', color: 'white', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}
+                disabled={loading}
+              >
+                Confirm Refund & Vacate Tenant
               </button>
             </form>
           </div>
