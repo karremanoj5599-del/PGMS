@@ -1,17 +1,27 @@
-const https = require('https');
+const db = require('../src/config/database');
+const floorsService = require('../src/modules/floors/floors.service');
+const roomsService = require('../src/modules/rooms/rooms.service');
+const bedsService = require('../src/modules/beds/beds.service');
 
-const req = https.request('https://pgms-nu.vercel.app/api/reports/tenant-attendance?startDate=2026-04-30&endDate=2026-05-17', {
-  headers: {
-    'x-user-id': '13'
+async function check() {
+  try {
+    const userId = 15;
+    console.log(`Checking data for userId: ${userId}`);
+
+    const floors = await floorsService.getAll(userId);
+    console.log('Floors:', floors);
+
+    const rooms = await roomsService.getAll(userId);
+    console.log('Rooms:', rooms);
+
+    const beds = await bedsService.getAll(userId);
+    console.log('Beds:', beds);
+
+  } catch (err) {
+    console.error(err);
+  } finally {
+    process.exit(0);
   }
-}, (res) => {
-  let data = '';
-  res.on('data', chunk => data += chunk);
-  res.on('end', () => {
-    console.log(`Status: ${res.statusCode}`);
-    console.log(`Response: ${data}`);
-  });
-});
+}
 
-req.on('error', console.error);
-req.end();
+check();

@@ -9,15 +9,48 @@ exports.getAll = (userId) => {
 };
 
 exports.getStatus = async (userId) => {
+  if (!userId || isNaN(userId)) {
+    return [];
+  }
+
   const tenants = await db('tenants')
     .leftJoin('beds', 'tenants.bed_id', '=', 'beds.bed_id')
     .leftJoin('rooms', 'beds.room_id', '=', 'rooms.room_id')
     .where({ 'tenants.status': 'Staying', 'tenants.user_id': userId })
     .select('tenants.tenant_id', 'tenants.name', 'tenants.expiry_date', 'beds.bed_number', 'rooms.room_number', 'beds.bed_cost', 'beds.advance_amount');
 
-  return Promise.all(tenants.map(async (t) => {
-    const lastPay = await db('payments').where({ tenant_id: t.tenant_id, user_id: userId }).orderBy('payment_date', 'desc').first();
-    const access = await db('access_control').where('tenant_id', t.tenant_id).first();
+  if (tenants.length === 0) return [];
+
+  const tenantIds = tenants.map(t => t.tenant_id);
+
+  // Batch fetch payments in a single query
+  const payments = await db('payments')
+    .whereIn('tenant_id', tenantIds)
+    .where('user_id', userId)
+    .orderBy('payment_date', 'desc');
+
+  // Batch fetch access rules in a single query
+  const accessRules = await db('access_control')
+    .whereIn('tenant_id', tenantIds);
+
+  // Map the latest payment in memory
+  const latestPaymentsMap = {};
+  for (const pay of payments) {
+    if (!latestPaymentsMap[pay.tenant_id]) {
+      latestPaymentsMap[pay.tenant_id] = pay;
+    }
+  }
+
+  // Map access rules in memory
+  const accessMap = {};
+  for (const access of accessRules) {
+    accessMap[access.tenant_id] = access;
+  }
+
+  // Combine them in-memory
+  return tenants.map((t) => {
+    const lastPay = latestPaymentsMap[t.tenant_id];
+    const access = accessMap[t.tenant_id];
     return {
       ...t,
       last_payment_date: lastPay ? lastPay.payment_date : null,
@@ -26,7 +59,7 @@ exports.getStatus = async (userId) => {
       schedule_id: access ? access.schedule_id : 1,
       access_group_id: access ? access.access_group_id : null
     };
-  }));
+  });
 };
 
 exports.create = async (paymentData, userId) => {
