@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
-import { UserPlus, Search, Filter, Smartphone, Fingerprint, Server, RefreshCw, X, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { UserPlus, Search, Filter, Smartphone, Fingerprint, Server, RefreshCw, X, ShieldCheck, ShieldAlert, Users } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 
 const Tenants = () => {
@@ -28,7 +28,7 @@ const Tenants = () => {
   const [newTenant, setNewTenant] = useState({
     tenant_id: '', name: '', mobile: '', gender: 'Male', joining_date: new Date().toISOString().split('T')[0], 
     expiry_date: '', access_expiry_date: '', punch_limit: '', bed_id: '', status: 'Staying', initial_payment: 'Pending', tenant_type: 'Permanent',
-    custom_rent: '', custom_advance: '', discount_amount: ''
+    custom_rent: '', custom_advance: '', discount_amount: '', photo: ''
   });
   const [toast, setToast] = useState(null);
   const [showPinModal, setShowPinModal] = useState(false);
@@ -203,7 +203,8 @@ const Tenants = () => {
       biometric_pin: tenant.biometric_pin || '',
       custom_rent: tenant.custom_rent !== null && tenant.custom_rent !== undefined ? tenant.custom_rent.toString() : '',
       custom_advance: tenant.custom_advance !== null && tenant.custom_advance !== undefined ? tenant.custom_advance.toString() : '',
-      discount_amount: tenant.discount_amount !== null && tenant.discount_amount !== undefined ? tenant.discount_amount.toString() : ''
+      discount_amount: tenant.discount_amount !== null && tenant.discount_amount !== undefined ? tenant.discount_amount.toString() : '',
+      photo: tenant.photo || ''
     });
     setIsEditing(true);
     setShowModal(true);
@@ -225,6 +226,21 @@ const Tenants = () => {
       alert(isEditing ? 'Tenant updated successfully' : 'Tenant added successfully');
     } catch (err) {
       alert(err.response?.data?.error || 'Failed to save tenant');
+    }
+  };
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File size exceeds the 5MB limit');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNewTenant(prev => ({ ...prev, photo: reader.result }));
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -332,7 +348,7 @@ const Tenants = () => {
           >
             {selectionMode === 'delete' ? 'Exit Delete Mode' : 'Select & Delete'}
           </button>
-          <button className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => { setIsEditing(false); setNewTenant({ name: '', mobile: '', occupation: '', gender: 'Male', joining_date: new Date().toISOString().split('T')[0], expiry_date: '', access_expiry_date: '', punch_limit: '', bed_id: '', status: 'Staying', initial_payment: 'Pending', tenant_type: 'Permanent', biometric_pin: '', custom_rent: '', custom_advance: '', discount_amount: '' }); setShowModal(true); }}>
+          <button className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => { setIsEditing(false); setNewTenant({ name: '', mobile: '', occupation: '', gender: 'Male', joining_date: new Date().toISOString().split('T')[0], expiry_date: '', access_expiry_date: '', punch_limit: '', bed_id: '', status: 'Staying', initial_payment: 'Pending', tenant_type: 'Permanent', biometric_pin: '', custom_rent: '', custom_advance: '', discount_amount: '', photo: '' }); setShowModal(true); }}>
             <UserPlus size={18} /> Add Tenant
           </button>
         </div>
@@ -406,17 +422,37 @@ const Tenants = () => {
                 )}
                 <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>#{t.tenant_id}</td>
                 <td style={{ fontWeight: 600 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    {t.name}
-                    {t.biometric_count > 0 ? (
-                      <span title={`${t.biometric_count} biometric template(s) saved`} style={{ color: '#10b981', display: 'flex', alignItems: 'center' }}>
-                        <Fingerprint size={16} />
-                      </span>
-                    ) : (
-                      <span title="No biometric templates saved" style={{ color: 'var(--text-muted)', opacity: 0.5, display: 'flex', alignItems: 'center' }}>
-                        <Fingerprint size={16} />
-                      </span>
-                    )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
+                      overflow: 'hidden',
+                      background: 'rgba(255,255,255,0.05)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: '1px solid var(--border)',
+                      flexShrink: 0
+                    }}>
+                      {t.photo ? (
+                        <img src={t.photo} alt={t.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <Users size={16} style={{ color: 'var(--text-muted)' }} />
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {t.name}
+                      {t.biometric_count > 0 ? (
+                        <span title={`${t.biometric_count} biometric template(s) saved`} style={{ color: '#10b981', display: 'flex', alignItems: 'center' }}>
+                          <Fingerprint size={16} />
+                        </span>
+                      ) : (
+                        <span title="No biometric templates saved" style={{ color: 'var(--text-muted)', opacity: 0.5, display: 'flex', alignItems: 'center' }}>
+                          <Fingerprint size={16} />
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </td>
                 <td>{t.mobile}</td>
@@ -540,6 +576,74 @@ const Tenants = () => {
                   If the tenant is already registered on the machine with a custom ID (like 69 or HY0069), enter it here. Otherwise, leave blank to use the standard Software ID.
                 </small>
               </div>
+
+              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Profile Photo</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                  <div style={{ 
+                    width: '70px', 
+                    height: '70px', 
+                    borderRadius: '50%', 
+                    border: '2px dashed var(--border)',
+                    background: 'rgba(0,0,0,0.2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden',
+                    position: 'relative'
+                  }}>
+                    {newTenant.photo ? (
+                      <img src={newTenant.photo} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <Users size={32} style={{ color: 'var(--text-muted)' }} />
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      id="tenant-photo-upload" 
+                      style={{ display: 'none' }} 
+                      onChange={handlePhotoChange}
+                    />
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <label 
+                        htmlFor="tenant-photo-upload" 
+                        className="btn" 
+                        style={{ 
+                          padding: '0.5rem 1rem', 
+                          fontSize: '0.85rem', 
+                          background: 'var(--primary)', 
+                          color: 'white', 
+                          cursor: 'pointer',
+                          borderRadius: '0.5rem',
+                          textAlign: 'center'
+                        }}
+                      >
+                        Choose Photo
+                      </label>
+                      {newTenant.photo && (
+                        <button 
+                          type="button" 
+                          className="btn" 
+                          style={{ 
+                            padding: '0.5rem 1rem', 
+                            fontSize: '0.85rem', 
+                            background: 'rgba(239, 68, 68, 0.1)', 
+                            color: '#ef4444',
+                            borderRadius: '0.5rem'
+                          }}
+                          onClick={() => setNewTenant({ ...newTenant, photo: '' })}
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                    <small style={{ color: 'var(--text-muted)' }}>Supported formats: JPG, PNG, WEBP. Max size: 5MB.</small>
+                  </div>
+                </div>
+              </div>
+
               <div className="form-group">
                 <label>Full Name</label>
                 <input type="text" required value={newTenant.name} onChange={e => setNewTenant({ ...newTenant, name: e.target.value })} />
