@@ -17,7 +17,11 @@ exports.getStatus = async (userId) => {
     .leftJoin('beds', 'tenants.bed_id', '=', 'beds.bed_id')
     .leftJoin('rooms', 'beds.room_id', '=', 'rooms.room_id')
     .where({ 'tenants.status': 'Staying', 'tenants.user_id': userId })
-    .select('tenants.tenant_id', 'tenants.name', 'tenants.expiry_date', 'beds.bed_number', 'rooms.room_number', 'beds.bed_cost', 'beds.advance_amount');
+    .select(
+      'tenants.tenant_id', 'tenants.name', 'tenants.expiry_date',
+      'tenants.custom_rent', 'tenants.custom_advance', 'tenants.discount_amount',
+      'beds.bed_number', 'rooms.room_number', 'beds.bed_cost', 'beds.advance_amount'
+    );
 
   if (tenants.length === 0) return [];
 
@@ -51,8 +55,15 @@ exports.getStatus = async (userId) => {
   return tenants.map((t) => {
     const lastPay = latestPaymentsMap[t.tenant_id];
     const access = accessMap[t.tenant_id];
+    
+    // Apply custom pricing overrides if set
+    const rentVal = t.custom_rent !== null && t.custom_rent !== undefined ? t.custom_rent : (t.bed_cost || 0);
+    const advVal = t.custom_advance !== null && t.custom_advance !== undefined ? t.custom_advance : (t.advance_amount || 0);
+
     return {
       ...t,
+      bed_cost: rentVal,
+      advance_amount: advVal,
       last_payment_date: lastPay ? lastPay.payment_date : null,
       pending_balance: lastPay ? lastPay.balance : 0,
       access_granted: access ? access.access_granted : false,

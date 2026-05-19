@@ -20,14 +20,15 @@ exports.generateMonthlyBills = async (userId) => {
       const prevYear = now.getMonth() === 0 ? year - 1 : year;
       const lastBill = await db('billing').where({ tenant_id: t.tenant_id, month: prevMonth, year: prevYear }).first();
 
+      const actualRent = t.custom_rent !== null && t.custom_rent !== undefined ? t.custom_rent : t.bed_cost;
       const prevBalance = lastBill ? lastBill.current_balance : 0;
-      const totalDue = t.bed_cost + prevBalance;
-      const accessStatus = totalDue > t.bed_cost ? 'locked' : 'active';
+      const totalDue = actualRent + prevBalance;
+      const accessStatus = totalDue > actualRent ? 'locked' : 'active';
       await db('tenants').where('tenant_id', t.tenant_id).update({ access_status: accessStatus });
 
       await db('billing').insert({
         tenant_id: t.tenant_id, user_id: userId, month, year,
-        fixed_rent: t.bed_cost, previous_balance: prevBalance, total_due: totalDue,
+        fixed_rent: actualRent, previous_balance: prevBalance, total_due: totalDue,
         amount_paid: 0, current_balance: totalDue,
         due_date: new Date(year, now.getMonth(), 5).toISOString().split('T')[0],
         status: 'Unpaid'

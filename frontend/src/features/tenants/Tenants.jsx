@@ -27,7 +27,8 @@ const Tenants = () => {
   });
   const [newTenant, setNewTenant] = useState({
     tenant_id: '', name: '', mobile: '', gender: 'Male', joining_date: new Date().toISOString().split('T')[0], 
-    expiry_date: '', access_expiry_date: '', punch_limit: '', bed_id: '', status: 'Staying', initial_payment: 'Pending', tenant_type: 'Permanent'
+    expiry_date: '', access_expiry_date: '', punch_limit: '', bed_id: '', status: 'Staying', initial_payment: 'Pending', tenant_type: 'Permanent',
+    custom_rent: '', custom_advance: '', discount_amount: ''
   });
   const [toast, setToast] = useState(null);
   const [showPinModal, setShowPinModal] = useState(false);
@@ -199,7 +200,10 @@ const Tenants = () => {
       status: tenant.status || 'Staying',
       initial_payment: 'Pending',
       tenant_type: tenant.tenant_type || 'Permanent',
-      biometric_pin: tenant.biometric_pin || ''
+      biometric_pin: tenant.biometric_pin || '',
+      custom_rent: tenant.custom_rent !== null && tenant.custom_rent !== undefined ? tenant.custom_rent.toString() : '',
+      custom_advance: tenant.custom_advance !== null && tenant.custom_advance !== undefined ? tenant.custom_advance.toString() : '',
+      discount_amount: tenant.discount_amount !== null && tenant.discount_amount !== undefined ? tenant.discount_amount.toString() : ''
     });
     setIsEditing(true);
     setShowModal(true);
@@ -328,7 +332,7 @@ const Tenants = () => {
           >
             {selectionMode === 'delete' ? 'Exit Delete Mode' : 'Select & Delete'}
           </button>
-          <button className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => { setIsEditing(false); setNewTenant({ name: '', mobile: '', occupation: '', gender: 'Male', joining_date: new Date().toISOString().split('T')[0], expiry_date: '', access_expiry_date: '', punch_limit: '', bed_id: '', status: 'Staying', initial_payment: 'Pending', tenant_type: 'Permanent', biometric_pin: '' }); setShowModal(true); }}>
+          <button className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => { setIsEditing(false); setNewTenant({ name: '', mobile: '', occupation: '', gender: 'Male', joining_date: new Date().toISOString().split('T')[0], expiry_date: '', access_expiry_date: '', punch_limit: '', bed_id: '', status: 'Staying', initial_payment: 'Pending', tenant_type: 'Permanent', biometric_pin: '', custom_rent: '', custom_advance: '', discount_amount: '' }); setShowModal(true); }}>
             <UserPlus size={18} /> Add Tenant
           </button>
         </div>
@@ -640,8 +644,14 @@ const Tenants = () => {
                     })() : (() => {
                       const bed = vacantBeds.find(b => b.bed_id === newTenant.bed_id);
                       if (!bed) return null;
-                      const monthlyRent = bed.bed_cost || 0;
-                      const advance = bed.advance_amount || 0;
+                      const baseRent = bed.bed_cost || 0;
+                      const baseAdvance = bed.advance_amount || 0;
+
+                      // Use custom overrides if provided, otherwise default to base values
+                      const monthlyRent = newTenant.custom_rent !== '' ? parseFloat(newTenant.custom_rent) || 0 : baseRent;
+                      const advance = newTenant.custom_advance !== '' ? parseFloat(newTenant.custom_advance) || 0 : baseAdvance;
+                      const discount = newTenant.discount_amount !== '' ? parseFloat(newTenant.discount_amount) || 0 : 0;
+
                       const hasExpiry = newTenant.joining_date && newTenant.expiry_date;
                       let months = 1;
                       if (hasExpiry) {
@@ -650,16 +660,23 @@ const Tenants = () => {
                         months = Math.max(1, (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()));
                       }
                       const totalRent = months * monthlyRent;
+                      const totalInitial = Math.max(0, totalRent + advance - discount);
+
                       return (
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                           <span title={`₹${monthlyRent.toLocaleString()} x ${months} months`} style={{ color: 'var(--text-muted)', fontSize: '0.75rem', background: 'rgba(0, 0, 0, 0.2)', padding: '2px 8px', borderRadius: '4px' }}>
                             Rent: ₹{totalRent.toLocaleString()}
                           </span>
                           <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', background: 'rgba(0, 0, 0, 0.2)', padding: '2px 8px', borderRadius: '4px' }}>
                             Adv: ₹{advance.toLocaleString()}
                           </span>
+                          {discount > 0 && (
+                            <span style={{ color: '#ef4444', fontSize: '0.75rem', background: 'rgba(239, 68, 68, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>
+                              Disc: -₹{discount.toLocaleString()}
+                            </span>
+                          )}
                           <span style={{ color: 'var(--success)', fontWeight: 600, fontSize: '0.8rem', background: 'rgba(16, 185, 129, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>
-                            Total: ₹{(totalRent + advance).toLocaleString()}
+                            Total: ₹{totalInitial.toLocaleString()}
                           </span>
                         </div>
                       );
@@ -702,6 +719,47 @@ const Tenants = () => {
                       </div>
                     ))
                   )}
+                </div>
+              </div>
+
+              <div style={{ padding: '1rem', background: 'rgba(16, 185, 129, 0.05)', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.2)', marginBottom: '1.5rem', marginTop: '1rem' }}>
+                <h4 style={{ marginBottom: '0.75rem', color: '#10b981', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  Custom Pricing & Discounts (Optional)
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>Custom Rent (₹)</label>
+                    <input 
+                      type="number" 
+                      placeholder="e.g. 7000" 
+                      value={newTenant.custom_rent || ''} 
+                      onChange={e => setNewTenant({ ...newTenant, custom_rent: e.target.value })} 
+                      onFocus={e => e.target.select()}
+                    />
+                    <small style={{ color: 'var(--text-muted)' }}>Overrides default monthly cost</small>
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>Custom Advance (₹)</label>
+                    <input 
+                      type="number" 
+                      placeholder="e.g. 2000" 
+                      value={newTenant.custom_advance || ''} 
+                      onChange={e => setNewTenant({ ...newTenant, custom_advance: e.target.value })} 
+                      onFocus={e => e.target.select()}
+                    />
+                    <small style={{ color: 'var(--text-muted)' }}>Overrides default deposit</small>
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>First-month Discount (₹)</label>
+                    <input 
+                      type="number" 
+                      placeholder="e.g. 500" 
+                      value={newTenant.discount_amount || ''} 
+                      onChange={e => setNewTenant({ ...newTenant, discount_amount: e.target.value })} 
+                      onFocus={e => e.target.select()}
+                    />
+                    <small style={{ color: 'var(--text-muted)' }}>Single-time initial reduction</small>
+                  </div>
                 </div>
               </div>
 
