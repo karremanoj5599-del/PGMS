@@ -31,6 +31,7 @@ const AccessSchedules = () => {
   const [newHoliday, setNewHoliday] = useState({ name: '', start_date: '', end_date: '', timezone_id: '' });
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [activeTab, setActiveTab] = useState('global');
 
   useEffect(() => {
     fetchSchedules();
@@ -221,281 +222,337 @@ const AccessSchedules = () => {
         </div>
       </div>
 
+      {/* Tabs Navigation */}
       <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', 
-        gap: '1.5rem', 
-        alignItems: 'flex-start',
-        marginBottom: '3rem'
+        display: 'flex', 
+        gap: '2.5rem', 
+        borderBottom: '1px solid rgba(255, 255, 255, 0.08)', 
+        marginBottom: '2rem', 
+        paddingBottom: '0.1rem',
+        alignItems: 'center'
       }}>
-        
-        {/* COLUMN 1: Global Configurations, Revoke, and Schedules */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          
-          {/* Global Access Configuration */}
-          <div className="card" style={{ margin: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem' }}>
-              <ShieldCheck size={20} color="var(--primary)" />
-              <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Global Access Configuration</h2>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-              <div className="form-group">
-                <label>Lock Delay (Seconds)</label>
-                <input 
-                  type="number" min="1" max="255"
-                  value={globalOptions.lock_delay || 5}
-                  onChange={e => setGlobalOptions({...globalOptions, lock_delay: parseInt(e.target.value)})}
-                />
+        {[
+          { id: 'global', label: 'Global Access Configuration' },
+          { id: 'holidays', label: 'Holiday Access Rules' },
+          { id: 'groups', label: 'Access Groups' },
+          { id: 'tenants', label: 'Tenant Access Control' }
+        ].map(tab => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: isActive ? '#6366f1' : 'rgba(255, 255, 255, 0.5)',
+                fontSize: '1rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                padding: '0.8rem 0',
+                position: 'relative',
+                transition: 'color 0.2s',
+                outline: 'none'
+              }}
+            >
+              {tab.label}
+              {isActive && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: '-2px',
+                  left: 0,
+                  right: 0,
+                  height: '2px',
+                  background: '#6366f1',
+                  borderRadius: '2px'
+                }} />
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Tab Contents */}
+      {activeTab === 'global' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '1.5rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {/* Global Access Configuration */}
+            <div className="card" style={{ margin: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem' }}>
+                <ShieldCheck size={20} color="var(--primary)" />
+                <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Global Access Configuration</h2>
               </div>
-              <div className="form-group">
-                <label>Anti-Passback</label>
-                <div style={{ padding: '0.6rem', borderRadius: '8px', background: '#2d3748', border: '1px solid rgba(255,255,255,0.1)' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', margin: 0, fontSize: '0.8rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+                <div className="form-group">
+                  <label>Lock Delay (Seconds)</label>
+                  <input 
+                    type="number" min="1" max="255"
+                    value={globalOptions.lock_delay || 5}
+                    onChange={e => setGlobalOptions({...globalOptions, lock_delay: parseInt(e.target.value)})}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Anti-Passback</label>
+                  <div style={{ padding: '0.6rem', borderRadius: '8px', background: '#2d3748', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', margin: 0, fontSize: '0.85rem' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={!!globalOptions.anti_passback}
+                        onChange={e => setGlobalOptions({...globalOptions, anti_passback: e.target.checked})}
+                      />
+                      Enable Network Anti-Passback
+                    </label>
+                  </div>
+                </div>
+                <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                  <label>Device Expiration Action</label>
+                  <select 
+                    value={globalOptions.expire_action ?? 0}
+                    onChange={e => setGlobalOptions({...globalOptions, expire_action: parseInt(e.target.value)})}
+                  >
+                    <option value={0}>Retain User, Stop Saving Logs</option>
+                    <option value={1}>Retain User, Continue Saving Logs</option>
+                    <option value={2}>Delete User Record Completely</option>
+                  </select>
+                </div>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', gridColumn: 'span 2' }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginBottom: '0.5rem', fontSize: '0.85rem' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={!!globalOptions.auto_block_enabled}
+                        onChange={e => setGlobalOptions({...globalOptions, auto_block_enabled: e.target.checked})}
+                      />
+                      Auto-Block
+                    </label>
                     <input 
-                      type="checkbox" 
-                      checked={!!globalOptions.anti_passback}
-                      onChange={e => setGlobalOptions({...globalOptions, anti_passback: e.target.checked})}
+                      type="number" placeholder="Days"
+                      disabled={!globalOptions.auto_block_enabled}
+                      value={globalOptions.auto_block_days || ''}
+                      onChange={e => setGlobalOptions({...globalOptions, auto_block_days: parseInt(e.target.value)})}
                     />
-                    Enable Anti-Passback
-                  </label>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginBottom: '0.5rem', fontSize: '0.85rem' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={!!globalOptions.auto_delete_enabled}
+                        onChange={e => setGlobalOptions({...globalOptions, auto_delete_enabled: e.target.checked})}
+                      />
+                      Auto-Delete
+                    </label>
+                    <input 
+                      type="number" placeholder="Days"
+                      disabled={!globalOptions.auto_delete_enabled}
+                      value={globalOptions.auto_delete_days || ''}
+                      onChange={e => setGlobalOptions({...globalOptions, auto_delete_days: parseInt(e.target.value)})}
+                    />
+                  </div>
                 </div>
               </div>
-              <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                <label>Device Expiration Action</label>
-                <select 
-                  value={globalOptions.expire_action ?? 0}
-                  onChange={e => setGlobalOptions({...globalOptions, expire_action: parseInt(e.target.value)})}
-                >
-                  <option value={0}>Retain User, Stop Saving Logs</option>
-                  <option value={1}>Retain User, Continue Saving Logs</option>
-                  <option value={2}>Delete User Record Completely</option>
+              <button className="btn btn-primary" onClick={saveGlobalOptions} disabled={loading} style={{ width: '100%' }}>
+                Save Global Settings
+              </button>
+            </div>
+
+            {/* Time Schedules Card */}
+            <div className="card" style={{ margin: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem' }}>
+                <Clock size={20} color="var(--primary)" />
+                <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Time Schedules</h2>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.2rem' }}>
+                {schedules.map(s => (
+                  <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: s.id === 1 ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.05)' }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{s.name}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--accent)', fontWeight: 600, marginTop: '2px' }}>
+                        {s.start_time} — {s.end_time}
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                        {s.valid_days ? ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].filter((_, i) => s.valid_days[i] === '1').join(' • ') : 'Everyday'}
+                      </div>
+                    </div>
+                    {s.id !== 1 && (
+                      <button onClick={() => handleDelete(s.id)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '4px' }}>
+                        <Trash2 size={15} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div>
+            {/* Revoke Tool Card */}
+            <div className="card" style={{ margin: 0, border: '1px solid rgba(239, 68, 68, 0.2)', background: 'linear-gradient(to bottom, rgba(239, 68, 68, 0.05), transparent)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem' }}>
+                <AlertCircle size={20} color="var(--danger)" />
+                <h2 style={{ margin: 0, color: 'var(--danger)', fontSize: '1.25rem' }}>Instant Revoke Tool</h2>
+              </div>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem', lineHeight: '1.5' }}>
+                Immediately force delete a user's biometric signature from all hardware and lock their mobile app access.
+              </p>
+              <div className="form-group">
+                <label>Select Tenant to Revoke</label>
+                <select value={revokeTenantId} onChange={e => setRevokeTenantId(e.target.value)}>
+                  <option value="">-- Choose Tenant --</option>
+                  {tenants.map(t => (
+                    <option key={t.tenant_id} value={t.tenant_id}>{t.name} (Room {t.room_number || 'NA'})</option>
+                  ))}
                 </select>
               </div>
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', gridColumn: 'span 2' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginBottom: '0.5rem', fontSize: '0.85rem' }}>
-                    <input 
-                      type="checkbox" 
-                      checked={!!globalOptions.auto_block_enabled}
-                      onChange={e => setGlobalOptions({...globalOptions, auto_block_enabled: e.target.checked})}
-                    />
-                    Auto-Block
-                  </label>
-                  <input 
-                    type="number" placeholder="Days"
-                    disabled={!globalOptions.auto_block_enabled}
-                    value={globalOptions.auto_block_days || ''}
-                    onChange={e => setGlobalOptions({...globalOptions, auto_block_days: parseInt(e.target.value)})}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginBottom: '0.5rem', fontSize: '0.85rem' }}>
-                    <input 
-                      type="checkbox" 
-                      checked={!!globalOptions.auto_delete_enabled}
-                      onChange={e => setGlobalOptions({...globalOptions, auto_delete_enabled: e.target.checked})}
-                    />
-                    Auto-Delete
-                  </label>
-                  <input 
-                    type="number" placeholder="Days"
-                    disabled={!globalOptions.auto_delete_enabled}
-                    value={globalOptions.auto_delete_days || ''}
-                    onChange={e => setGlobalOptions({...globalOptions, auto_delete_days: parseInt(e.target.value)})}
-                  />
-                </div>
-              </div>
+              <button 
+                className="btn" 
+                onClick={handleRevokeAccess} 
+                disabled={!revokeTenantId || loading}
+                style={{ width: '100%', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', border: '1px solid rgba(239, 68, 68, 0.5)', marginTop: '0.5rem' }}
+              >
+                REVOKE ACCESS
+              </button>
             </div>
-            <button className="btn btn-primary" onClick={saveGlobalOptions} disabled={loading} style={{ width: '100%' }}>
-              Save Global Settings
-            </button>
           </div>
+        </div>
+      )}
 
-          {/* Revoke Tool */}
-          <div className="card" style={{ margin: 0, border: '1px solid rgba(239, 68, 68, 0.2)', background: 'linear-gradient(to bottom, rgba(239, 68, 68, 0.05), transparent)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem' }}>
-              <AlertCircle size={20} color="var(--danger)" />
-              <h2 style={{ margin: 0, color: 'var(--danger)', fontSize: '1.25rem' }}>Instant Revoke Tool</h2>
-            </div>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1.2rem', lineHeight: '1.4' }}>
-              Force delete a tenant's biometric profile across all hardware and lock mobile app access.
-            </p>
-            <div className="form-group">
-              <label>Select Tenant to Revoke</label>
-              <select value={revokeTenantId} onChange={e => setRevokeTenantId(e.target.value)}>
-                <option value="">-- Choose Tenant --</option>
-                {tenants.map(t => (
-                  <option key={t.tenant_id} value={t.tenant_id}>{t.name} (Room {t.room_number || 'NA'})</option>
-                ))}
-              </select>
-            </div>
-            <button 
-              className="btn" 
-              onClick={handleRevokeAccess} 
-              disabled={!revokeTenantId || loading}
-              style={{ width: '100%', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', border: '1px solid rgba(239, 68, 68, 0.5)', marginTop: '0.5rem' }}
-            >
-              REVOKE ACCESS
-            </button>
-          </div>
-
-          {/* Schedule Definitions */}
-          <div className="card" style={{ margin: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem' }}>
-              <Clock size={20} color="var(--primary)" />
-              <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Time Schedules</h2>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '350px', overflowY: 'auto', paddingRight: '4px' }}>
-              {schedules.map(s => (
-                <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: s.id === 1 ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.05)' }}>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{s.name}</div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--accent)', fontWeight: 600, marginTop: '2px' }}>
-                      {s.start_time} — {s.end_time}
+      {activeTab === 'holidays' && (
+        <div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+            {holidays.map(h => (
+              <div key={h.id} className="card" style={{ border: '1px solid rgba(34, 197, 94, 0.2)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ background: 'rgba(34, 197, 94, 0.1)', padding: '10px', borderRadius: '10px' }}>
+                      <Clock size={20} color="#22c55e" />
                     </div>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                      {s.valid_days ? ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].filter((_, i) => s.valid_days[i] === '1').join(' • ') : 'Everyday'}
+                    <div>
+                      <h3 style={{ margin: 0 }}>{h.name}</h3>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                        {new Date(h.start_date).toLocaleDateString()} to {new Date(h.end_date).toLocaleDateString()}
+                      </div>
                     </div>
                   </div>
-                  {s.id !== 1 && (
-                    <button onClick={() => handleDelete(s.id)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '4px' }}>
-                      <Trash2 size={15} />
-                    </button>
+                  <button onClick={() => handleDeleteHoliday(h.id)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer' }}>
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+                <div style={{ fontSize: '0.85rem', background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '8px' }}>
+                  {h.timezone_id ? (
+                    <>Uses Schedule: <span style={{ fontWeight: 600, color: 'var(--success)' }}>
+                      {schedules.find(s => s.id === h.timezone_id)?.name || 'Full Access'}
+                    </span></>
+                  ) : (
+                    <span style={{ color: 'var(--danger)' }}>No Access Permitted</span>
                   )}
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
+            {holidays.length === 0 && (
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', gridColumn: '1/-1', textAlign: 'center', padding: '3rem', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                No holiday rules defined.
+              </div>
+            )}
           </div>
-
         </div>
+      )}
 
-        {/* COLUMN 2: Holiday Rules & Access Groups */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          
-          {/* Holiday Rules */}
-          <div className="card" style={{ margin: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem' }}>
-              <Clock size={20} color="var(--success)" />
-              <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Holiday Access Rules</h2>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '420px', overflowY: 'auto', paddingRight: '4px' }}>
-              {holidays.map(h => (
-                <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(34, 197, 94, 0.2)' }}>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{h.name}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                      {new Date(h.start_date).toLocaleDateString()} to {new Date(h.end_date).toLocaleDateString()}
+      {activeTab === 'groups' && (
+        <div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+            {groups.map(g => (
+              <div key={g.id} className="card" style={{ border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '10px', borderRadius: '10px' }}>
+                      <Users size={20} color="#3b82f6" />
                     </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--success)', fontWeight: 600, marginTop: '2px' }}>
-                      {h.timezone_id ? `Schedule: ${schedules.find(s => s.id === h.timezone_id)?.name || 'Full Access'}` : 'Blocked (No Access)'}
-                    </div>
+                    <h3 style={{ margin: 0 }}>{g.name}</h3>
                   </div>
-                  <button onClick={() => handleDeleteHoliday(h.id)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '4px' }}>
-                    <Trash2 size={15} />
+                  <button onClick={() => handleDeleteGroup(g.id)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer' }}>
+                    <Trash2 size={16} />
                   </button>
                 </div>
-              ))}
-              {holidays.length === 0 && (
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', textAlign: 'center', padding: '2rem', background: 'rgba(255,255,255,0.01)', borderRadius: '8px' }}>
-                  No holiday rules defined.
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {[g.timezone1_id, g.timezone2_id, g.timezone3_id].map((tid, idx) => {
+                    const s = schedules.find(sched => sched.id === tid);
+                    return s ? (
+                      <div key={idx} style={{ fontSize: '0.85rem', background: 'rgba(255,255,255,0.03)', padding: '8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                         <span style={{ fontWeight: 600, color: 'var(--accent)' }}>T{idx+1}:</span> {s.name} ({s.start_time}-{s.end_time})
+                      </div>
+                    ) : null;
+                  })}
+                  {![g.timezone1_id, g.timezone2_id, g.timezone3_id].some(t=>t) && (
+                    <div style={{ textAlign: 'center', padding: '10px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>No schedules assigned</div>
+                  )}
                 </div>
-              )}
-            </div>
+              </div>
+            ))}
+            {groups.length === 0 && (
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', gridColumn: '1/-1', textAlign: 'center', padding: '3rem', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                No access groups defined yet. Create one to bundle multiple time schedules.
+              </div>
+            )}
           </div>
-
-          {/* Access Groups */}
-          <div className="card" style={{ margin: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem' }}>
-              <ShieldCheck size={20} color="var(--accent)" />
-              <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Access Groups</h2>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '420px', overflowY: 'auto', paddingRight: '4px' }}>
-              {groups.map(g => (
-                <div key={g.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{g.name}</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
-                      {[g.timezone1_id, g.timezone2_id, g.timezone3_id].map((tid, idx) => {
-                        const s = schedules.find(sched => sched.id === tid);
-                        return s ? (
-                          <span key={idx} style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                            <span style={{ fontWeight: 600, color: 'var(--accent)' }}>T{idx+1}:</span> {s.name}
-                          </span>
-                        ) : null;
-                      })}
-                    </div>
-                  </div>
-                  <button onClick={() => handleDeleteGroup(g.id)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '4px' }}>
-                    <Trash2 size={15} />
-                  </button>
-                </div>
-              ))}
-              {groups.length === 0 && (
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', textAlign: 'center', padding: '2rem', background: 'rgba(255,255,255,0.01)', borderRadius: '8px' }}>
-                  No access groups defined yet.
-                </div>
-              )}
-            </div>
-          </div>
-
         </div>
+      )}
 
-        {/* COLUMN 3: Tenant Access Control */}
-        <div className="card" style={{ margin: 0, height: '100%', minHeight: '600px', display: 'flex', flexDirection: 'column' }}>
+      {activeTab === 'tenants' && (
+        <div className="card">
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem' }}>
             <Users size={20} color="var(--accent)" />
-            <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Tenant Access Control</h2>
+            <h2 style={{ margin: 0 }}>Tenant Access Control</h2>
           </div>
           
-          <div className="data-table-container" style={{ flex: 1, maxHeight: '1100px', overflowY: 'auto' }}>
+          <div className="data-table-container">
             <table>
               <thead>
                 <tr>
                   <th>Tenant Name</th>
                   <th>Room</th>
                   <th>Access Status</th>
-                  <th>Assigned Group</th>
+                  <th>Assigned Access Group</th>
                 </tr>
               </thead>
               <tbody>
                 {tenants.map(t => (
                   <tr key={t.tenant_id}>
                     <td>
-                      <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{t.name}</div>
-                      <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>ID: {t.tenant_id}</div>
+                      <div style={{ fontWeight: 600 }}>{t.name}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>ID: {t.tenant_id}</div>
                     </td>
                     <td>Room {t.room_number || 'N/A'}</td>
                     <td>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
-                        <div style={{ display: 'flex', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', padding: '2px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '4px', border: '1px solid rgba(255,255,255,0.1)' }}>
                           <button 
                             onClick={() => !t.access_granted && toggleAccess(t.tenant_id, false)}
                             style={{ 
-                              padding: '4px 8px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700,
+                              padding: '6px 12px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 700,
                               background: t.access_granted ? 'var(--success)' : 'transparent',
                               color: t.access_granted ? 'white' : 'var(--text-muted)',
-                              transition: '0.2s', display: 'flex', alignItems: 'center', gap: '2px'
+                              transition: '0.2s', display: 'flex', alignItems: 'center', gap: '4px'
                             }}
                           >
-                            <CheckCircle size={12} /> OK
+                            <CheckCircle size={14} /> Allowed
                           </button>
                           <button 
                             onClick={() => t.access_granted && toggleAccess(t.tenant_id, true)}
                             style={{ 
-                              padding: '4px 8px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700,
+                              padding: '6px 12px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 700,
                               background: !t.access_granted ? 'var(--danger)' : 'transparent',
                               color: !t.access_granted ? 'white' : 'var(--text-muted)',
-                              transition: '0.2s', display: 'flex', alignItems: 'center', gap: '2px'
+                              transition: '0.2s', display: 'flex', alignItems: 'center', gap: '4px'
                             }}
                           >
-                            <XCircle size={12} /> Lock
+                            <XCircle size={14} /> Restricted
                           </button>
                         </div>
                         
                         {/* Auto-Blocked Warning */}
                         {!t.access_granted && t.pending_balance >= (t.bed_cost * 1.2) && t.bed_cost > 0 && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '2px', color: 'var(--danger)', fontSize: '0.6rem', fontWeight: 800, textTransform: 'uppercase' }}>
-                            <AlertCircle size={10} /> Overdue lock
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--danger)', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase' }}>
+                            <AlertCircle size={12} /> Overdue lock
                           </div>
                         )}
                       </div>
@@ -504,11 +561,11 @@ const AccessSchedules = () => {
                       <select 
                         value={t.access_group_id || 'none'}
                         onChange={(e) => updateGroup(t.tenant_id, e.target.value)}
-                        style={{ padding: '0.4rem', borderRadius: '6px', background: '#2d3748', color: 'white', border: '1px solid rgba(255,255,255,0.1)', fontSize: '0.8rem', width: '100%' }}
+                        style={{ padding: '0.5rem', borderRadius: '6px', background: '#2d3748', color: 'white', border: '1px solid rgba(255,255,255,0.1)', width: '100%' }}
                       >
-                        <option value="none">Default</option>
+                        <option value="none" style={{ background: '#2d3748' }}>No Group (Default)</option>
                         {groups.map(g => (
-                          <option key={g.id} value={g.id}>
+                          <option key={g.id} value={g.id} style={{ background: '#2d3748', color: 'white' }}>
                             {g.name}
                           </option>
                         ))}
@@ -520,8 +577,7 @@ const AccessSchedules = () => {
             </table>
           </div>
         </div>
-
-      </div>
+      )}
 
       {showAddModal && (
         <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
