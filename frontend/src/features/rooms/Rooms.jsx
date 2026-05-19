@@ -7,10 +7,14 @@ const Rooms = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('map'); // floors, rooms, beds, map
+  const [bedStatusFilter, setBedStatusFilter] = useState('');
   
   useEffect(() => {
     if (location.state?.tab) {
       setActiveTab(location.state.tab);
+    }
+    if (location.state?.statusFilter) {
+      setBedStatusFilter(location.state.statusFilter);
     }
   }, [location.state]);
   const [rooms, setRooms] = useState([]);
@@ -163,7 +167,9 @@ const Rooms = () => {
     }
   };
 
-  const filteredBeds = beds.sort((a, b) => a.bed_number.localeCompare(b.bed_number, undefined, { numeric: true }));
+  const filteredBeds = beds
+    .filter(bed => !bedStatusFilter || bed.status === bedStatusFilter)
+    .sort((a, b) => a.bed_number.localeCompare(b.bed_number, undefined, { numeric: true }));
   const filteredRooms = rooms.sort((a, b) => a.room_number.localeCompare(b.room_number, undefined, { numeric: true }));
 
   return (
@@ -369,40 +375,77 @@ const Rooms = () => {
         )}
 
         {activeTab === 'beds' && (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border)', textAlign: 'left' }}>
-                  <th style={{ padding: '1rem' }}>Bed ID</th>
-                  <th style={{ padding: '1rem' }}>Room</th>
-                  <th style={{ padding: '1rem' }}>Monthly Rent</th>
-                  <th style={{ padding: '1rem' }}>Status</th>
-                  <th style={{ padding: '1rem', textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredBeds.map(bed => (
-                  <tr key={bed.bed_id} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: '1rem', fontWeight: 600 }}>{bed.bed_number}</td>
-                    <td style={{ padding: '1rem' }}>Room {bed.room_number}</td>
-                    <td style={{ padding: '1rem' }}>₹{bed.bed_cost?.toLocaleString()}</td>
-                    <td style={{ padding: '1rem' }}>
-                      <span style={{ 
-                        padding: '4px 12px', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 700,
-                        background: bed.status === 'Occupied' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-                        color: bed.status === 'Occupied' ? '#ef4444' : '#10b981'
-                      }}>{bed.status}</span>
-                    </td>
-                    <td style={{ padding: '1rem', textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                        <button onClick={() => { setEditingBed(bed); setShowEditBedModal(true); }} className="btn-icon" style={{ color: 'var(--primary)' }}><Pencil size={16} /></button>
-                        <button onClick={() => handleDeleteBed(bed.bed_id)} className="btn-icon" style={{ color: 'var(--danger)' }}><Trash2 size={16} /></button>
-                      </div>
-                    </td>
+          <div>
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              marginBottom: '1.5rem',
+              background: 'var(--card-bg)',
+              padding: '1rem',
+              borderRadius: '0.75rem',
+              border: '1px solid var(--border)'
+            }}>
+              <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                Showing <strong style={{ color: 'var(--primary)' }}>{filteredBeds.length}</strong> of <strong>{beds.length}</strong> beds
+              </div>
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Status Filter:</span>
+                <select 
+                  value={bedStatusFilter} 
+                  onChange={e => setBedStatusFilter(e.target.value)}
+                  style={{ 
+                    width: '160px', 
+                    padding: '0.4rem 0.8rem', 
+                    background: '#1e293b', 
+                    border: '1px solid var(--border)', 
+                    borderRadius: '0.5rem', 
+                    color: 'var(--text-main)',
+                    fontSize: '0.85rem'
+                  }}
+                >
+                  <option value="">All Statuses</option>
+                  <option value="Vacant">Vacant</option>
+                  <option value="Occupied">Occupied</option>
+                  <option value="Maintenance">Maintenance</option>
+                </select>
+              </div>
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border)', textAlign: 'left' }}>
+                    <th style={{ padding: '1rem' }}>Bed ID</th>
+                    <th style={{ padding: '1rem' }}>Room</th>
+                    <th style={{ padding: '1rem' }}>Monthly Rent</th>
+                    <th style={{ padding: '1rem' }}>Status</th>
+                    <th style={{ padding: '1rem', textAlign: 'right' }}>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filteredBeds.map(bed => (
+                    <tr key={bed.bed_id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '1rem', fontWeight: 600 }}>{bed.bed_number}</td>
+                      <td style={{ padding: '1rem' }}>Room {bed.room_number}</td>
+                      <td style={{ padding: '1rem' }}>₹{bed.bed_cost?.toLocaleString()}</td>
+                      <td style={{ padding: '1rem' }}>
+                        <span style={{ 
+                          padding: '4px 12px', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 700,
+                          background: bed.status === 'Occupied' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                          color: bed.status === 'Occupied' ? '#ef4444' : '#10b981'
+                        }}>{bed.status}</span>
+                      </td>
+                      <td style={{ padding: '1rem', textAlign: 'right' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                          <button onClick={() => { setEditingBed(bed); setShowEditBedModal(true); }} className="btn-icon" style={{ color: 'var(--primary)' }}><Pencil size={16} /></button>
+                          <button onClick={() => handleDeleteBed(bed.bed_id)} className="btn-icon" style={{ color: 'var(--danger)' }}><Trash2 size={16} /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 

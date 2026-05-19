@@ -40,17 +40,17 @@ const Dashboard = () => {
     <div>
       <h1 style={{ marginBottom: '2rem' }}>Dashboard Overview</h1>
       <div className="stats-grid">
-        <div className="stat-card" onClick={() => navigate('/tenants', { state: { status: 'Staying' }})} style={{ cursor: 'pointer', transition: 'transform 0.2s' }} onMouseOver={e => e.currentTarget.style.transform = 'translateY(-5px)'} onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}>
+        <div className="stat-card" onClick={() => navigate('/rooms', { state: { tab: 'beds', statusFilter: 'Occupied' }})} style={{ cursor: 'pointer', transition: 'transform 0.2s' }} onMouseOver={e => e.currentTarget.style.transform = 'translateY(-5px)'} onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}>
           <div className="stat-label">Occupied Beds</div>
           <div className="stat-value" style={{ color: 'var(--danger)' }}>{stats.occupied}</div>
           <Users size={24} style={{ position: 'absolute', bottom: '1.5rem', right: '1.5rem', opacity: 0.2 }} />
         </div>
-        <div className="stat-card" onClick={() => navigate('/rooms', { state: { tab: 'map' }})} style={{ cursor: 'pointer', transition: 'transform 0.2s' }} onMouseOver={e => e.currentTarget.style.transform = 'translateY(-5px)'} onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}>
+        <div className="stat-card" onClick={() => navigate('/rooms', { state: { tab: 'beds', statusFilter: 'Vacant' }})} style={{ cursor: 'pointer', transition: 'transform 0.2s' }} onMouseOver={e => e.currentTarget.style.transform = 'translateY(-5px)'} onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}>
           <div className="stat-label">Vacant Beds</div>
           <div className="stat-value" style={{ color: 'var(--accent)' }}>{stats.vacant}</div>
           <Bed size={24} style={{ position: 'absolute', bottom: '1.5rem', right: '1.5rem', opacity: 0.2 }} />
         </div>
-        <div className="stat-card" onClick={() => navigate('/rooms', { state: { tab: 'beds' }})} style={{ cursor: 'pointer', transition: 'transform 0.2s' }} onMouseOver={e => e.currentTarget.style.transform = 'translateY(-5px)'} onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}>
+        <div className="stat-card" onClick={() => navigate('/rooms', { state: { tab: 'beds', statusFilter: 'Maintenance' }})} style={{ cursor: 'pointer', transition: 'transform 0.2s' }} onMouseOver={e => e.currentTarget.style.transform = 'translateY(-5px)'} onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}>
           <div className="stat-label">Maintenance</div>
           <div className="stat-value" style={{ color: '#f59e0b' }}>{stats.maintenance}</div>
           <AlertCircle size={24} style={{ position: 'absolute', bottom: '1.5rem', right: '1.5rem', opacity: 0.2 }} />
