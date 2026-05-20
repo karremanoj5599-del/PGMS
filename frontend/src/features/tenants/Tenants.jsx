@@ -486,10 +486,16 @@ const Tenants = () => {
                     <button
                       onClick={() => handleToggleAccess(t.tenant_id, t.access_granted)}
                       className="btn btn-icon-only" 
-                      style={{ color: t.access_granted !== false ? '#10b981' : '#ef4444' }}
-                      title={t.access_granted !== false ? "Biometric Access: Allowed (Click to Restrict)" : "Biometric Access: Restricted (Click to Allow)"}
+                      style={{ color: (t.access_granted !== false && Number(t.biometric_count || 0) > 0) ? '#10b981' : '#ef4444' }}
+                      title={
+                        t.access_granted === false
+                          ? "Biometric Access: Restricted (Click to Allow)"
+                          : Number(t.biometric_count || 0) === 0
+                          ? "Biometric Access: No templates enrolled (Click to Restrict)"
+                          : "Biometric Access: Allowed (Click to Restrict)"
+                      }
                     >
-                      {t.access_granted !== false ? <ShieldCheck size={16} /> : <ShieldAlert size={16} />}
+                      {(t.access_granted !== false && Number(t.biometric_count || 0) > 0) ? <ShieldCheck size={16} /> : <ShieldAlert size={16} />}
                     </button>
                     <button
                       onClick={() => openSyncModal(t)}
