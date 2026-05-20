@@ -13,9 +13,13 @@ const enforceInactivityRules = async () => {
       // Check expiry date
       if (tenant.access_expiry_date) {
         const expiry = new Date(tenant.access_expiry_date);
-        if (!isNaN(expiry) && expiry < new Date()) {
-          shouldLock = true;
-          console.log(`[JOB] Access expired for tenant ${tenant.tenant_id} (expired: ${tenant.access_expiry_date})`);
+        if (!isNaN(expiry)) {
+          // Set time to end of day (23:59:59.999) to allow access through the entire day
+          expiry.setHours(23, 59, 59, 999);
+          if (expiry < new Date()) {
+            shouldLock = true;
+            console.log(`[JOB] Access expired for tenant ${tenant.tenant_id} (expired: ${tenant.access_expiry_date})`);
+          }
         }
       }
 
