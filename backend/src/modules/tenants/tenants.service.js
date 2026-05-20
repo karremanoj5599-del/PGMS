@@ -12,7 +12,8 @@ exports.getAll = (userId) => {
     .select(
       'tenants.*', 'beds.bed_number', 'beds.bed_cost', 'beds.advance_amount',
       'rooms.room_id', 'rooms.room_number', 'rooms.sharing_capacity',
-      'floors.floor_id', 'floors.floor_name', 'access_control.access_granted'
+      'floors.floor_id', 'floors.floor_name', 'access_control.access_granted',
+      db.raw('(SELECT COUNT(*) FROM biometric_templates WHERE biometric_templates.tenant_id = tenants.tenant_id) as biometric_count')
     );
 };
 
