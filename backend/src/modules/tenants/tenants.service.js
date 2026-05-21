@@ -29,7 +29,8 @@ exports.create = async (data, userId) => {
     proof_doc_url: toNull(id_proof), photo: toNull(photo),
     biometric_pin: toNull(biometric_pin),
     status: status || 'Staying', user_id: userId,
-    access_expiry_date: toNull(access_expiry_date),
+    // Store as full datetime (end of day UTC) if a date is provided
+    access_expiry_date: access_expiry_date ? new Date(access_expiry_date + 'T23:59:59.999Z') : null,
     punch_limit: toNull(punch_limit),
     gender: toNull(gender),
     occupation: toNull(occupation),
@@ -96,7 +97,8 @@ exports.update = async (id, data, userId) => {
     photo: toNull(photo),
     biometric_pin: toNull(biometric_pin),
     status: status || tenant.status,
-    access_expiry_date: toNull(access_expiry_date),
+    // Store as full datetime (end of day UTC) if a date is provided
+    access_expiry_date: access_expiry_date ? new Date(access_expiry_date + 'T23:59:59.999Z') : null,
     punch_limit: toNull(punch_limit),
     gender: toNull(gender),
     occupation: toNull(occupation),
