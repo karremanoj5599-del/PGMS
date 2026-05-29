@@ -8,6 +8,8 @@ const Rooms = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('map'); // floors, rooms, beds, map
   const [bedStatusFilter, setBedStatusFilter] = useState('');
+  const [bedRoomFilter, setBedRoomFilter] = useState('');
+  const [bedFloorFilter, setBedFloorFilter] = useState('');
   
   useEffect(() => {
     if (location.state?.tab) {
@@ -169,6 +171,12 @@ const Rooms = () => {
 
   const filteredBeds = beds
     .filter(bed => !bedStatusFilter || bed.status === bedStatusFilter)
+    .filter(bed => !bedRoomFilter || bed.room_id == bedRoomFilter)
+    .filter(bed => {
+      if (!bedFloorFilter) return true;
+      const room = rooms.find(r => r.room_id === bed.room_id);
+      return room && room.floor_id == bedFloorFilter;
+    })
     .sort((a, b) => a.bed_number.localeCompare(b.bed_number, undefined, { numeric: true }));
   const filteredRooms = rooms.sort((a, b) => a.room_number.localeCompare(b.room_number, undefined, { numeric: true }));
 
@@ -452,13 +460,57 @@ const Rooms = () => {
               <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
                 Showing <strong style={{ color: 'var(--primary)' }}>{filteredBeds.length}</strong> of <strong>{beds.length}</strong> beds
               </div>
-              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Status Filter:</span>
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Filters:</span>
+                
+                <select 
+                  value={bedFloorFilter} 
+                  onChange={e => {
+                    setBedFloorFilter(e.target.value);
+                    setBedRoomFilter('');
+                  }}
+                  style={{ 
+                    width: '130px', 
+                    padding: '0.4rem 0.8rem', 
+                    background: '#1e293b', 
+                    border: '1px solid var(--border)', 
+                    borderRadius: '0.5rem', 
+                    color: 'var(--text-main)',
+                    fontSize: '0.85rem'
+                  }}
+                >
+                  <option value="">All Floors</option>
+                  {floors.map(f => (
+                    <option key={f.floor_id} value={f.floor_id}>{f.floor_name}</option>
+                  ))}
+                </select>
+
+                <select 
+                  value={bedRoomFilter} 
+                  onChange={e => setBedRoomFilter(e.target.value)}
+                  style={{ 
+                    width: '130px', 
+                    padding: '0.4rem 0.8rem', 
+                    background: '#1e293b', 
+                    border: '1px solid var(--border)', 
+                    borderRadius: '0.5rem', 
+                    color: 'var(--text-main)',
+                    fontSize: '0.85rem'
+                  }}
+                >
+                  <option value="">All Rooms</option>
+                  {rooms
+                    .filter(r => !bedFloorFilter || r.floor_id == bedFloorFilter)
+                    .map(r => (
+                      <option key={r.room_id} value={r.room_id}>Room {r.room_number}</option>
+                  ))}
+                </select>
+
                 <select 
                   value={bedStatusFilter} 
                   onChange={e => setBedStatusFilter(e.target.value)}
                   style={{ 
-                    width: '160px', 
+                    width: '130px', 
                     padding: '0.4rem 0.8rem', 
                     background: '#1e293b', 
                     border: '1px solid var(--border)', 
