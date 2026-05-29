@@ -235,6 +235,69 @@ const Rooms = () => {
         </div>
       )}
 
+      {/* Floor-wise Occupancy Summary */}
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', 
+        gap: '1rem', 
+        marginBottom: '2rem' 
+      }}>
+        {floors.map(floor => {
+          const floorRoomIds = rooms.filter(r => r.floor_id === floor.floor_id).map(r => r.room_id);
+          const floorBeds = beds.filter(b => floorRoomIds.includes(b.room_id));
+          const vacant = floorBeds.filter(b => b.status === 'Vacant').length;
+          const occupied = floorBeds.filter(b => b.status === 'Occupied').length;
+          const maintenance = floorBeds.filter(b => b.status === 'Maintenance').length;
+          const total = floorBeds.length;
+
+          return (
+            <div key={floor.floor_id} style={{
+              background: 'rgba(255, 255, 255, 0.03)',
+              backdropFilter: 'blur(12px)',
+              border: '1px solid var(--border)',
+              borderRadius: '1rem',
+              padding: '1.25rem',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+              cursor: 'default'
+            }}
+              onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.2)'; }}
+              onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--primary)' }}>{floor.floor_name}</span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '6px' }}>{total} beds</span>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <div style={{
+                  flex: 1, minWidth: '60px', textAlign: 'center',
+                  background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)',
+                  borderRadius: '0.75rem', padding: '0.5rem 0.25rem'
+                }}>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#10b981' }}>{vacant}</div>
+                  <div style={{ fontSize: '0.65rem', fontWeight: 600, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Vacant</div>
+                </div>
+                <div style={{
+                  flex: 1, minWidth: '60px', textAlign: 'center',
+                  background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)',
+                  borderRadius: '0.75rem', padding: '0.5rem 0.25rem'
+                }}>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ef4444' }}>{occupied}</div>
+                  <div style={{ fontSize: '0.65rem', fontWeight: 600, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Occupied</div>
+                </div>
+                <div style={{
+                  flex: 1, minWidth: '60px', textAlign: 'center',
+                  background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)',
+                  borderRadius: '0.75rem', padding: '0.5rem 0.25rem'
+                }}>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f59e0b' }}>{maintenance}</div>
+                  <div style={{ fontSize: '0.65rem', fontWeight: 600, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Maint.</div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
       {/* Content Rendering */}
       <div style={{ background: activeTab === 'map' ? 'transparent' : 'var(--card-bg)', border: activeTab === 'map' ? 'none' : '1px solid var(--border)', borderRadius: '1rem', padding: activeTab === 'map' ? 0 : '1.5rem' }}>
         
