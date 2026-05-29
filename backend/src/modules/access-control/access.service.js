@@ -123,7 +123,7 @@ const syncTenantAccess = async (tenant_id) => {
             const yyyy = d.getFullYear();
             const mm = String(d.getMonth() + 1).padStart(2, '0');
             const dd = String(d.getDate()).padStart(2, '0');
-            extraParams.push(`EndDatetime=${yyyy}${mm}${dd}235959`);
+            extraParams.push(`EndDatetime=${yyyy}-${mm}-${dd} 23:59:59`);
           }
         }
         if (tenant.punch_limit && tenant.punch_limit > 0) {
