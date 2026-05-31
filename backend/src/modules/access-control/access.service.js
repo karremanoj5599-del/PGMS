@@ -164,20 +164,11 @@ const syncTenantAccess = async (tenant_id) => {
           }
         }
       } else {
-        // Restrict: block access by deleting the user and all templates from the device (bulletproof lockout)
+        // Restrict: disable user on device but PRESERVE biometric templates
+        // This allows quick re-enablement without needing to re-enroll fingerprints/faces
         commands.push({
           device_sn: device.sn,
-          command: `DATA DELETE USERINFO PIN=${pin}`,
-          user_id: tenant.user_id
-        });
-        commands.push({
-          device_sn: device.sn,
-          command: `DATA DELETE BIODATA PIN=${pin}`,
-          user_id: tenant.user_id
-        });
-        commands.push({
-          device_sn: device.sn,
-          command: `DATA DELETE FINGERTMP PIN=${pin}`,
+          command: `DATA UPDATE user Pin=${pin}\tEnabled=0`,
           user_id: tenant.user_id
         });
       }

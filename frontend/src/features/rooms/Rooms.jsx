@@ -244,6 +244,7 @@ const Rooms = () => {
       )}
 
       {/* Floor-wise Occupancy Summary */}
+      {activeTab === 'map' && (
       <div style={{ 
         display: 'grid', 
         gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', 
@@ -305,6 +306,7 @@ const Rooms = () => {
           );
         })}
       </div>
+      )}
 
       {/* Content Rendering */}
       <div style={{ background: activeTab === 'map' ? 'transparent' : 'var(--card-bg)', border: activeTab === 'map' ? 'none' : '1px solid var(--border)', borderRadius: '1rem', padding: activeTab === 'map' ? 0 : '1.5rem' }}>

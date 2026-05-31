@@ -39,6 +39,10 @@ const enforceInactivityRules = async () => {
       }
 
       if (shouldLock) {
+        // Skip if already locked — avoid queuing redundant device commands
+        const existing = await db('access_control').where('tenant_id', tenant.tenant_id).first();
+        if (existing && existing.access_granted === false) continue;
+
         await db('access_control').where('tenant_id', tenant.tenant_id).update({ access_granted: false });
         await syncTenantAccess(tenant.tenant_id);
       }
