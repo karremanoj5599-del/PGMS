@@ -49,7 +49,7 @@ const syncTenantAccess = async (tenant_id, toggleOnly = false) => {
       if (toggleOnly) {
         commands.push({
           device_sn: device.sn,
-          command: `DATA UPDATE user Pin=${pin}\tEnabled=${isApproved ? 1 : 0}`,
+          command: `DATA UPDATE USERINFO PIN=${pin}\tEnabled=${isApproved ? 1 : 0}`,
           user_id: tenant.user_id
         });
       } else if (!isApproved) {
@@ -57,7 +57,7 @@ const syncTenantAccess = async (tenant_id, toggleOnly = false) => {
         // This keeps templates intact on the device and avoids unnecessary heavy writes.
         commands.push({
           device_sn: device.sn,
-          command: `DATA UPDATE user Pin=${pin}\tEnabled=0`,
+          command: `DATA UPDATE USERINFO PIN=${pin}\tEnabled=0`,
           user_id: tenant.user_id
         });
       } else {
@@ -158,7 +158,7 @@ const syncTenantAccess = async (tenant_id, toggleOnly = false) => {
         
         commands.push({
           device_sn: device.sn,
-          command: `DATA UPDATE user Pin=${pin}\tEnabled=1`,
+          command: `DATA UPDATE USERINFO PIN=${pin}\tEnabled=1`,
           user_id: tenant.user_id
         });
 
