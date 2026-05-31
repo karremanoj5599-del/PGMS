@@ -35,11 +35,12 @@ exports.resync = async (tenantId, userId) => {
       const major = tpl.major_ver ? `\tMajorVer=${tpl.major_ver}` : '';
       const minor = tpl.minor_ver ? `\tMinorVer=${tpl.minor_ver}` : '';
       const format = tpl.format ? `\tFormat=${tpl.format}` : '';
+      const size = tpl.template_data ? `\tSize=${tpl.template_data.length}` : '';
       const bioType = tpl.type === 'face' ? '9' : (tpl.type === 'palm' ? '8' : '1');
 
       await db('device_commands').insert({
         device_sn: device.sn,
-        command: `DATA UPDATE BIODATA Pin=${pin}\tNo=0\tIndex=${tpl.finger_index}\tValid=1\tDuress=0\tType=${bioType}${major}${minor}${format}\tTmp=${tpl.template_data}`,
+        command: `DATA UPDATE BIODATA Pin=${pin}\tNo=0\tIndex=${tpl.finger_index}\tValid=1\tDuress=0\tType=${bioType}${major}${minor}${format}${size}\tTmp=${tpl.template_data}`,
         user_id: userId
       });
       cmdCount++;

@@ -147,10 +147,12 @@ const syncTenantAccess = async (tenant_id) => {
         for (const tpl of templates) {
           const major = tpl.major_ver ? `\tMajorVer=${tpl.major_ver}` : '';
           const minor = tpl.minor_ver ? `\tMinorVer=${tpl.minor_ver}` : '';
+          const size = tpl.template_data ? `\tSize=${tpl.template_data.length}` : '';
+          
           if (tpl.type === 'fingerprint') {
             commands.push({
               device_sn: device.sn,
-              command: `DATA UPDATE BIODATA Pin=${pin}\tNo=0\tIndex=${tpl.finger_index}\tValid=1\tDuress=0\tType=1${major}${minor}\tTmp=${tpl.template_data}`,
+              command: `DATA UPDATE BIODATA Pin=${pin}\tNo=0\tIndex=${tpl.finger_index}\tValid=1\tDuress=0\tType=1${major}${minor}${size}\tTmp=${tpl.template_data}`,
               user_id: tenant.user_id
             });
           } else {
@@ -158,7 +160,7 @@ const syncTenantAccess = async (tenant_id) => {
             const format = tpl.format ? `\tFormat=${tpl.format}` : '';
             commands.push({
               device_sn: device.sn,
-              command: `DATA UPDATE BIODATA Pin=${pin}\tNo=0\tIndex=${tpl.finger_index}\tValid=1\tDuress=0\tType=${bioType}${major}${minor}${format}\tTmp=${tpl.template_data}`,
+              command: `DATA UPDATE BIODATA Pin=${pin}\tNo=0\tIndex=${tpl.finger_index}\tValid=1\tDuress=0\tType=${bioType}${major}${minor}${format}${size}\tTmp=${tpl.template_data}`,
               user_id: tenant.user_id
             });
           }
