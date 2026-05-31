@@ -1,54 +1,56 @@
-PGMS DEVICE COMMUNICATION GUIDE (ADMS / PUSH PROTOCOL)
-========================================================
+# Biometric Device (eSSL/ZKTeco) to Software Communication Guide
 
-1. OVERVIEW: THE PUSH MODEL
----------------------------
-The biometric devices (ZKTeco/ADMS compatible) use a "PUSH" architecture. 
-Instead of the server "calling" the device, the DEVICE initiates all 
-communication via HTTP.
+This guide explains exactly how your eSSL/ZKTeco biometric devices communicate with your PGMS software. 
 
-- Benefit: Works behind firewalls/NAT without port forwarding.
-- Requirement: The device must have a URL pointing to the PGMS Backend 
-  (e.g., a hosted domain or public IP).
+## The Core Concept: "Push" Protocol (ADMS)
+Unlike older systems where the software had to actively connect to the device over a local network, your devices use the **ADMS (Automatic Data Master Server)** protocol. 
 
-2. KEY ENDPOINTS (BACKEND)
---------------------------
-The hardware hits these specific endpoints on your Node.js server:
+In ADMS, **the device is the client and your software is the server.** The device constantly reaches out to your software over the internet. Your software never initiates the connection directly; it just waits for the device to "call home."
 
-A. HEARTBEAT & COMMANDS: /iclock/getrequest.aspx (GET)
-   - Purpose: Device asks "What do I do next?"
-   - Server Response: Returns pending commands (e.g., Add/Delete User).
+---
 
-B. DATA UPLOAD: /iclock/cdata.aspx (POST)
-   - Purpose: Device sends attendance logs ("Punches") and photos.
-   - Server Action: Parses tab-separated data and updates `attendance_logs`.
+## Step-by-Step Communication Flow
 
-C. COMMAND STATUS: /iclock/devicecmd.aspx (POST)
-   - Purpose: Device confirms if a command was successful or failed.
-   - Server Action: Updates `device_commands` table status.
+### 1. Initialization & Handshake (The "cdata" Request)
+When the device turns on or connects to the internet, it sends an initialization HTTP request to your server.
+*   **Device says:** "Hello, I am device with Serial Number QJT3244100595. Here are my specs (firmware version, user capacity, etc.)."
+*   **Software says:** "Hello QJT3244100595. You are recognized. Here are the server settings (like how often you should ping me)."
 
-3. SOFTWARE SYNC LOGIC
-----------------------
-The system uses automated functions to bridge the Software DB and Hardware:
+### 2. The Heartbeat (Polling)
+Because the software cannot force a connection to the device, the device must constantly check in to see if there are any new instructions.
+*   **Device says (every ~30 seconds):** "I am still online. Do you have any commands for me?"
+*   **Software says:** "Yes" or "No".
+*   *Note: This is why actions taken on the software (like disabling a user) take up to 30 seconds to reflect on the physical machine.*
 
-- syncTenantAccess(tenant_id):
-  Translates "Approve Tenant" in the UI into a raw hardware command:
-  "DATA UPDATE USERINFO PIN=101 Name=Manoj..."
+### 3. Sending Commands to the Device (Queuing)
+When you do something in the software (like register a new tenant, or lock a tenant due to non-payment), the software doesn't talk to the device immediately. 
+*   **Software Action:** It creates a text command (e.g., `DATA UPDATE user Pin=101 Enabled=0`) and saves it in a database table called `device_commands`.
+*   The command sits in a "pending" queue waiting for the device's next heartbeat.
 
-- Automated Payment Guard:
-  Backend checks payments every 30 mins. If a balance is overdue (>1.2x rent),
-  it automatically sends a "DATA DELETE" command to the device to block 
-  access.
+### 4. Fetching & Executing Commands
+*   **Device says (Heartbeat):** "Do you have any commands for me?"
+*   **Software says:** "Yes! Here is a command from the queue: `DATA UPDATE BIODATA Pin=101...`"
+*   **Device Action:** The device reads the command, saves the fingerprint/face into its physical memory, and executes the instruction.
 
-- Inactivity Rules:
-  If a tenant hasn't punched in X days, the software can automatically 
-  de-register them from the hardware to save space/security.
+### 5. Confirming Execution
+Once the device finishes processing the command, it must tell the software it succeeded so the software doesn't send it again.
+*   **Device says:** "I successfully executed the command you gave me."
+*   **Software says:** "Great, I will mark that command as 'executed=true' in the database so I don't send it again."
 
-4. DATABASE MAPPING
--------------------
-- PIN (Hardware)  <-->  tenant_id (Software)
-- Group (Hardware) <-->  access_group_id (Software)
-- TZ (Hardware)    <-->  access_schedules (Software)
+### 6. Pushing Attendance Logs (The "rtlog" Request)
+When a tenant punches their finger/face on the machine, the device immediately sends that data to the software.
+*   **Device says:** "Tenant with PIN 101 just punched in at 2026-05-31 09:00:00."
+*   **Software says:** "Received." The software then saves this log into the database so you can view it on your dashboard.
 
---------------------------------------------------------
-Created for PGMS Project Documentation - 2026
+---
+
+## Example: Why Templates Were Deleted But UI Showed Green
+
+Understanding this flow explains what was happening earlier:
+
+1. **Software side:** The tenant's expiry date passed. The script generated a `DATA DELETE USERINFO` command and queued it in the database.
+2. **Device side:** The device pinged the server, received the `DELETE` command, and physically erased the user and their fingerprints from its own hardware.
+3. **Database side:** The fingerprint data (the long Base64 string) was *never deleted from your database*. The software just told the device to delete its local copy.
+4. **UI side:** The UI looks at your database. It saw that the fingerprint data still existed in the database table, so it displayed a green shield.
+
+**The Fix:** By changing the queued command from `DATA DELETE` to `DATA UPDATE user Enabled=0`, the device now just locks the user out but keeps their fingerprint saved on the physical machine.
