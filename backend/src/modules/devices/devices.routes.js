@@ -3,6 +3,7 @@ const c = require('./devices.controller');
 
 router.get('/', c.list);
 router.post('/', c.create);
+router.post('/bulk-sync', c.bulkSync);
 router.put('/:id', c.update);
 router.delete('/:id', c.remove);
 router.post('/sync-user', c.syncUser);

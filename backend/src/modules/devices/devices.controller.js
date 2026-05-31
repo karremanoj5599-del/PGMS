@@ -10,6 +10,16 @@ exports.syncUser = async (req, res, next) => {
   try { const t = await service.syncUser(req.body.sn, req.body.tenant_id, req.userId); res.json({ message: `Sync queued for ${t.name}` }); } catch(e){next(e);}
 };
 
+exports.bulkSync = async (req, res, next) => {
+  try {
+    const { tenant_ids } = req.body;
+    const count = await service.bulkSync(tenant_ids, req.userId);
+    res.json({ message: `Sync queued for ${count} tenants successfully` });
+  } catch (e) {
+    next(e);
+  }
+};
+
 exports.control = async (req, res, next) => {
   try {
     const sn = req.params.sn;

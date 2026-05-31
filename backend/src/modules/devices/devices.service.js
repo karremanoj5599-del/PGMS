@@ -63,6 +63,23 @@ exports.syncUser = async (sn, tenantId, userId) => {
   return tenant;
 };
 
+exports.bulkSync = async (tenantIds, userId) => {
+  if (!Array.isArray(tenantIds) || tenantIds.length === 0) {
+    const err = new Error('No tenant IDs provided');
+    err.statusCode = 400;
+    throw err;
+  }
+  const { syncTenantAccess } = require('../access-control/access.service');
+  const tenants = await db('tenants')
+    .whereIn('tenant_id', tenantIds.map(Number))
+    .andWhere('user_id', userId);
+
+  for (const tenant of tenants) {
+    await syncTenantAccess(tenant.tenant_id);
+  }
+  return tenants.length;
+};
+
 exports.downloadUsers = async (sn, userId) => {
   await db('device_commands').insert({ device_sn: sn, command: 'DATA QUERY USERINFO PIN=\tName=\tPri=\tPasswd=\tCard=\tGrp=\tTZ=\tVerify=\tViceCard=', user_id: userId });
 };
