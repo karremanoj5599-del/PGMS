@@ -33,16 +33,66 @@ const Devices = () => {
     const user = userString ? JSON.parse(userString) : null;
     const user_id = user?.user_id;
     const url = user_id ? `/api/events?user_id=${user_id}` : `/api/events`;
-    const es = new EventSource(url);
-    es.onmessage = (e) => {
-       try {
-         const data = JSON.parse(e.data);
-         setLiveEvents(prev => [data, ...prev].slice(0, 50));
-       } catch (err) {
-         console.error('Error parsing SSE event', err);
-       }
+    
+    let es = null;
+
+    const connectSSE = () => {
+      if (es) {
+        es.close();
+      }
+
+      es = new EventSource(url);
+
+      es.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          setLiveEvents(prev => [data, ...prev].slice(0, 50));
+        } catch (err) {
+          console.error('Error parsing SSE event', err);
+        }
+      };
+
+      es.onerror = (err) => {
+        console.warn('SSE connection error, browser will automatically retry.');
+      };
     };
-    return () => es.close();
+
+    if (navigator.onLine) {
+      connectSSE();
+    }
+
+    const handleOnline = () => {
+      console.log('[SSE] Browser online. Reconnecting...');
+      connectSSE();
+    };
+
+    const handleOffline = () => {
+      console.log('[SSE] Browser offline. Closing connection...');
+      if (es) {
+        es.close();
+        es = null;
+      }
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && navigator.onLine) {
+        console.log('[SSE] Page visible. Reconnecting...');
+        connectSSE();
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      if (es) {
+        es.close();
+      }
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, []);
 
   const fetchDevices = async () => {

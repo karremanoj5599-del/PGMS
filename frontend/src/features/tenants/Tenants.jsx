@@ -48,19 +48,65 @@ const Tenants = () => {
     const user = userString ? JSON.parse(userString) : null;
     const url = user && user.user_id ? `/api/events?user_id=${user.user_id}` : '/api/events';
     
-    const eventSource = new EventSource(url);
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        setToast(`Punch Alert: Tenant ${data.user_id} at ${data.punch_time} (Device: ${data.device_sn})`);
-        setTimeout(() => setToast(null), 8000);
-      } catch (err) {
-        console.error('Error parsing SSE data', err);
+    let eventSource = null;
+
+    const connectSSE = () => {
+      if (eventSource) {
+        eventSource.close();
+      }
+
+      eventSource = new EventSource(url);
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          setToast(`Punch Alert: Tenant ${data.user_id} at ${data.punch_time} (Device: ${data.device_sn})`);
+          setTimeout(() => setToast(null), 8000);
+        } catch (err) {
+          console.error('Error parsing SSE data', err);
+        }
+      };
+
+      eventSource.onerror = (err) => {
+        console.warn('SSE connection error, browser will automatically retry.');
+      };
+    };
+
+    if (navigator.onLine) {
+      connectSSE();
+    }
+
+    const handleOnline = () => {
+      console.log('[SSE] Browser online. Reconnecting...');
+      connectSSE();
+    };
+
+    const handleOffline = () => {
+      console.log('[SSE] Browser offline. Closing connection...');
+      if (eventSource) {
+        eventSource.close();
+        eventSource = null;
       }
     };
 
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && navigator.onLine) {
+        console.log('[SSE] Page visible. Reconnecting...');
+        connectSSE();
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    document.addEventListener('visibilitychange', handleVisibility);
+
     return () => {
-      eventSource.close();
+      if (eventSource) {
+        eventSource.close();
+      }
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, []);
 
