@@ -5,7 +5,7 @@ const { DAYS } = require('../../shared/constants');
 
 // Core function: Sync tenant access state to biometric devices
 // This is the single source of truth for device command generation
-const syncTenantAccess = async (tenant_id) => {
+const syncTenantAccess = async (tenant_id, toggleOnly = false) => {
   try {
     const tid = Number(tenant_id);
     const tenant = await db('tenants').where('tenant_id', tid).first();
@@ -46,7 +46,13 @@ const syncTenantAccess = async (tenant_id) => {
 
       let commands = [];
 
-      if (!isApproved) {
+      if (toggleOnly) {
+        commands.push({
+          device_sn: device.sn,
+          command: `DATA UPDATE user Pin=${pin}\tEnabled=${isApproved ? 1 : 0}`,
+          user_id: tenant.user_id
+        });
+      } else if (!isApproved) {
         // If restricted/blocked, ONLY send the disable command.
         // This keeps templates intact on the device and avoids unnecessary heavy writes.
         commands.push({
@@ -200,7 +206,7 @@ const toggleAccess = async (tenantId, accessGranted) => {
   } else {
     await db('access_control').insert({ tenant_id: tid, access_granted: !!accessGranted });
   }
-  await syncTenantAccess(tid);
+  await syncTenantAccess(tid, true);
 };
 
 // Assign schedule to tenant
