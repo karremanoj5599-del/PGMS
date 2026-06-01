@@ -12,9 +12,24 @@ const handleCData = async (req, res) => {
 
   if (sn) {
     const snLc = sn.toLowerCase();
-    await db('devices').whereRaw('LOWER(sn) = ?', [snLc]).update({
-      adms_status: true, last_seen: new Date().toISOString()
-    }).catch(() => {});
+    const device = await db('devices').whereRaw('LOWER(sn) = ?', [snLc]).first();
+    if (device) {
+      await db('devices').where('device_id', device.device_id).update({
+        adms_status: true, last_seen: new Date().toISOString()
+      }).catch(() => {});
+
+      // Parse device info from initial handshake query params
+      const q = req.query;
+      if (q.UserCount || q.FPCount || q.FaceCount || q.FirmVer) {
+        const infoLines = Object.entries(q).map(([k, v]) => `${k}=${v}`).join('\n');
+        await admsService.processDeviceInfo(sn, infoLines, device);
+        console.log(`[ADMS] Parsed device info from handshake query params for SN: ${sn}`);
+      }
+    } else {
+      await db('devices').whereRaw('LOWER(sn) = ?', [snLc]).update({
+        adms_status: true, last_seen: new Date().toISOString()
+      }).catch(() => {});
+    }
   }
 
   logADMS(req, `PUSH DATA - SN: ${sn} - Table: ${table}`, rawBody ? rawBody.substring(0, 300) : '');
@@ -151,6 +166,11 @@ const handleDeviceCmd = async (req, res) => {
     if (rawBody.includes('BIODATA')) {
       const count = await admsService.processBioData(sn, rawBody, device, 'BIODATA');
       if (count > 0) console.log(`[ADMS] Saved ${count} BIODATA templates from devicecmd`);
+    }
+    // Parse device info from INFO command response
+    if (rawBody && (rawBody.includes('~SerialNumber') || rawBody.includes('FirmVer') || rawBody.includes('UserCount') || rawBody.includes('FPCount') || rawBody.includes('FaceCount'))) {
+      await admsService.processDeviceInfo(sn, rawBody, device);
+      console.log(`[ADMS] Saved device info from devicecmd response for SN: ${sn}`);
     }
   } catch (err) {
     console.error('Error parsing devicecmd biometrics:', err);
