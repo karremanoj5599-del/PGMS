@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../../services/api';
 import { Tablet, Wifi, WifiOff, Settings, ShieldCheck, X, CheckCircle, AlertCircle, Loader2, Server, Info, Fingerprint, RotateCcw, Trash2, Clock, Lock, Unlock, DoorOpen, BellOff, Cpu, UserMinus, AlertTriangle, Volume2, Sliders, RefreshCw } from 'lucide-react';
 
@@ -22,6 +22,10 @@ const Devices = () => {
   const [liveEvents, setLiveEvents] = useState([]);
   const [deletePin, setDeletePin] = useState('');
   const [resetConfirm, setResetConfirm] = useState('');
+  const [showDeviceInfoModal, setShowDeviceInfoModal] = useState(false);
+  const [deviceInfoDevice, setDeviceInfoDevice] = useState(null);
+  const [deviceInfoPolling, setDeviceInfoPolling] = useState(false);
+  const deviceInfoPollRef = useRef(null);
   const [hwSettings, setHwSettings] = useState({
     Volume: 5, DateFormat: 0, Language: 0, DoorSensorType: 0,
     AntiPassback: 0, LockDelay: 5, ComPwd: '', FaceFunOn: 1, FingerFunOn: 1
@@ -183,13 +187,54 @@ const Devices = () => {
     }
   };
 
-  const queryDeviceInfo = async (sn) => {
+  const queryDeviceInfo = async (device) => {
+    setDeviceInfoDevice({ ...device });
+    setShowDeviceInfoModal(true);
+    setDeviceInfoPolling(true);
+
     try {
-      const res = await api.post(`${API}/api/devices/${sn}/query-info`);
-      alert(res.data.message);
-      setTimeout(fetchDevices, 5000);
+      await api.post(`${API}/api/devices/${device.sn}/query-info`);
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to query device info');
+      console.error('Failed to queue info query:', err);
+    }
+
+    // Clear any existing poll
+    if (deviceInfoPollRef.current) clearInterval(deviceInfoPollRef.current);
+
+    const originalTs = device.info_updated_at;
+    const startTime = Date.now();
+
+    deviceInfoPollRef.current = setInterval(async () => {
+      if (Date.now() - startTime > 90000) {
+        clearInterval(deviceInfoPollRef.current);
+        deviceInfoPollRef.current = null;
+        setDeviceInfoPolling(false);
+        return;
+      }
+      try {
+        const res = await api.get('/api/devices');
+        const allDevices = Array.isArray(res.data) ? res.data : [];
+        setDevices(allDevices);
+        const updated = allDevices.find(d => d.sn === device.sn);
+        if (updated) {
+          setDeviceInfoDevice(updated);
+          if (updated.info_updated_at && updated.info_updated_at !== originalTs) {
+            clearInterval(deviceInfoPollRef.current);
+            deviceInfoPollRef.current = null;
+            setDeviceInfoPolling(false);
+          }
+        }
+      } catch (err) { /* ignore polling errors */ }
+    }, 5000);
+  };
+
+  const closeDeviceInfoModal = () => {
+    setShowDeviceInfoModal(false);
+    setDeviceInfoDevice(null);
+    setDeviceInfoPolling(false);
+    if (deviceInfoPollRef.current) {
+      clearInterval(deviceInfoPollRef.current);
+      deviceInfoPollRef.current = null;
     }
   };
 
@@ -375,7 +420,7 @@ const Devices = () => {
                   style={{ flex: 1, minWidth: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', background: 'rgba(168, 85, 247, 0.1)', color: '#a855f7', fontSize: '0.8rem', padding: '0.5rem' }}>
                   <Fingerprint size={14} /> Sync Bio
                 </button>
-                <button onClick={() => queryDeviceInfo(device.sn)} className="btn" title="Query firmware & capacity info"
+                <button onClick={() => queryDeviceInfo(device)} className="btn" title="Query firmware & capacity info"
                   style={{ flex: 1, minWidth: '70px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1', fontSize: '0.8rem', padding: '0.5rem' }}>
                   <Cpu size={14} /> Info
                 </button>
@@ -801,6 +846,126 @@ const Devices = () => {
                   })}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Device Info Modal */}
+      {showDeviceInfoModal && deviceInfoDevice && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '650px' }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+                <Cpu size={22} color="#6366f1" /> Device Info
+              </h2>
+              <button className="btn" onClick={closeDeviceInfoModal} style={{ background: 'transparent', padding: '0.25rem' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Device Identity */}
+            <div style={{ background: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.25)', borderRadius: '0.75rem', padding: '1rem', marginBottom: '1rem' }}>
+              <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.1rem' }}>{deviceInfoDevice.device_name}</h3>
+              <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                <span><strong>SN:</strong> {deviceInfoDevice.sn || '—'}</span>
+                <span><strong>IP:</strong> {deviceInfoDevice.ip_address || '—'}</span>
+                <span><strong>Status:</strong> {deviceInfoDevice.adms_status ? <span style={{ color: '#10b981' }}>● Online</span> : <span style={{ color: '#ef4444' }}>● Offline</span>}</span>
+              </div>
+            </div>
+
+            {/* Polling indicator */}
+            {deviceInfoPolling && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1rem', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: '0.5rem', marginBottom: '1rem', fontSize: '0.8rem', color: '#f59e0b' }}>
+                <Loader2 size={14} className="spin" /> Waiting for device to respond... (device polls every ~30s)
+              </div>
+            )}
+
+            {/* Firmware & Platform */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+              <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '0.5rem', padding: '0.75rem', border: '1px solid var(--border)' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Firmware Version</div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 600 }}>{deviceInfoDevice.firmware_ver || '—'}</div>
+              </div>
+              <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '0.5rem', padding: '0.75rem', border: '1px solid var(--border)' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Platform</div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 600 }}>{deviceInfoDevice.platform || '—'}</div>
+              </div>
+            </div>
+
+            {/* Capacity Grid */}
+            <div style={{ marginBottom: '1rem' }}>
+              <h4 style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.75rem', fontWeight: 500 }}>Capacity & Usage</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                {[
+                  { label: 'Users', count: deviceInfoDevice.user_count, capacity: deviceInfoDevice.user_capacity, color: '#3b82f6', icon: '👤' },
+                  { label: 'Fingerprints', count: deviceInfoDevice.fp_count, capacity: deviceInfoDevice.fp_capacity, color: '#10b981', icon: '🖐️' },
+                  { label: 'Faces', count: deviceInfoDevice.face_count, capacity: deviceInfoDevice.face_capacity, color: '#a855f7', icon: '😀' },
+                  { label: 'Att. Logs', count: deviceInfoDevice.att_log_count, capacity: deviceInfoDevice.att_log_capacity, color: '#f59e0b', icon: '📋' },
+                ].map(item => {
+                  const pct = item.capacity > 0 ? Math.min(((item.count || 0) / item.capacity) * 100, 100) : 0;
+                  return (
+                    <div key={item.label} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '0.5rem', padding: '0.75rem', border: '1px solid var(--border)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{item.icon} {item.label}</span>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>{item.count || 0} / {item.capacity || '?'}</span>
+                      </div>
+                      <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '4px', height: '8px', overflow: 'hidden' }}>
+                        <div style={{ width: `${pct}%`, height: '100%', background: item.color, borderRadius: '4px', transition: 'width 0.5s ease' }} />
+                      </div>
+                      <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '0.25rem', textAlign: 'right' }}>
+                        {pct.toFixed(1)}% used
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Raw Device Options */}
+            {deviceInfoDevice.device_options_json && (() => {
+              try {
+                const opts = JSON.parse(deviceInfoDevice.device_options_json);
+                const entries = Object.entries(opts);
+                if (entries.length === 0) return null;
+                return (
+                  <div style={{ marginBottom: '1rem' }}>
+                    <h4 style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.75rem', fontWeight: 500 }}>All Device Parameters</h4>
+                    <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '0.5rem', padding: '0.75rem', border: '1px solid var(--border)', maxHeight: '200px', overflowY: 'auto' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.3rem 1.5rem' }}>
+                        {entries.map(([key, value]) => (
+                          <div key={key} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.2rem 0', borderBottom: '1px solid rgba(255,255,255,0.04)', fontSize: '0.75rem' }}>
+                            <span style={{ color: 'var(--text-muted)' }}>{key}</span>
+                            <span style={{ fontFamily: 'monospace', color: 'var(--primary)', fontWeight: 500 }}>{String(value)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              } catch { return null; }
+            })()}
+
+            {/* Last Updated */}
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1.25rem', padding: '0.5rem 0', borderTop: '1px solid var(--border)' }}>
+              {deviceInfoDevice.info_updated_at
+                ? <>Last info update: <strong>{new Date(deviceInfoDevice.info_updated_at).toLocaleString()}</strong></>
+                : 'No info received from device yet'
+              }
+              {deviceInfoDevice.last_seen && (
+                <span> &bull; Last seen: <strong>{new Date(deviceInfoDevice.last_seen).toLocaleString()}</strong></span>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+              <button className="btn" onClick={closeDeviceInfoModal} style={{ background: 'transparent' }}>Close</button>
+              <button className="btn" onClick={() => queryDeviceInfo(deviceInfoDevice)} disabled={deviceInfoPolling}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(99, 102, 241, 0.15)', color: '#6366f1' }}>
+                {deviceInfoPolling ? <Loader2 size={14} className="spin" /> : <RefreshCw size={14} />}
+                {deviceInfoPolling ? 'Querying...' : 'Refresh Info'}
+              </button>
             </div>
           </div>
         </div>
