@@ -843,41 +843,87 @@ const Tenants = () => {
                     })()
                   )}
                 </label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', maxHeight: '250px', overflowY: 'auto', padding: '10px', background: 'rgba(0,0,0,0.2)', borderRadius: '1rem', marginTop: '0.5rem' }}>
+                <div style={{ maxHeight: '300px', overflowY: 'auto', padding: '10px', background: 'rgba(0,0,0,0.2)', borderRadius: '1rem', marginTop: '0.5rem' }}>
                   {rooms.length === 0 ? (
-                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                    <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
                       No rooms or beds found. Please add them in the Rooms & Beds section first.
                     </div>
                   ) : (
-                    rooms.map(room => (
-                      <div key={room.room_id} style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '0.75rem', padding: '0.75rem' }}>
-                        <div style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.5rem' }}>Room {room.room_number}</div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                          {vacantBeds.filter(b => b.room_id === room.room_id).length === 0 ? (
-                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>No vacant beds</span>
-                          ) : (
-                            vacantBeds.filter(b => b.room_id === room.room_id).map(bed => (
-                              <div
-                                key={bed.bed_id}
-                                onClick={() => setNewTenant({ ...newTenant, bed_id: bed.bed_id })}
-                                style={{
-                                  padding: '6px 10px',
-                                  borderRadius: '6px',
-                                  border: `2px solid ${newTenant.bed_id == bed.bed_id ? 'var(--primary)' : 'var(--border)'}`,
-                                  background: newTenant.bed_id == bed.bed_id ? 'rgba(99, 102, 241, 0.2)' : 'rgba(16, 185, 129, 0.1)',
-                                  cursor: 'pointer',
-                                  transition: 'all 0.2s',
-                                  textAlign: 'center',
-                                  minWidth: '50px'
-                                }}
-                              >
-                                <div style={{ fontSize: '0.7rem', fontWeight: 700, color: newTenant.bed_id == bed.bed_id ? 'var(--primary)' : '#10b981' }}>{bed.bed_number}</div>
+                    (() => {
+                      // Group rooms by floor, sort floors, sort rooms within each floor
+                      const sortedRooms = [...rooms].sort((a, b) => {
+                        const floorA = (a.floor_name || '').toLowerCase();
+                        const floorB = (b.floor_name || '').toLowerCase();
+                        if (floorA !== floorB) return floorA.localeCompare(floorB, undefined, { numeric: true });
+                        return String(a.room_number).localeCompare(String(b.room_number), undefined, { numeric: true });
+                      });
+
+                      const floorGroups = [];
+                      let currentFloor = null;
+                      sortedRooms.forEach(room => {
+                        const floorKey = room.floor_id || 'unassigned';
+                        if (currentFloor?.key !== floorKey) {
+                          currentFloor = { key: floorKey, name: room.floor_name || 'Unassigned Floor', rooms: [] };
+                          floorGroups.push(currentFloor);
+                        }
+                        currentFloor.rooms.push(room);
+                      });
+
+                      return floorGroups.map((floor, floorIdx) => (
+                        <div key={floor.key} style={{ marginBottom: floorIdx < floorGroups.length - 1 ? '0.75rem' : 0 }}>
+                          {/* Floor Header */}
+                          <div style={{
+                            display: 'flex', alignItems: 'center', gap: '0.5rem',
+                            marginBottom: '0.5rem', paddingBottom: '0.35rem',
+                            borderBottom: '1px solid rgba(16, 185, 129, 0.15)'
+                          }}>
+                            <div style={{
+                              width: '3px', height: '14px', borderRadius: '2px',
+                              background: 'linear-gradient(180deg, #10b981, #059669)'
+                            }} />
+                            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              {floor.name}
+                            </span>
+                            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+                              ({floor.rooms.length} room{floor.rooms.length !== 1 ? 's' : ''})
+                            </span>
+                          </div>
+
+                          {/* Rooms in sequence within this floor */}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                            {floor.rooms.map(room => (
+                              <div key={room.room_id} style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '0.75rem', padding: '0.75rem' }}>
+                                <div style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.5rem' }}>Room {room.room_number}</div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                  {vacantBeds.filter(b => b.room_id === room.room_id).length === 0 ? (
+                                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>No vacant beds</span>
+                                  ) : (
+                                    vacantBeds.filter(b => b.room_id === room.room_id).map(bed => (
+                                      <div
+                                        key={bed.bed_id}
+                                        onClick={() => setNewTenant({ ...newTenant, bed_id: bed.bed_id })}
+                                        style={{
+                                          padding: '6px 10px',
+                                          borderRadius: '6px',
+                                          border: `2px solid ${newTenant.bed_id == bed.bed_id ? 'var(--primary)' : 'var(--border)'}`,
+                                          background: newTenant.bed_id == bed.bed_id ? 'rgba(99, 102, 241, 0.2)' : 'rgba(16, 185, 129, 0.1)',
+                                          cursor: 'pointer',
+                                          transition: 'all 0.2s',
+                                          textAlign: 'center',
+                                          minWidth: '50px'
+                                        }}
+                                      >
+                                        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: newTenant.bed_id == bed.bed_id ? 'var(--primary)' : '#10b981' }}>{bed.bed_number}</div>
+                                      </div>
+                                    ))
+                                  )}
+                                </div>
                               </div>
-                            ))
-                          )}
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      ));
+                    })()
                   )}
                 </div>
               </div>
