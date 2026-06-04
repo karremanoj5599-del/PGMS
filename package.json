@@ -5,7 +5,7 @@
   "scripts": {
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
-    "build": "cd frontend && npm install && npm run build",
+    "build": "cd backend && npm install && npx knex migrate:latest && cd ../frontend && npm install && npm run build",
     "install-all": "npm install && cd frontend && npm install && cd ../backend && npm install"
   },
   "dependencies": {

@@ -17,3 +17,13 @@ exports.updateOptions = async (req, res, next) => {
     next(err);
   }
 };
+
+exports.runMigrations = async (req, res, next) => {
+  try {
+    const db = require('../../config/database');
+    await db.migrate.latest();
+    res.json({ success: true, message: 'Database migrations completed successfully.' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message, stack: err.stack });
+  }
+};
