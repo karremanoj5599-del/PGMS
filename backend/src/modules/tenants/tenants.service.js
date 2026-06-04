@@ -20,7 +20,7 @@ exports.getAll = (userId) => {
 exports.create = async (data, userId) => {
   const { tenant_id, name, mobile, bed_id, joining_date, id_proof, photo, biometric_pin, status,
           access_expiry_date, punch_limit, gender, occupation, expiry_date, tenant_type,
-          custom_rent, custom_advance, discount_amount } = data;
+          custom_rent, custom_advance, discount_amount, email } = data;
 
   const bedId = toNull(bed_id);
   const insertData = {
@@ -38,7 +38,8 @@ exports.create = async (data, userId) => {
     tenant_type: tenant_type || 'Permanent',
     custom_rent: custom_rent !== undefined && custom_rent !== '' ? parseFloat(custom_rent) : null,
     custom_advance: custom_advance !== undefined && custom_advance !== '' ? parseFloat(custom_advance) : null,
-    discount_amount: discount_amount !== undefined && discount_amount !== '' ? parseFloat(discount_amount) : 0
+    discount_amount: discount_amount !== undefined && discount_amount !== '' ? parseFloat(discount_amount) : 0,
+    email: toNull(email)
   };
 
   if (tenant_id) {
@@ -69,7 +70,7 @@ exports.create = async (data, userId) => {
 exports.update = async (id, data, userId) => {
   const { name, mobile, bed_id, joining_date, id_proof, photo, biometric_pin, status,
           access_expiry_date, punch_limit, gender, occupation, expiry_date, tenant_type,
-          custom_rent, custom_advance, discount_amount } = data;
+          custom_rent, custom_advance, discount_amount, email, country_code } = data;
 
   const tenant = await db('tenants').where({ tenant_id: id, user_id: userId }).first();
   if (!tenant) {
@@ -106,7 +107,8 @@ exports.update = async (id, data, userId) => {
     tenant_type: tenant_type || tenant.tenant_type,
     custom_rent: custom_rent !== undefined ? (custom_rent !== '' ? parseFloat(custom_rent) : null) : tenant.custom_rent,
     custom_advance: custom_advance !== undefined ? (custom_advance !== '' ? parseFloat(custom_advance) : null) : tenant.custom_advance,
-    discount_amount: discount_amount !== undefined ? (discount_amount !== '' ? parseFloat(discount_amount) : 0) : tenant.discount_amount
+    discount_amount: discount_amount !== undefined ? (discount_amount !== '' ? parseFloat(discount_amount) : 0) : tenant.discount_amount,
+    email: email !== undefined ? toNull(email) : tenant.email
   });
 
   return db('tenants').where('tenant_id', id).first();
