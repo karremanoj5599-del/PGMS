@@ -28,13 +28,15 @@ const Tenants = () => {
   const [newTenant, setNewTenant] = useState({
     tenant_id: '', name: '', mobile: '', gender: 'Male', joining_date: new Date().toISOString().split('T')[0], 
     expiry_date: '', access_expiry_date: '', punch_limit: '', bed_id: '', status: 'Staying', initial_payment: 'Pending', tenant_type: 'Permanent',
-    custom_rent: '', custom_advance: '', discount_amount: '', photo: ''
+    expiry_date: '', access_expiry_date: '', punch_limit: '', bed_id: '', status: 'Staying', initial_payment: 'Pending', tenant_type: 'Permanent',
+    custom_rent: '', custom_advance: '', discount_amount: '', photo: '', email: ''
   });
   const [toast, setToast] = useState(null);
   const [showPinModal, setShowPinModal] = useState(false);
   const [pinTenant, setPinTenant] = useState(null);
   const [newPin, setNewPin] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [countryCode, setCountryCode] = useState('+91');
 
   useEffect(() => {
     fetchTenants();
@@ -232,10 +234,22 @@ const Tenants = () => {
   };
 
   const handleEditClick = (tenant) => {
+    let cCode = '+91';
+    let mob = tenant.mobile || '';
+    if (mob.startsWith('+91')) {
+      cCode = '+91';
+      mob = mob.substring(3).trim();
+    } else if (mob.startsWith('+1')) {
+      cCode = '+1';
+      mob = mob.substring(2).trim();
+    }
+    
+    setCountryCode(cCode);
     setEditId(tenant.tenant_id);
     setNewTenant({
       name: tenant.name,
-      mobile: tenant.mobile,
+      mobile: mob,
+      email: tenant.email || '',
       occupation: tenant.occupation || '',
       gender: tenant.gender || 'Male',
       joining_date: tenant.joining_date.split('T')[0],
@@ -259,10 +273,13 @@ const Tenants = () => {
   const handleAddTenant = async (e) => {
     e.preventDefault();
     try {
+      const payload = { ...newTenant };
+      payload.mobile = `${countryCode}${payload.mobile}`;
+      
       if (isEditing) {
-        await api.put(`/api/tenants/${editId}`, newTenant);
+        await api.put(`/api/tenants/${editId}`, payload);
       } else {
-        await api.post('/api/tenants', newTenant);
+        await api.post('/api/tenants', payload);
       }
       setShowModal(false);
       setIsEditing(false);
@@ -394,7 +411,7 @@ const Tenants = () => {
           >
             {selectionMode === 'delete' ? 'Exit Delete Mode' : 'Select & Delete'}
           </button>
-          <button className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => { setIsEditing(false); setNewTenant({ name: '', mobile: '', occupation: '', gender: 'Male', joining_date: new Date().toISOString().split('T')[0], expiry_date: '', access_expiry_date: '', punch_limit: '', bed_id: '', status: 'Staying', initial_payment: 'Pending', tenant_type: 'Permanent', biometric_pin: '', custom_rent: '', custom_advance: '', discount_amount: '', photo: '' }); setShowModal(true); }}>
+          <button className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => { setIsEditing(false); setCountryCode('+91'); setNewTenant({ name: '', mobile: '', email: '', occupation: '', gender: 'Male', joining_date: new Date().toISOString().split('T')[0], expiry_date: '', access_expiry_date: '', punch_limit: '', bed_id: '', status: 'Staying', initial_payment: 'Pending', tenant_type: 'Permanent', biometric_pin: '', custom_rent: '', custom_advance: '', discount_amount: '', photo: '' }); setShowModal(true); }}>
             <UserPlus size={18} /> Add Tenant
           </button>
         </div>
@@ -706,7 +723,23 @@ const Tenants = () => {
               </div>
               <div className="form-group">
                 <label>Mobile Number</label>
-                <input type="text" required value={newTenant.mobile} onChange={e => setNewTenant({ ...newTenant, mobile: e.target.value })} />
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <select 
+                    value={countryCode} 
+                    onChange={e => setCountryCode(e.target.value)}
+                    style={{ width: '120px', flexShrink: 0 }}
+                  >
+                    <option value="+91">+91 (India)</option>
+                    <option value="+1">+1 (US/Canada)</option>
+                    <option value="+44">+44 (UK)</option>
+                    <option value="+61">+61 (Australia)</option>
+                  </select>
+                  <input type="text" required value={newTenant.mobile} onChange={e => setNewTenant({ ...newTenant, mobile: e.target.value })} style={{ flex: 1 }} />
+                </div>
+              </div>
+              <div className="form-group">
+                <label>Email Address (Optional)</label>
+                <input type="email" value={newTenant.email} onChange={e => setNewTenant({ ...newTenant, email: e.target.value })} placeholder="tenant@example.com" />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div className="form-group">
