@@ -152,29 +152,9 @@ const syncTenantAccess = async (tenant_id, toggleOnly = false) => {
           user_id: tenant.user_id
         });
 
-        // Queue Biometric Templates (we always do this because USERINFO update wipes them)
-        const templates = await db('biometric_templates').where({ tenant_id, is_valid: true });
-        for (const tpl of templates) {
-          const major = tpl.major_ver ? `\tMajorVer=${tpl.major_ver}` : '';
-          const minor = tpl.minor_ver ? `\tMinorVer=${tpl.minor_ver}` : '';
-          const size = tpl.template_data ? `\tSize=${tpl.template_data.length}` : '';
-          
-          if (tpl.type === 'fingerprint') {
-            commands.push({
-              device_sn: device.sn,
-              command: `DATA UPDATE BIODATA Pin=${pin}\tNo=0\tIndex=${tpl.finger_index}\tValid=1\tDuress=0\tType=1${major}${minor}${size}\tTmp=${tpl.template_data}`,
-              user_id: tenant.user_id
-            });
-          } else {
-            const bioType = tpl.type === 'face' ? '9' : (tpl.type === 'palm' ? '8' : '0');
-            const format = tpl.format ? `\tFormat=${tpl.format}` : '';
-            commands.push({
-              device_sn: device.sn,
-              command: `DATA UPDATE BIODATA Pin=${pin}\tNo=0\tIndex=${tpl.finger_index}\tValid=1\tDuress=0\tType=${bioType}${major}${minor}${format}${size}\tTmp=${tpl.template_data}`,
-              user_id: tenant.user_id
-            });
-          }
-        }
+        // Biometric Templates sync is intentionally skipped during a regular tenant update 
+        // to avoid rewriting biometric data unnecessarily, per user request.
+        // Users can still have their biometrics pushed via the 'Sync Bio' device operation.
       }
 
       if (commands.length > 0) {
