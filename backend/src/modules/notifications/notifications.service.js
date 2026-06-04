@@ -29,7 +29,7 @@ exports.getNotifications = async (userId) => {
     .where('tenants.expiry_date', '<=', reminderWindowEnd.toISOString().split('T')[0])
     .select(
       'tenants.tenant_id', 'tenants.name', 'tenants.expiry_date',
-      'tenants.custom_rent', 'tenants.mobile',
+      'tenants.custom_rent', 'tenants.mobile', 'tenants.email',
       'beds.bed_number', 'beds.bed_cost',
       'rooms.room_number',
       'floors.floor_name'
@@ -66,6 +66,7 @@ exports.getNotifications = async (userId) => {
       tenant_id: t.tenant_id,
       name: t.name,
       mobile: t.mobile,
+      email: t.email,
       room_number: t.room_number || 'N/A',
       bed_number: t.bed_number || 'N/A',
       floor_name: t.floor_name || '',

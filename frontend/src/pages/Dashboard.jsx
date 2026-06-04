@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
-import { Bed, Users, AlertCircle, Bell, BellOff, ChevronRight, Clock, AlertTriangle, CreditCard } from 'lucide-react';
+import { Bed, Users, AlertCircle, Bell, BellOff, ChevronRight, Clock, AlertTriangle, CreditCard, Phone, MessageSquare, Mail } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const STORAGE_KEY = 'pgms_notifications_enabled';
@@ -79,6 +79,50 @@ const Dashboard = () => {
   const warningCount = notifications.filter(n => n.type === 'warning').length;
   const reminderCount = notifications.filter(n => n.type === 'reminder').length;
   const totalCount = notifications.length;
+
+  const renderQuickActions = (tenant) => (
+    <div style={{ display: 'flex', gap: '0.4rem', marginLeft: 'auto', marginRight: '1rem', alignItems: 'center' }}>
+      {tenant.mobile && (
+        <>
+          <a
+            href={`tel:${tenant.mobile}`}
+            onClick={(e) => e.stopPropagation()}
+            className="quick-action-btn"
+            style={{ padding: '6px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: 'var(--text)', display: 'flex', transition: 'all 0.2s' }}
+            onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; e.currentTarget.style.color = '#3b82f6'; }}
+            onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'var(--text)'; }}
+            title="Call Tenant"
+          >
+            <Phone size={14} />
+          </a>
+          <a
+            href={`sms:${tenant.mobile}`}
+            onClick={(e) => e.stopPropagation()}
+            className="quick-action-btn"
+            style={{ padding: '6px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: 'var(--text)', display: 'flex', transition: 'all 0.2s' }}
+            onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; e.currentTarget.style.color = '#10b981'; }}
+            onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'var(--text)'; }}
+            title="SMS Tenant"
+          >
+            <MessageSquare size={14} />
+          </a>
+        </>
+      )}
+      {tenant.email && (
+        <a
+          href={`mailto:${tenant.email}`}
+          onClick={(e) => e.stopPropagation()}
+          className="quick-action-btn"
+          style={{ padding: '6px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: 'var(--text)', display: 'flex', transition: 'all 0.2s' }}
+          onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; e.currentTarget.style.color = '#f59e0b'; }}
+          onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'var(--text)'; }}
+          title="Email Tenant"
+        >
+          <Mail size={14} />
+        </a>
+      )}
+    </div>
+  );
 
   return (
     <div>
@@ -266,6 +310,7 @@ const Dashboard = () => {
                           </div>
                         </div>
                       </div>
+                      {renderQuickActions(n)}
                       <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '1rem' }}>
                         <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#ef4444' }}>
                           ₹{(n.monthly_rent || 0).toLocaleString()}
@@ -325,6 +370,7 @@ const Dashboard = () => {
                           </div>
                         </div>
                       </div>
+                      {renderQuickActions(n)}
                       <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '1rem' }}>
                         <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#f59e0b' }}>
                           ₹{(n.monthly_rent || 0).toLocaleString()}
