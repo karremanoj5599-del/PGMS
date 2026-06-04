@@ -24,7 +24,6 @@ exports.getNotifications = async (userId) => {
     .leftJoin('rooms', 'beds.room_id', '=', 'rooms.room_id')
     .leftJoin('floors', 'rooms.floor_id', '=', 'floors.floor_id')
     .where('tenants.status', 'Staying')
-    .where('tenants.user_id', userId)
     .whereNotNull('tenants.expiry_date')
     .where('tenants.expiry_date', '<=', reminderWindowEnd.toISOString().split('T')[0])
     .select(
