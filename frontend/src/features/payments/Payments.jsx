@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import axios from '../../services/api';
 import { CreditCard, CheckCircle, XCircle, Search, AlertCircle } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 
 const Payments = () => {
   const [tenants, setTenants] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const location = useLocation();
+  const [searchTerm, setSearchTerm] = useState(location.state?.searchTerm || '');
   const [filterStatus, setFilterStatus] = useState('All'); // All | Pending | Balance | Completed | Advances
   const [advanceSubTab, setAdvanceSubTab] = useState('paid'); // paid | pending | returnable
   const [showPayModal, setShowPayModal] = useState(false);

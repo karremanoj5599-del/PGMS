@@ -235,7 +235,7 @@ const Dashboard = () => {
                   {notifications.filter(n => n.type === 'warning').map(n => (
                     <div
                       key={`warn-${n.tenant_id}`}
-                      onClick={() => navigate('/payments')}
+                      onClick={() => navigate('/payments', { state: { searchTerm: n.name } })}
                       style={{
                         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                         padding: '0.85rem 1rem', borderRadius: '0.75rem',
@@ -294,7 +294,7 @@ const Dashboard = () => {
                   {notifications.filter(n => n.type === 'reminder').map(n => (
                     <div
                       key={`rem-${n.tenant_id}`}
-                      onClick={() => navigate('/payments')}
+                      onClick={() => navigate('/payments', { state: { searchTerm: n.name } })}
                       style={{
                         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                         padding: '0.85rem 1rem', borderRadius: '0.75rem',
