@@ -135,17 +135,7 @@ const syncTenantAccess = async (tenant_id, toggleOnly = false) => {
         const tzMask = generateTZMask(tzIds[0]);
 
         let extraParams = [];
-        if (tenant.access_expiry_date) {
-          const d = new Date(tenant.access_expiry_date);
-          if (!isNaN(d)) {
-            const yyyy = d.getFullYear();
-            const mm = String(d.getMonth() + 1).padStart(2, '0');
-            const dd = String(d.getDate()).padStart(2, '0');
-            extraParams.push(`EndDatetime=${yyyy}-${mm}-${dd} 23:59:59`);
-          }
-        }
-        
-        if (tenant.punch_limit && tenant.punch_limit > 0) {
+        if (tenant.punch_limit && tenant.punch_limit > 0 && isApproved) {
           extraParams.push(`ValidCount=${tenant.punch_limit}`);
         }
         const extraString = extraParams.length > 0 ? '\t' + extraParams.join('\t') : '';
@@ -163,7 +153,7 @@ const syncTenantAccess = async (tenant_id, toggleOnly = false) => {
         });
 
         // Queue Biometric Templates (we always do this because USERINFO update wipes them)
-        const templates = await db('biometric_templates').where({ tenant_id: tid, is_valid: true });
+        const templates = await db('biometric_templates').where({ tenant_id, is_valid: true });
         for (const tpl of templates) {
           const major = tpl.major_ver ? `\tMajorVer=${tpl.major_ver}` : '';
           const minor = tpl.minor_ver ? `\tMinorVer=${tpl.minor_ver}` : '';

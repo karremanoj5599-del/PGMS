@@ -35,7 +35,7 @@ exports.resync = async (tenantId, userId) => {
       const major = tpl.major_ver ? `\tMajorVer=${tpl.major_ver}` : '';
       const minor = tpl.minor_ver ? `\tMinorVer=${tpl.minor_ver}` : '';
       const format = tpl.format ? `\tFormat=${tpl.format}` : '';
-      const size = tpl.template_data ? `\tSize=${tpl.template_data.length}` : '';
+      const size = tpl.template_data ? `\tSize=${Buffer.from(tpl.template_data, 'base64').length}` : '';
       const bioType = tpl.type === 'face' ? '9' : (tpl.type === 'palm' ? '8' : '1');
 
       await db('device_commands').insert({
