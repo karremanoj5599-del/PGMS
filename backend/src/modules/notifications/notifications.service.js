@@ -24,11 +24,12 @@ exports.getNotifications = async (userId) => {
     .leftJoin('rooms', 'beds.room_id', '=', 'rooms.room_id')
     .leftJoin('floors', 'rooms.floor_id', '=', 'floors.floor_id')
     .where('tenants.status', 'Staying')
+    .where('tenants.user_id', userId)
     .whereNotNull('tenants.expiry_date')
     .where('tenants.expiry_date', '<=', reminderWindowEnd.toISOString().split('T')[0])
     .select(
       'tenants.tenant_id', 'tenants.name', 'tenants.expiry_date',
-      'tenants.custom_rent', 'tenants.mobile', 'tenants.email',
+      'tenants.custom_rent', 'tenants.mobile',
       'beds.bed_number', 'beds.bed_cost',
       'rooms.room_number',
       'floors.floor_name'
