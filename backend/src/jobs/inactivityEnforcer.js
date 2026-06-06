@@ -5,21 +5,25 @@ const INTERVAL = 60 * 60 * 1000; // Run every hour
 
 const enforceInactivityRules = async () => {
   try {
-    const tenants = await db('tenants').where('status', 'Staying').select('tenant_id', 'access_expiry_date', 'punch_limit', 'biometric_pin');
+    const tenants = await db('tenants').where('status', 'Staying').select('tenant_id', 'access_expiry_date', 'expiry_date', 'punch_limit', 'biometric_pin');
 
     for (const tenant of tenants) {
       let shouldLock = false;
 
-      // Check expiry date
+      // Check expiry dates
+      let effectiveExpiry = null;
       if (tenant.access_expiry_date) {
-        const expiry = new Date(tenant.access_expiry_date);
-        if (!isNaN(expiry)) {
-          // Set time to end of day (23:59:59.999) to allow access through the entire day
-          expiry.setHours(23, 59, 59, 999);
-          if (expiry < new Date()) {
-            shouldLock = true;
-            console.log(`[JOB] Access expired for tenant ${tenant.tenant_id} (expired: ${tenant.access_expiry_date})`);
-          }
+        effectiveExpiry = new Date(tenant.access_expiry_date);
+      } else if (tenant.expiry_date) {
+        effectiveExpiry = new Date(tenant.expiry_date);
+      }
+
+      if (effectiveExpiry && !isNaN(effectiveExpiry)) {
+        // Set time to end of day (23:59:59.999) to allow access through the entire day
+        effectiveExpiry.setHours(23, 59, 59, 999);
+        if (effectiveExpiry < new Date()) {
+          shouldLock = true;
+          console.log(`[JOB] Access expired for tenant ${tenant.tenant_id} (expired: ${effectiveExpiry.toISOString()})`);
         }
       }
 

@@ -60,12 +60,30 @@ exports.getStatus = async (userId) => {
     const rentVal = t.custom_rent !== null && t.custom_rent !== undefined ? t.custom_rent : (t.bed_cost || 0);
     const advVal = t.custom_advance !== null && t.custom_advance !== undefined ? t.custom_advance : (t.advance_amount || 0);
 
+    // Calculate pending balance based on expiry date
+    let pendingBalance = lastPay ? lastPay.balance : 0;
+    
+    // If the rent expiry date has passed, they owe for the new month
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const isExpired = t.expiry_date && new Date(t.expiry_date) < today;
+
+    if (isExpired) {
+      if (pendingBalance === 0) {
+        pendingBalance = rentVal; // Owe 1 full month
+      } else if (pendingBalance > 0) {
+        // Owe previous balance + 1 full month
+        // (Assuming the UI expects the total owed, though this depends on how billing is handled)
+        pendingBalance += rentVal;
+      }
+    }
+
     return {
       ...t,
       bed_cost: rentVal,
       advance_amount: advVal,
       last_payment_date: lastPay ? lastPay.payment_date : null,
-      pending_balance: lastPay ? lastPay.balance : 0,
+      pending_balance: pendingBalance,
       access_granted: access ? access.access_granted : false,
       schedule_id: access ? access.schedule_id : 1,
       access_group_id: access ? access.access_group_id : null
