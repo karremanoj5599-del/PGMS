@@ -208,7 +208,8 @@ exports.convertToStaff = async (id, userId) => {
     joining_date: tenant.joining_date,
     status: 'Active',
     biometric_pin: tenant.biometric_pin || tenant.tenant_id.toString(),
-    admin_user_id: userId
+    admin_user_id: userId,
+    access_granted: true // Ensure access is granted by default
   };
   const [newStaff] = await db('staff').insert(staffData).returning('staff_id');
   const staffId = typeof newStaff === 'object' ? newStaff.staff_id : newStaff;
@@ -218,8 +219,21 @@ exports.convertToStaff = async (id, userId) => {
     .where({ tenant_id: id, admin_user_id: userId })
     .update({ staff_id: staffId, tenant_id: null });
 
-  // 4. Delete tenant (will free bed via remove function, etc)
-  await exports.remove(id, userId);
+  // 4. Update biometric templates (MOVE them, do NOT delete them)
+  await db('biometric_templates')
+    .where({ tenant_id: id })
+    .update({ staff_id: staffId, tenant_id: null });
+
+  // 5. Clean up tenant records without triggering device deletion commands
+  if (tenant.bed_id) {
+    await db('beds').where('bed_id', tenant.bed_id).update({ status: 'Vacant' });
+  }
+  await db('access_control').where('tenant_id', id).del().catch(() => {});
+  await db('tenants').where({ tenant_id: id, user_id: userId }).del();
+
+  // 6. Sync the new staff member to devices (overwrites their old tenant access with staff access)
+  const { syncStaffAccess } = require('../access-control/access.service');
+  await syncStaffAccess(staffId);
 
   return { message: 'Converted to staff successfully', staff_id: staffId };
 };
