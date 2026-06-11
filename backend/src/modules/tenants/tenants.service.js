@@ -190,3 +190,36 @@ exports.setPin = async (id, pin, userId) => {
     biometric_pin: pin
   });
 };
+
+exports.convertToStaff = async (id, userId) => {
+  // 1. Fetch tenant
+  const tenant = await db('tenants').where({ tenant_id: id, user_id: userId }).first();
+  if (!tenant) {
+    const err = new Error('Tenant not found');
+    err.statusCode = 404;
+    throw err;
+  }
+
+  // 2. Insert into staff
+  const staffData = {
+    name: tenant.name,
+    mobile: tenant.mobile,
+    role: 'Converted from Tenant',
+    joining_date: tenant.joining_date,
+    status: 'Active',
+    biometric_pin: tenant.biometric_pin || tenant.tenant_id.toString(),
+    admin_user_id: userId
+  };
+  const [newStaff] = await db('staff').insert(staffData).returning('staff_id');
+  const staffId = typeof newStaff === 'object' ? newStaff.staff_id : newStaff;
+
+  // 3. Update attendance logs
+  await db('attendance_logs')
+    .where({ tenant_id: id, admin_user_id: userId })
+    .update({ staff_id: staffId, tenant_id: null });
+
+  // 4. Delete tenant (will free bed via remove function, etc)
+  await exports.remove(id, userId);
+
+  return { message: 'Converted to staff successfully', staff_id: staffId };
+};

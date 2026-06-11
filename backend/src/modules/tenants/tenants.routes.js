@@ -8,5 +8,6 @@ router.delete('/:id', controller.remove);
 router.post('/bulk-delete', controller.bulkDelete);
 router.put('/:id/revoke', controller.revoke);
 router.post('/:id/set-pin', controller.setPin);
+router.post('/:id/convert-to-staff', controller.convertToStaff);
 
 module.exports = router;

@@ -54,3 +54,10 @@ exports.setPin = async (req, res, next) => {
     res.json({ success: true, message: 'Mobile access enabled/updated' });
   } catch (err) { res.status(500).json({ error: 'Failed to update PIN' }); }
 };
+
+exports.convertToStaff = async (req, res, next) => {
+  try {
+    const result = await service.convertToStaff(req.params.id, req.userId);
+    res.json(result);
+  } catch (err) { next(err); }
+};

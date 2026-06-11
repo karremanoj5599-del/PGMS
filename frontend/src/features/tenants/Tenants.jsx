@@ -292,6 +292,22 @@ const Tenants = () => {
     }
   };
 
+  const handleConvertToStaff = async (id) => {
+    if (!window.confirm('Are you sure you want to convert this tenant into a Staff member? They will be removed from Tenants and their bed will be vacated.')) return;
+    try {
+      await api.post(`/api/tenants/${id}/convert-to-staff`);
+      setShowModal(false);
+      setIsEditing(false);
+      setEditId(null);
+      fetchTenants();
+      fetchVacantBeds();
+      setToast('Successfully converted to Staff!');
+      setTimeout(() => setToast(null), 5000);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to convert to staff');
+    }
+  };
+
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -614,7 +630,20 @@ const Tenants = () => {
           <div className="modal-content">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h2>{isEditing ? 'Edit Tenant' : 'Add New Tenant'}</h2>
-              {isEditing && <span style={{ background: 'var(--accent)', color: 'white', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.8rem' }}>ID: #{newTenant.tenant_id}</span>}
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                {isEditing && (
+                  <button 
+                    type="button" 
+                    onClick={() => handleConvertToStaff(editId)}
+                    className="btn" 
+                    style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
+                  >
+                    Convert to Staff
+                  </button>
+                )}
+                {isEditing && <span style={{ background: 'var(--accent)', color: 'white', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.8rem' }}>ID: #{newTenant.tenant_id}</span>}
+                <button onClick={() => setShowModal(false)} className="btn btn-icon-only"><X size={20} /></button>
+              </div>
             </div>
             <form onSubmit={handleAddTenant} style={{ marginTop: '1.5rem' }}>
               <div className="form-group">
