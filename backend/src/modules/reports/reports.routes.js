@@ -4,6 +4,7 @@ const controller = require('./reports.controller');
 router.get('/stats', controller.stats);
 router.get('/tenant-wise', controller.tenantWise);
 router.get('/tenant-attendance', controller.tenantAttendance);
+router.get('/staff-attendance', controller.staffAttendance);
 router.get('/transactions', controller.transactions);
 
 module.exports = router;

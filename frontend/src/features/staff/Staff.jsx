@@ -130,13 +130,20 @@ const Staff = () => {
     <div style={{ paddingBottom: '20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1>Staff Management</h1>
-        <button className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => { 
-          setIsEditing(false); 
-          setNewStaff({ name: '', mobile: '', role: '', joining_date: new Date().toISOString().split('T')[0], status: 'Active', biometric_pin: '', shift_start_time: '', shift_end_time: '' }); 
-          setShowModal(true); 
-        }}>
-          <UserPlus size={18} /> Add Staff
-        </button>
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <button className="btn" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--card-bg)', border: '1px solid var(--border)' }} onClick={() => { 
+            window.location.href = '/reports?tab=staff_attendance';
+          }}>
+            <Calendar size={18} /> Attendance Reports
+          </button>
+          <button className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => { 
+            setIsEditing(false); 
+            setNewStaff({ name: '', mobile: '', role: '', joining_date: new Date().toISOString().split('T')[0], status: 'Active', biometric_pin: '', shift_start_time: '', shift_end_time: '' }); 
+            setShowModal(true); 
+          }}>
+            <UserPlus size={18} /> Add Staff
+          </button>
+        </div>
       </div>
 
       {toast && (

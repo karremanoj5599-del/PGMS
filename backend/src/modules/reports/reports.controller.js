@@ -18,6 +18,14 @@ exports.tenantAttendance = async (req, res, next) => {
   }
 };
 
+exports.staffAttendance = async (req, res, next) => {
+  try { res.json(await service.getStaffAttendance(req.userId, req.query)); }
+  catch (err) {
+    console.error('Staff Attendance Report Error:', err);
+    res.status(500).json({ error: 'Failed to generate staff attendance report' });
+  }
+};
+
 exports.transactions = async (req, res, next) => {
   try { res.json(await service.getTransactions(req.userId, req.query)); }
   catch (err) { next(err); }

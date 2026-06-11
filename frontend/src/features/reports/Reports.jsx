@@ -14,12 +14,15 @@ class ErrorBoundary extends React.Component {
 
 const Reports = () => {
   const navigate = useNavigate();
-  const [reportType, setReportType] = useState('summary'); // summary | tenant
+  const location = window.location; // or useLocation from react-router-dom if imported, but we can just use window.location
+  const queryParams = new URLSearchParams(location.search);
+  const [reportType, setReportType] = useState(queryParams.get('tab') || 'summary'); // summary | tenant | attendance | staff_attendance
   const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [transactions, setTransactions] = useState([]);
   const [tenantData, setTenantData] = useState([]);
   const [attendanceData, setAttendanceData] = useState([]);
+  const [staffAttendanceData, setStaffAttendanceData] = useState([]);
   const [stats, setStats] = useState({ revenue: 0, pending: 0, advance: 0, occupancy: { Vacant: 0, Occupied: 0, Maintenance: 0 } });
   const [floors, setFloors] = useState([]);
   const [rooms, setRooms] = useState([]);
@@ -43,6 +46,7 @@ const Reports = () => {
     if (reportType === 'summary') fetchTransactions();
     else if (reportType === 'tenant') fetchTenantWise();
     else if (reportType === 'attendance') fetchAttendance();
+    else if (reportType === 'staff_attendance') fetchStaffAttendance();
   }, [reportType, startDate, endDate, filters]);
 
   const fetchStats = async () => {
@@ -76,6 +80,14 @@ const Reports = () => {
     } catch (err) { console.error(err); }
   };
 
+  const fetchStaffAttendance = async () => {
+    try {
+      const q = new URLSearchParams({ startDate, endDate, ...filters }).toString();
+      const res = await api.get(`/api/reports/staff-attendance?${q}`);
+      setStaffAttendanceData(res.data);
+    } catch (err) { console.error(err); }
+  };
+
   const fetchFloors = async () => {
     try {
       const res = await api.get('/api/floors');
@@ -95,6 +107,7 @@ const Reports = () => {
     if (reportType === 'summary') data = transactions;
     else if (reportType === 'tenant') data = tenantData;
     else if (reportType === 'attendance') data = attendanceData;
+    else if (reportType === 'staff_attendance') data = staffAttendanceData;
     
     if (!data.length) return;
     
@@ -113,6 +126,7 @@ const Reports = () => {
   let filteredTransactions = [];
   let filteredTenantData = [];
   let filteredAttendanceData = [];
+  let filteredStaffAttendanceData = [];
   
   try {
     filteredTransactions = transactions.filter(t => 
@@ -130,6 +144,11 @@ const Reports = () => {
     filteredAttendanceData = attendanceData.filter(t =>
       (t.tenant_name || '').toLowerCase().includes((searchTerm || '').toLowerCase()) ||
       (t.room_number?.toString() || '').includes(searchTerm)
+    );
+
+    filteredStaffAttendanceData = staffAttendanceData.filter(t =>
+      (t.staff_name || '').toLowerCase().includes((searchTerm || '').toLowerCase()) ||
+      (t.role?.toString() || '').includes(searchTerm)
     );
   } catch (err) {
     if (!renderError) setRenderError(err);
@@ -150,10 +169,11 @@ const Reports = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <div>
           <h1>Reports & Analytics</h1>
-          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-            <button className={`btn ${reportType === 'summary' ? 'btn-primary' : ''}`} onClick={() => setReportType('summary')} style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }}>Financial Summary</button>
-            <button className={`btn ${reportType === 'tenant' ? 'btn-primary' : ''}`} onClick={() => setReportType('tenant')} style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }}>Tenant-wise Details</button>
-            <button className={`btn ${reportType === 'attendance' ? 'btn-primary' : ''}`} onClick={() => setReportType('attendance')} style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }}>Tenant Attendance</button>
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+            <button className={`btn ${reportType === 'summary' ? 'btn-primary' : ''}`} onClick={() => { setReportType('summary'); navigate('/reports?tab=summary', { replace: true }); }} style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }}>Financial Summary</button>
+            <button className={`btn ${reportType === 'tenant' ? 'btn-primary' : ''}`} onClick={() => { setReportType('tenant'); navigate('/reports?tab=tenant', { replace: true }); }} style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }}>Tenant-wise Details</button>
+            <button className={`btn ${reportType === 'attendance' ? 'btn-primary' : ''}`} onClick={() => { setReportType('attendance'); navigate('/reports?tab=attendance', { replace: true }); }} style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }}>Tenant Attendance</button>
+            <button className={`btn ${reportType === 'staff_attendance' ? 'btn-primary' : ''}`} onClick={() => { setReportType('staff_attendance'); navigate('/reports?tab=staff_attendance', { replace: true }); }} style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }}>Staff Attendance</button>
           </div>
         </div>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -205,7 +225,7 @@ const Reports = () => {
       <div className="data-table-container">
         <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem' }}>
           <h3 style={{ fontSize: '1rem', margin: 0 }}>
-            {reportType === 'summary' ? 'Transaction History' : reportType === 'tenant' ? 'Tenant-wise Statement' : 'Tenant Attendance Reports'}
+            {reportType === 'summary' ? 'Transaction History' : reportType === 'tenant' ? 'Tenant-wise Statement' : reportType === 'staff_attendance' ? 'Staff Attendance Reports' : 'Tenant Attendance Reports'}
           </h3>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem' }}>
@@ -241,6 +261,13 @@ const Reports = () => {
                   <option value="Vacated">Vacated</option>
                 </select>
               </>
+            )}
+            {reportType === 'staff_attendance' && (
+              <select style={{ fontSize: '0.8rem', padding: '4px' }} onChange={e => setFilters({...filters, status: e.target.value})}>
+                <option value="">All Status</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
             )}
           </div>
         </div>
@@ -383,6 +410,59 @@ const Reports = () => {
                 ))
               ) : (
                 <tr><td colSpan="7" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No attendance data found.</td></tr>
+              )}
+            </tbody>
+          </table>
+        ) : reportType === 'staff_attendance' ? (
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Staff Name</th>
+                <th>Role</th>
+                <th>First Punch In</th>
+                <th>Last Punch Out</th>
+                <th>Total Punches</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredStaffAttendanceData.length > 0 ? (
+                filteredStaffAttendanceData.map((t, idx) => (
+                  <tr key={idx}>
+                    <td><div style={{ fontWeight: 600 }}>{formatDate(t.date)}</div></td>
+                    <td>
+                      <div style={{ fontWeight: 600 }}>{t.staff_name}</div>
+                    </td>
+                    <td>{t.role}</td>
+                    <td><span style={{ color: 'var(--success)' }}>{new Date(t.first_punch).toLocaleTimeString()}</span></td>
+                    <td>{t.last_punch ? <span style={{ color: 'var(--danger)' }}>{new Date(t.last_punch).toLocaleTimeString()}</span> : <span style={{ color: 'var(--text-muted)' }}>-</span>}</td>
+                    <td>
+                      <div style={{ position: 'relative', display: 'inline-block' }}>
+                        <span 
+                          style={{ fontSize: '0.8rem', background: 'rgba(99, 102, 241, 0.2)', color: '#818cf8', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', border: '1px solid rgba(99, 102, 241, 0.5)' }} 
+                          onClick={(e) => {
+                            const popup = e.currentTarget.nextElementSibling;
+                            popup.style.display = popup.style.display === 'none' ? 'block' : 'none';
+                          }}
+                        >
+                          {t.punch_count} punches ▾
+                        </span>
+                        <div style={{ display: 'none', position: 'absolute', right: 0, top: '100%', marginTop: '5px', background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '6px', padding: '0.5rem', zIndex: 10, minWidth: '120px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '4px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '4px' }}>All Logs</div>
+                          <div style={{ maxHeight: '150px', overflowY: 'auto' }}>
+                            {t.all_punches?.map((p, i) => (
+                              <div key={i} style={{ fontSize: '0.8rem', padding: '3px 0', fontFamily: 'monospace', color: 'var(--text)' }}>
+                                {new Date(p).toLocaleTimeString()}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr><td colSpan="6" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No attendance data found.</td></tr>
               )}
             </tbody>
           </table>
