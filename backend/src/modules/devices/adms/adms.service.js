@@ -1,6 +1,6 @@
 const db = require('../../../config/database');
 const eventBus = require('../../../shared/events');
-const { findTenantByPin } = require('../../../shared/helpers/tenantLookup');
+const { findTenantByPin, findStaffByPin } = require('../../../shared/helpers/tenantLookup');
 const { parseATTLOG, parseKeyValueLines, upsertBiometricTemplate } = require('./adms.parser');
 
 // Process attendance log data from device
@@ -11,32 +11,47 @@ exports.processAttendanceLogs = async (sn, rawBody, device) => {
 
   for (const rec of records) {
     if (!rec.pin || !rec.time) continue;
-    const tenant = await findTenantByPin(rec.pin, adminUserId);
-    if (!tenant) continue;
+    let user = await findTenantByPin(rec.pin, adminUserId);
+    let isStaff = false;
+    
+    if (!user) {
+      user = await findStaffByPin(rec.pin, adminUserId);
+      if (user) isStaff = true;
+    }
+    
+    if (!user) continue;
 
     const formattedTime = rec.time.includes('+') ? rec.time : `${rec.time}+05:30`;
 
     const exists = await db('attendance_logs')
-      .where({ tenant_id: tenant.tenant_id.toString(), punch_time: formattedTime })
+      .where(isStaff ? { staff_id: user.staff_id, punch_time: formattedTime } : { tenant_id: user.tenant_id.toString(), punch_time: formattedTime })
       .first();
 
     if (!exists) {
-      await db('attendance_logs').insert({
-        tenant_id: tenant.tenant_id.toString(),
+      const insertData = {
         punch_time: formattedTime,
         status: rec.status,
         verify_type: rec.verify,
         device_sn: sn,
         admin_user_id: adminUserId,
         biometric_pin: rec.pin
-      }).catch(err => console.error('[ADMS] Insert attendance error:', err.message));
+      };
+      
+      if (isStaff) {
+        insertData.staff_id = user.staff_id;
+      } else {
+        insertData.tenant_id = user.tenant_id.toString();
+      }
+
+      await db('attendance_logs').insert(insertData).catch(err => console.error('[ADMS] Insert attendance error:', err.message));
       
       // Emit event for real-time UI monitoring
       eventBus.emit('punch', {
-        user_id: tenant.name || rec.pin,
+        user_id: user.name || rec.pin,
         punch_time: rec.time,
         device_sn: sn,
-        admin_user_id: adminUserId
+        admin_user_id: adminUserId,
+        is_staff: isStaff
       });
       
       count++;

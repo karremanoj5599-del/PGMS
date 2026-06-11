@@ -4,6 +4,7 @@ import { ProtectedRoute, DashboardLayout } from './components/layouts/DashboardL
 
 import Dashboard from './pages/Dashboard';
 import Tenants from './features/tenants/Tenants';
+import Staff from './features/staff/Staff';
 import Rooms from './features/rooms/Rooms';
 import Devices from './features/devices/Devices';
 import Payments from './features/payments/Payments';
@@ -31,6 +32,7 @@ function App() {
         {/* Protected Dashboard Routes */}
         <Route path="/" element={<ProtectedRoute><DashboardLayout><Dashboard /></DashboardLayout></ProtectedRoute>} />
         <Route path="/tenants" element={<ProtectedRoute><DashboardLayout><Tenants /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/staff" element={<ProtectedRoute><DashboardLayout><Staff /></DashboardLayout></ProtectedRoute>} />
         <Route path="/rooms" element={<ProtectedRoute><DashboardLayout><Rooms /></DashboardLayout></ProtectedRoute>} />
         <Route path="/devices" element={<ProtectedRoute><DashboardLayout><Devices /></DashboardLayout></ProtectedRoute>} />
         <Route path="/payments" element={<ProtectedRoute><DashboardLayout><Payments /></DashboardLayout></ProtectedRoute>} />

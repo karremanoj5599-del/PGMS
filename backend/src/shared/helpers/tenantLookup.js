@@ -42,4 +42,38 @@ const findTenantByPin = async (pin, adminUserId) => {
   return undefined;
 };
 
-module.exports = { findTenantByPin };
+const findStaffByPin = async (pin, adminUserId) => {
+  if (!pin) return undefined;
+  
+  const numericPinStr = pin.toString().replace(/\D/g, '');
+  const numericPin = numericPinStr ? Number(numericPinStr) : null;
+
+  // 1. Try exact match first
+  let staff = await db('staff')
+    .where({ admin_user_id: adminUserId })
+    .where(builder => {
+      builder.where('biometric_pin', pin)
+        .orWhere('staff_id', isNaN(pin) ? -1 : Number(pin));
+    })
+    .first();
+
+  if (staff) return staff;
+
+  // 2. Fallback
+  if (numericPin !== null && !isNaN(numericPin)) {
+    const staffMembers = await db('staff')
+      .where({ admin_user_id: adminUserId })
+      .whereNotNull('biometric_pin');
+
+    for (const s of staffMembers) {
+      const dbNumericStr = s.biometric_pin.replace(/\D/g, '');
+      if (dbNumericStr && Number(dbNumericStr) === numericPin) {
+        return s;
+      }
+    }
+  }
+
+  return undefined;
+};
+
+module.exports = { findTenantByPin, findStaffByPin };

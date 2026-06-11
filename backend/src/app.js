@@ -43,6 +43,7 @@ app.use('/api/tenant',              require('./modules/tenant-app/tenant-app.rou
 app.use('/api/events',              require('./modules/events/events.routes'));
 app.use('/api/notifications',       require('./modules/notifications/notifications.routes'));
 app.use('/api/system',              require('./modules/system/system.routes'));
+app.use('/api/staff',               require('./modules/staff/staff.routes'));
 
 // ── ADMS Protocol (Device Communication) ─────────────────────────────────────
 require('./modules/devices/adms/adms.routes')(app);
