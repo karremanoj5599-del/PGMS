@@ -8,6 +8,7 @@ const POLL_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const [stats, setStats] = useState({
     occupied: 0,
     vacant: 0,
     maintenance: 0,
