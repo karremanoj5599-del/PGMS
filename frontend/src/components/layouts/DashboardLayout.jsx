@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, Navigate, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Bed, Tablet, FileText, CreditCard, LogOut, User, Settings, ShieldCheck, Key, Copy, X, MessageSquare, Calendar, Briefcase } from 'lucide-react';
+import { LayoutDashboard, Users, Bed, Tablet, FileText, CreditCard, LogOut, User, Settings, ShieldCheck, Key, Copy, X, MessageSquare, Calendar, Briefcase, Bell } from 'lucide-react';
 
 export const ProtectedRoute = ({ children }) => {
   const userString = localStorage.getItem('pgms_user');
@@ -32,6 +32,9 @@ const Sidebar = ({ onProfileClick }) => {
       <nav className="nav-links">
         <NavLink to="/" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <LayoutDashboard size={20} /> Dashboard
+        </NavLink>
+        <NavLink to="/notifications" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+          <Bell size={20} /> Notifications
         </NavLink>
         <NavLink to="/tenants" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <Users size={20} /> Tenants

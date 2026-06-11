@@ -15,6 +15,7 @@ import LoginPage from './features/auth/LoginPage';
 import RegisterPage from './features/auth/RegisterPage';
 import ActivationPage from './features/auth/ActivationPage';
 import AccessSchedules from './features/schedules/AccessSchedules';
+import Notifications from './pages/Notifications';
 
 // Note: The global axios interceptor has been moved to src/services/api.js.
 // When features are fully refactored, they should import api from services instead of raw axios.
@@ -36,6 +37,7 @@ function App() {
         <Route path="/rooms" element={<ProtectedRoute><DashboardLayout><Rooms /></DashboardLayout></ProtectedRoute>} />
         <Route path="/devices" element={<ProtectedRoute><DashboardLayout><Devices /></DashboardLayout></ProtectedRoute>} />
         <Route path="/payments" element={<ProtectedRoute><DashboardLayout><Payments /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/notifications" element={<ProtectedRoute><DashboardLayout><Notifications /></DashboardLayout></ProtectedRoute>} />
         <Route path="/tickets" element={<ProtectedRoute><DashboardLayout><SupportTickets /></DashboardLayout></ProtectedRoute>} />
         <Route path="/schedules" element={<ProtectedRoute><DashboardLayout><AccessSchedules /></DashboardLayout></ProtectedRoute>} />
         <Route path="/reports" element={<ProtectedRoute><DashboardLayout><Reports /></DashboardLayout></ProtectedRoute>} />
