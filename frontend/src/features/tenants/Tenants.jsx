@@ -23,7 +23,8 @@ const Tenants = () => {
     floor: '',
     room: '',
     status: location.state?.status || '', // Staying, Vacated
-    payment: '' // Paid, Pending
+    payment: '', // Paid, Pending
+    access: '' // Active, Restricted, Expired
   });
   const [newTenant, setNewTenant] = useState({
     tenant_id: '', name: '', mobile: '', gender: 'Male', joining_date: new Date().toISOString().split('T')[0], 
@@ -333,12 +334,18 @@ const Tenants = () => {
     const matchesPayment = !filters.payment ||
       (filters.payment === 'Paid' ? (t.payment_status === 'Paid') : (t.payment_status !== 'Paid'));
 
+    const isExpired = t.is_expired || (t.expiry_date && new Date(t.expiry_date) < new Date());
+    const matchesAccess = !filters.access ||
+      (filters.access === 'Active' ? (t.access_granted !== false && !isExpired) : 
+       filters.access === 'Restricted' ? (t.access_granted === false) :
+       filters.access === 'Expired' ? (isExpired && t.status === 'Staying') : true);
+
     const matchesSearch = !searchTerm || 
       (t.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
        t.mobile?.includes(searchTerm) || 
        t.tenant_id?.toString().includes(searchTerm));
 
-    return matchesFloor && matchesRoom && matchesStatus && matchesPayment && matchesSearch;
+    return matchesFloor && matchesRoom && matchesStatus && matchesPayment && matchesAccess && matchesSearch;
   });
 
   const [selectedTenants, setSelectedTenants] = useState([]);
@@ -461,6 +468,12 @@ const Tenants = () => {
           <option value="">All Payments</option>
           <option value="Paid">Rent Paid</option>
           <option value="Pending">Rent Pending</option>
+        </select>
+        <select onChange={e => setFilters({ ...filters, access: e.target.value })}>
+          <option value="">All Access</option>
+          <option value="Active">🟢 Active</option>
+          <option value="Restricted">🔴 Restricted</option>
+          <option value="Expired">⚠️ Expired</option>
         </select>
       </div>
 
