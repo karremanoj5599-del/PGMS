@@ -3,6 +3,10 @@ const db = require('../../config/database');
 exports.getAll = async (userId) => {
   return await db('staff')
     .where('admin_user_id', userId)
+    .select(
+      'staff.*',
+      db.raw('(SELECT COUNT(*) FROM biometric_templates WHERE biometric_templates.staff_id = staff.staff_id) as biometric_count')
+    )
     .orderBy('created_at', 'desc');
 };
 

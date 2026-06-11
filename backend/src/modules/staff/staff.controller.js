@@ -1,4 +1,5 @@
 const service = require('./staff.service');
+const { toggleStaffAccess, syncStaffAccess } = require('../access-control/access.service');
 
 exports.list = async (req, res, next) => {
   try { res.json(await service.getAll(req.userId)); } catch (err) { next(err); }
@@ -43,4 +44,12 @@ exports.setPin = async (req, res, next) => {
     await service.setPin(req.params.id, pin, req.userId);
     res.json({ success: true, message: 'Biometric PIN updated' });
   } catch (err) { res.status(500).json({ error: 'Failed to update PIN' }); }
+};
+
+exports.toggleAccess = async (req, res, next) => {
+  try {
+    const { access_granted } = req.body;
+    await toggleStaffAccess(req.params.id, access_granted);
+    res.json({ message: 'Staff access updated' });
+  } catch (err) { next(err); }
 };

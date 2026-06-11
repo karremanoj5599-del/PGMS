@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
-import { UserPlus, Search, RefreshCw, X, ShieldAlert, Users, Fingerprint, Calendar, Activity } from 'lucide-react';
+import { UserPlus, Search, RefreshCw, X, ShieldAlert, ShieldCheck, Users, Fingerprint, Calendar, Activity } from 'lucide-react';
 
 const Staff = () => {
   const [staffList, setStaffList] = useState([]);
@@ -105,6 +105,18 @@ const Staff = () => {
     }
   };
 
+  const handleToggleAccess = async (staffId, currentStatus) => {
+    const newStatus = currentStatus === false; // Toggle
+    try {
+      const res = await api.put(`/api/staff/${staffId}/access`, { access_granted: newStatus });
+      setToast(res.data.message || 'Access rule updated successfully');
+      setTimeout(() => setToast(null), 5000);
+      fetchStaff();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to update biometric access');
+    }
+  };
+
   const filteredStaff = staffList.filter(s => {
     const matchesSearch = !searchTerm || s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.mobile.includes(searchTerm);
     const matchesStatus = !statusFilter || s.status === statusFilter;
@@ -190,8 +202,8 @@ const Staff = () => {
                 <td style={{ fontWeight: 600 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     {s.name}
-                    {s.biometric_pin && (
-                      <span title={`Biometric PIN: ${s.biometric_pin}`} style={{ color: '#10b981', display: 'flex', alignItems: 'center' }}>
+                    {Number(s.biometric_count) > 0 && (
+                      <span title={`Biometric PIN: ${s.biometric_pin} (${s.biometric_count} templates)`} style={{ color: '#10b981', display: 'flex', alignItems: 'center' }}>
                         <Fingerprint size={16} />
                       </span>
                     )}
@@ -218,6 +230,24 @@ const Staff = () => {
                       <Calendar size={16} />
                     </button>
                     <button onClick={() => handleEditClick(s)} className="btn btn-icon-only" title="Edit">Edit</button>
+                    <button
+                      onClick={() => handleToggleAccess(s.staff_id, s.access_granted)}
+                      className="btn btn-icon-only" 
+                      style={{ 
+                        color: s.access_granted === false 
+                          ? '#ef4444' 
+                          : (Number(s.biometric_count) > 0 ? '#10b981' : '#f59e0b') 
+                      }}
+                      title={
+                        s.access_granted === false
+                          ? "Intended Device Access: Restricted (Click to Allow)"
+                          : (Number(s.biometric_count) > 0 
+                              ? "Intended Device Access: Active (Click to Restrict)" 
+                              : "Intended Device Access: Allowed but no biometric templates saved (Click to Restrict)")
+                      }
+                    >
+                      {s.access_granted !== false && Number(s.biometric_count) > 0 ? <ShieldCheck size={16} /> : <ShieldAlert size={16} />}
+                    </button>
                     <button onClick={() => handleSyncStaff(s)} className="btn btn-icon-only" style={{ color: 'var(--success)' }} title="Sync Device">
                       <RefreshCw size={16} />
                     </button>

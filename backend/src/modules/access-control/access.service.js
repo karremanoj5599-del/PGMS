@@ -204,9 +204,85 @@ const assignGroup = async (tenantId, groupId) => {
   await syncTenantAccess(tid);
 };
 
+const toggleStaffAccess = async (staffId, accessGranted) => {
+  const sid = Number(staffId);
+  await db('staff').where('staff_id', sid).update({ access_granted: !!accessGranted });
+  await syncStaffAccess(sid, true);
+};
+
+const syncStaffAccess = async (staff_id, toggleOnly = false) => {
+  try {
+    const sid = Number(staff_id);
+    const staff = await db('staff').where('staff_id', sid).first();
+    if (!staff) return;
+
+    const isApproved = !!staff.access_granted && staff.status === 'Active';
+
+    const devices = await db('devices').where({ adms_status: true, user_id: staff.admin_user_id });
+    if (devices.length === 0) return;
+
+    for (const device of devices) {
+      if (!device.sn) continue;
+      const pin = staff.biometric_pin || staff.staff_id.toString();
+
+      await db('device_commands')
+        .where({ device_sn: device.sn, executed: false })
+        .andWhere(function() {
+          this.where('command', 'like', `%Pin=${pin}\t%`)
+              .orWhere('command', 'like', `%PIN=${pin}\t%`)
+              .orWhere('command', 'like', `%PIN2=${pin}%`)
+              .orWhere('command', 'like', `%accgroup%`);
+        })
+        .del();
+
+      let commands = [];
+
+      if (toggleOnly) {
+        commands.push({
+          device_sn: device.sn,
+          command: `DATA UPDATE USERINFO PIN=${pin}\tEnabled=${isApproved ? 1 : 0}`,
+          user_id: staff.admin_user_id
+        });
+      } else if (!isApproved) {
+        commands.push({
+          device_sn: device.sn,
+          command: `DATA UPDATE USERINFO PIN=${pin}\tEnabled=0`,
+          user_id: staff.admin_user_id
+        });
+      } else {
+        // Full sync: Give staff 24/7 access (Group 1, TZ 1)
+        const cleanName = staff.name.replace(/[^\w]/g, '');
+        const grpId = 1;
+        const tzMask = generateTZMask(1);
+        
+        commands.push({
+          device_sn: device.sn,
+          command: `DATA UPDATE USERINFO PIN=${pin}\tName=${cleanName}\tPri=0\tPass=\tCard=\tGrp=${grpId}\tTZ=${tzMask}\tPIN2=${pin}`,
+          user_id: staff.admin_user_id
+        });
+        
+        commands.push({
+          device_sn: device.sn,
+          command: `DATA UPDATE USERINFO PIN=${pin}\tEnabled=1`,
+          user_id: staff.admin_user_id
+        });
+      }
+
+      if (commands.length > 0) {
+        await db('device_commands').insert(commands);
+      }
+    }
+    console.log(`[ADMS] Queued sync for staff ${sid} as PIN ${staff.biometric_pin || sid} on ${devices.length} devices`);
+  } catch (err) {
+    console.error('[ADMS] Failed to sync staff access:', err.message);
+  }
+};
+
 module.exports = {
   syncTenantAccess,
   toggleAccess,
   assignSchedule,
-  assignGroup
+  assignGroup,
+  syncStaffAccess,
+  toggleStaffAccess
 };
