@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
-import { UserPlus, Search, Filter, Smartphone, Fingerprint, Server, RefreshCw, X, ShieldCheck, ShieldAlert, Users } from 'lucide-react';
+import { UserPlus, Search, Filter, Smartphone, Fingerprint, Server, RefreshCw, X, ShieldCheck, ShieldAlert, Users, AlertTriangle } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 
 const Tenants = () => {
@@ -552,9 +552,20 @@ const Tenants = () => {
                   <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t.floor_name}</div>
                 </td>
                 <td>
-                  <span className={`badge badge-${t.status?.toLowerCase() === 'staying' ? 'vacant' : 'occupied'}`}>
-                    {t.status}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span className={`badge badge-${t.status?.toLowerCase() === 'staying' ? 'vacant' : 'occupied'}`}>
+                      {t.status}
+                    </span>
+                    {(t.is_expired || (t.expiry_date && new Date(t.expiry_date) < new Date())) && t.status === 'Staying' && (
+                      <span style={{
+                        fontSize: '0.65rem', fontWeight: 700, padding: '2px 6px', borderRadius: '4px',
+                        background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)',
+                        display: 'flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap'
+                      }}>
+                        <AlertTriangle size={11} /> EXPIRED
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -788,9 +799,12 @@ const Tenants = () => {
                     Stay Expiry Date (Rent)
                     <span
                       onClick={() => {
-                        const d = new Date(newTenant.joining_date);
-                        d.setMonth(d.getMonth() + 1);
-                        setNewTenant({ ...newTenant, expiry_date: d.toISOString().split('T')[0] });
+                        const baseDate = newTenant.expiry_date ? new Date(newTenant.expiry_date) : new Date(newTenant.joining_date);
+                        baseDate.setMonth(baseDate.getMonth() + 1);
+                        if (isEditing) {
+                          if (!confirm('⚠️ You are extending the rent period by +1 month. Make sure a payment has been recorded for this extension.')) return;
+                        }
+                        setNewTenant({ ...newTenant, expiry_date: baseDate.toISOString().split('T')[0] });
                       }}
                       style={{ color: 'var(--primary)', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 600 }}
                     >

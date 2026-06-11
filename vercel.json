@@ -1,6 +1,16 @@
 {
   "outputDirectory": "frontend/dist",
+  "crons": [
+    {
+      "path": "/api/cron/enforce",
+      "schedule": "0 * * * *"
+    }
+  ],
   "rewrites": [
+    {
+      "source": "/api/cron/:path*",
+      "destination": "/api/cron/:path*"
+    },
     {
       "source": "/api/:path*",
       "destination": "/api/index.js"

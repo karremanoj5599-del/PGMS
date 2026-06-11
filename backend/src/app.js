@@ -22,6 +22,16 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(admsDebugLogger);
 app.use(extractUser);
 
+// ── Access Enforcement (Vercel-compatible, replaces setInterval jobs) ────────
+const { enforceExpiryRules } = require('./modules/access-control/access.service');
+app.use('/api', async (req, res, next) => {
+  // Fire-and-forget: don't block the request
+  if (req.userId) {
+    enforceExpiryRules().catch(err => console.error('[ENFORCE-MW] Error:', err.message));
+  }
+  next();
+});
+
 // ── Feature Routes ───────────────────────────────────────────────────────────
 app.use('/api/auth',                require('./modules/auth/auth.routes'));
 app.use('/api/floors',              require('./modules/floors/floors.routes'));

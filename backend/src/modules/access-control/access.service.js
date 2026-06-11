@@ -3,6 +3,104 @@ const { toNull } = require('../../shared/utils/toNull');
 const { generateTZMask } = require('../../shared/utils/generateTZMask');
 const { DAYS } = require('../../shared/constants');
 
+// ── Throttled Enforcement (Vercel-compatible) ─────────────────────────────────
+let lastEnforcementRun = 0;
+const ENFORCEMENT_INTERVAL = 15 * 60 * 1000; // 15 minutes
+
+const enforceExpiryRules = async () => {
+  const now = Date.now();
+  if (now - lastEnforcementRun < ENFORCEMENT_INTERVAL) return; // Throttle
+  lastEnforcementRun = now;
+
+  try {
+    console.log('[ENFORCE] Running expiry & payment enforcement check...');
+
+    // ── 1. Expiry Date Enforcement ──────────────────────────────────────────
+    const tenants = await db('tenants')
+      .where('status', 'Staying')
+      .select('tenant_id', 'access_expiry_date', 'expiry_date', 'punch_limit', 'biometric_pin', 'user_id');
+
+    let lockedCount = 0;
+
+    for (const tenant of tenants) {
+      let shouldLock = false;
+      let reason = '';
+
+      // Check expiry dates
+      let effectiveExpiry = null;
+      if (tenant.access_expiry_date) {
+        effectiveExpiry = new Date(tenant.access_expiry_date);
+      } else if (tenant.expiry_date) {
+        effectiveExpiry = new Date(tenant.expiry_date);
+      }
+
+      if (effectiveExpiry && !isNaN(effectiveExpiry)) {
+        effectiveExpiry.setHours(23, 59, 59, 999);
+        if (effectiveExpiry < new Date()) {
+          shouldLock = true;
+          reason = `expired on ${effectiveExpiry.toISOString().split('T')[0]}`;
+        }
+      }
+
+      // Check punch limit
+      if (!shouldLock && tenant.punch_limit && tenant.punch_limit > 0) {
+        const today = new Date().toISOString().split('T')[0];
+        const punches = await db('attendance_logs')
+          .where('tenant_id', tenant.tenant_id)
+          .andWhere('punch_time', '>=', today + ' 00:00:00')
+          .count('* as count')
+          .first();
+        if (punches && Number(punches.count) >= tenant.punch_limit) {
+          shouldLock = true;
+          reason = `punch limit reached (${punches.count}/${tenant.punch_limit})`;
+        }
+      }
+
+      if (shouldLock) {
+        const existing = await db('access_control').where('tenant_id', tenant.tenant_id).first();
+        if (existing && existing.access_granted === false) continue; // Already locked
+
+        await db('access_control').where('tenant_id', tenant.tenant_id).update({ access_granted: false });
+        await syncTenantAccess(tenant.tenant_id, true);
+        lockedCount++;
+        console.log(`[ENFORCE] Locked tenant ${tenant.tenant_id}: ${reason}`);
+      }
+    }
+
+    // ── 2. Payment Overdue Enforcement ──────────────────────────────────────
+    const stayingTenants = await db('tenants')
+      .leftJoin('beds', 'tenants.bed_id', 'beds.bed_id')
+      .where('tenants.status', 'Staying')
+      .select('tenants.tenant_id', 'tenants.user_id');
+
+    for (const tenant of stayingTenants) {
+      const lastPayment = await db('payments')
+        .where('tenant_id', tenant.tenant_id)
+        .orderBy('payment_date', 'desc')
+        .first();
+
+      if (lastPayment && lastPayment.balance > 0) {
+        const daysSincePay = Math.floor((Date.now() - new Date(lastPayment.payment_date).getTime()) / (1000 * 60 * 60 * 24));
+        if (daysSincePay > 30) {
+          const existing = await db('access_control').where('tenant_id', tenant.tenant_id).first();
+          if (existing && existing.access_granted === false) continue;
+
+          await db('access_control').where('tenant_id', tenant.tenant_id).update({ access_granted: false });
+          await syncTenantAccess(tenant.tenant_id, true);
+          lockedCount++;
+          console.log(`[ENFORCE] Locked tenant ${tenant.tenant_id}: payment overdue ${daysSincePay} days`);
+        }
+      }
+    }
+
+    if (lockedCount > 0) {
+      console.log(`[ENFORCE] Total tenants locked this run: ${lockedCount}`);
+    }
+  } catch (err) {
+    console.error('[ENFORCE] Enforcement error:', err.message);
+  }
+};
+
 // Core function: Sync tenant access state to biometric devices
 // This is the single source of truth for device command generation
 const syncTenantAccess = async (tenant_id, toggleOnly = false) => {
@@ -284,5 +382,6 @@ module.exports = {
   assignSchedule,
   assignGroup,
   syncStaffAccess,
-  toggleStaffAccess
+  toggleStaffAccess,
+  enforceExpiryRules
 };

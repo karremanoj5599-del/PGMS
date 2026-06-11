@@ -13,7 +13,12 @@ exports.getAll = (userId) => {
       'tenants.*', 'beds.bed_number', 'beds.bed_cost', 'beds.advance_amount',
       'rooms.room_id', 'rooms.room_number', 'rooms.sharing_capacity',
       'floors.floor_id', 'floors.floor_name', 'access_control.access_granted',
-      db.raw('(SELECT COUNT(*) FROM biometric_templates WHERE biometric_templates.tenant_id = tenants.tenant_id) as biometric_count')
+      db.raw('(SELECT COUNT(*) FROM biometric_templates WHERE biometric_templates.tenant_id = tenants.tenant_id) as biometric_count'),
+      db.raw(`CASE 
+        WHEN tenants.access_expiry_date IS NOT NULL AND tenants.access_expiry_date < NOW() THEN true
+        WHEN tenants.expiry_date IS NOT NULL AND tenants.expiry_date < CURRENT_DATE THEN true
+        ELSE false 
+      END as is_expired`)
     );
 };
 
