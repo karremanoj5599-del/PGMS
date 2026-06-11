@@ -801,9 +801,6 @@ const Tenants = () => {
                       onClick={() => {
                         const baseDate = newTenant.expiry_date ? new Date(newTenant.expiry_date) : new Date(newTenant.joining_date);
                         baseDate.setMonth(baseDate.getMonth() + 1);
-                        if (isEditing) {
-                          if (!confirm('⚠️ You are extending the rent period by +1 month. Make sure a payment has been recorded for this extension.')) return;
-                        }
                         setNewTenant({ ...newTenant, expiry_date: baseDate.toISOString().split('T')[0] });
                       }}
                       style={{ color: 'var(--primary)', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 600 }}
