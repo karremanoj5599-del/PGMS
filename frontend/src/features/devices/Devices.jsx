@@ -336,7 +336,7 @@ const Devices = () => {
     return (
       <div style={{ flex: 1, minWidth: '80px' }}>
         <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '2px' }}>{label}</div>
-        <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '4px', height: '6px', overflow: 'hidden' }}>
+        <div style={{ background: 'rgba(128,128,128,0.1)', borderRadius: '4px', height: '6px', overflow: 'hidden' }}>
           <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: '4px', transition: 'width 0.3s' }} />
         </div>
         <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '1px' }}>
@@ -354,7 +354,7 @@ const Devices = () => {
           <button 
             onClick={fetchSyncHistory}
             className="btn" 
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', color: 'white' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(128,128,128,0.1)', color: 'var(--text-main)' }}
           >
             <Server size={18} /> Sync History
           </button>
@@ -393,7 +393,7 @@ const Devices = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
                   {device.adms_status ? <Wifi color="var(--accent)" size={20} /> : <WifiOff color="var(--danger)" size={20} />}
                   {device.firmware_ver && (
-                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>
+                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', background: 'rgba(128,128,128,0.1)', padding: '2px 6px', borderRadius: '4px' }}>
                       FW: {device.firmware_ver}
                     </span>
                   )}
@@ -402,7 +402,7 @@ const Devices = () => {
 
               {/* Capacity Bars (show if device has reported info) */}
               {(device.user_count > 0 || device.fp_count > 0 || device.face_count > 0) && (
-                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem', padding: '0.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem', padding: '0.5rem', background: 'rgba(128,128,128,0.1)', borderRadius: '0.5rem' }}>
                   <CapacityBar label="Users" count={device.user_count} capacity={device.user_capacity} color="#3b82f6" />
                   <CapacityBar label="FP" count={device.fp_count} capacity={device.fp_capacity} color="#10b981" />
                   <CapacityBar label="Faces" count={device.face_count} capacity={device.face_capacity} color="#a855f7" />
@@ -449,15 +449,15 @@ const Devices = () => {
               {/* Row 3: Maintenance */}
               <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.4rem', flexWrap: 'wrap' }}>
                 <button onClick={() => syncTime(device.sn)} className="btn" title="Sync device clock"
-                  style={{ flex: 1, minWidth: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', fontSize: '0.8rem', padding: '0.5rem' }}>
+                  style={{ flex: 1, minWidth: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(128,128,128,0.1)', fontSize: '0.8rem', padding: '0.5rem' }}>
                   <Clock size={14} />
                 </button>
                 <button onClick={() => rebootDevice(device.sn)} className="btn" title="Reboot Device"
-                  style={{ flex: 1, minWidth: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', fontSize: '0.8rem', padding: '0.5rem' }}>
+                  style={{ flex: 1, minWidth: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(128,128,128,0.1)', fontSize: '0.8rem', padding: '0.5rem' }}>
                   <RotateCcw size={14} />
                 </button>
                 <button onClick={() => clearLogs(device.sn)} className="btn" title="Clear Device Logs"
-                  style={{ flex: 1, minWidth: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', color: '#f59e0b', fontSize: '0.8rem', padding: '0.5rem' }}>
+                  style={{ flex: 1, minWidth: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(128,128,128,0.1)', color: '#f59e0b', fontSize: '0.8rem', padding: '0.5rem' }}>
                   <Trash2 size={14} />
                 </button>
                 <button onClick={() => syncLogs(device.sn)} className="btn" title="Sync all attendance logs from device"
@@ -469,7 +469,7 @@ const Devices = () => {
                   <Sliders size={14} />
                 </button>
                 <button onClick={() => openConfigModal(device)} className="btn" title="Device Configuration"
-                  style={{ flex: 1, minWidth: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', fontSize: '0.8rem', padding: '0.5rem' }}>
+                  style={{ flex: 1, minWidth: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(128,128,128,0.1)', fontSize: '0.8rem', padding: '0.5rem' }}>
                   <Settings size={14} />
                 </button>
                 <button onClick={() => { setTargetDevice(device); setDeletePin(''); setShowDeleteUserModal(true); }} className="btn" title="Delete User from Device"
@@ -603,8 +603,8 @@ const Devices = () => {
                   <p style={{ marginBottom: '0.5rem' }}><strong>Option 1: ADMS (Recommended)</strong></p>
                   <ol style={{ margin: '0 0 1rem', paddingLeft: '1.25rem' }}>
                     <li>Go to <strong>Comm. → Cloud Server Setting</strong> on the device</li>
-                    <li>Set <strong>Server Address</strong> to: <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.15rem 0.4rem', borderRadius: '4px' }}>{getADMSUrl()}</code></li>
-                    <li>Set <strong>Server Port</strong> to: <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.15rem 0.4rem', borderRadius: '4px' }}>5000</code></li>
+                    <li>Set <strong>Server Address</strong> to: <code style={{ background: 'var(--border)', padding: '0.15rem 0.4rem', borderRadius: '4px' }}>{getADMSUrl()}</code></li>
+                    <li>Set <strong>Server Port</strong> to: <code style={{ background: 'var(--border)', padding: '0.15rem 0.4rem', borderRadius: '4px' }}>5000</code></li>
                   </ol>
                   <p style={{ marginBottom: '0.5rem' }}><strong>Option 2: Standalone SDK (Direct)</strong></p>
                   <ul style={{ margin: 0, paddingLeft: '1.25rem', listStyle: 'disc' }}>
@@ -616,7 +616,7 @@ const Devices = () => {
               </div>
 
               {/* Test Connection */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '0.75rem', border: '1px solid var(--border)', marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'rgba(128,128,128,0.1)', borderRadius: '0.75rem', border: '1px solid var(--border)', marginBottom: '1rem' }}>
                 <button type="button" className="btn" onClick={testConnection} disabled={testing}
                   style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
                   {testing ? <Loader2 size={16} className="spin" /> : <Wifi size={16} />}
@@ -786,7 +786,7 @@ const Devices = () => {
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
               <button className="btn" onClick={() => setShowFactoryResetModal(false)} style={{ background: 'transparent' }}>Cancel</button>
               <button className="btn" onClick={handleFactoryReset} disabled={resetConfirm !== 'RESET'}
-                style={{ background: resetConfirm === 'RESET' ? '#ef4444' : 'rgba(239, 68, 68, 0.15)', color: 'white', fontWeight: 600 }}>
+                style={{ background: resetConfirm === 'RESET' ? '#ef4444' : 'rgba(239, 68, 68, 0.15)', color: 'var(--text-main)', fontWeight: 600 }}>
                 ⚠️ Erase All Data
               </button>
             </div>
@@ -807,7 +807,7 @@ const Devices = () => {
             
             <div className="data-table-container" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
               <table style={{ minWidth: '100%' }}>
-                <thead style={{ position: 'sticky', top: 0, background: '#1e293b', zIndex: 10 }}>
+                <thead style={{ position: 'sticky', top: 0, background: 'var(--card-bg)', zIndex: 10 }}>
                   <tr>
                     <th>Time</th>
                     <th>Device SN</th>
@@ -884,11 +884,11 @@ const Devices = () => {
 
             {/* Firmware & Platform */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
-              <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '0.5rem', padding: '0.75rem', border: '1px solid var(--border)' }}>
+              <div style={{ background: 'rgba(128,128,128,0.1)', borderRadius: '0.5rem', padding: '0.75rem', border: '1px solid var(--border)' }}>
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Firmware Version</div>
                 <div style={{ fontSize: '0.95rem', fontWeight: 600 }}>{deviceInfoDevice.firmware_ver || '—'}</div>
               </div>
-              <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '0.5rem', padding: '0.75rem', border: '1px solid var(--border)' }}>
+              <div style={{ background: 'rgba(128,128,128,0.1)', borderRadius: '0.5rem', padding: '0.75rem', border: '1px solid var(--border)' }}>
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Platform</div>
                 <div style={{ fontSize: '0.95rem', fontWeight: 600 }}>{deviceInfoDevice.platform || '—'}</div>
               </div>
@@ -906,12 +906,12 @@ const Devices = () => {
                 ].map(item => {
                   const pct = item.capacity > 0 ? Math.min(((item.count || 0) / item.capacity) * 100, 100) : 0;
                   return (
-                    <div key={item.label} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '0.5rem', padding: '0.75rem', border: '1px solid var(--border)' }}>
+                    <div key={item.label} style={{ background: 'rgba(128,128,128,0.1)', borderRadius: '0.5rem', padding: '0.75rem', border: '1px solid var(--border)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
                         <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{item.icon} {item.label}</span>
                         <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>{item.count || 0} / {item.capacity || '?'}</span>
                       </div>
-                      <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '4px', height: '8px', overflow: 'hidden' }}>
+                      <div style={{ background: 'rgba(128,128,128,0.1)', borderRadius: '4px', height: '8px', overflow: 'hidden' }}>
                         <div style={{ width: `${pct}%`, height: '100%', background: item.color, borderRadius: '4px', transition: 'width 0.5s ease' }} />
                       </div>
                       <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '0.25rem', textAlign: 'right' }}>
@@ -932,7 +932,7 @@ const Devices = () => {
                 return (
                   <div style={{ marginBottom: '1rem' }}>
                     <h4 style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.75rem', fontWeight: 500 }}>All Device Parameters</h4>
-                    <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '0.5rem', padding: '0.75rem', border: '1px solid var(--border)', maxHeight: '200px', overflowY: 'auto' }}>
+                    <div style={{ background: 'rgba(128,128,128,0.1)', borderRadius: '0.5rem', padding: '0.75rem', border: '1px solid var(--border)', maxHeight: '200px', overflowY: 'auto' }}>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.3rem 1.5rem' }}>
                         {entries.map(([key, value]) => (
                           <div key={key} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.2rem 0', borderBottom: '1px solid rgba(255,255,255,0.04)', fontSize: '0.75rem' }}>
@@ -981,7 +981,7 @@ const Devices = () => {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {liveEvents.map((ev, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px' }}>
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'rgba(128,128,128,0.1)', borderRadius: '8px' }}>
                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: ev.punch_time?.includes('AUTO-LOCKED') ? '#ef4444' : '#10b981' }}></div>
                      <span style={{ fontWeight: 'bold' }}>{ev.user_id || 'Unknown User'}</span> 

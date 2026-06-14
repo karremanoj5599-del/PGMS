@@ -261,7 +261,7 @@ const Rooms = () => {
 
           return (
             <div key={floor.floor_id} style={{
-              background: 'rgba(255, 255, 255, 0.03)',
+              background: 'rgba(128,128,128,0.1)',
               backdropFilter: 'blur(12px)',
               border: '1px solid var(--border)',
               borderRadius: '1rem',
@@ -274,7 +274,7 @@ const Rooms = () => {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--primary)' }}>{floor.floor_name}</span>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '6px' }}>{total} beds</span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', background: 'rgba(128,128,128,0.1)', padding: '2px 8px', borderRadius: '6px' }}>{total} beds</span>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 <div style={{
@@ -322,7 +322,7 @@ const Rooms = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1.5rem' }}>
                   {rooms.filter(r => r.floor_id === floor.floor_id).map(room => (
                     <div key={room.room_id} style={{ 
-                      background: 'rgba(255,255,255,0.02)', 
+                      background: 'rgba(128,128,128,0.1)', 
                       border: '1px solid var(--border)', 
                       borderRadius: '1rem', 
                       padding: '1rem',
@@ -350,7 +350,7 @@ const Rooms = () => {
                               flexDirection: 'column',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              color: 'white',
+                              color: 'var(--text-main)',
                               cursor: 'pointer',
                               boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
                               transition: 'transform 0.2s',
@@ -474,7 +474,7 @@ const Rooms = () => {
                   style={{ 
                     width: '130px', 
                     padding: '0.4rem 0.8rem', 
-                    background: '#1e293b', 
+                    background: 'var(--card-bg)', 
                     border: '1px solid var(--border)', 
                     borderRadius: '0.5rem', 
                     color: 'var(--text-main)',
@@ -493,7 +493,7 @@ const Rooms = () => {
                   style={{ 
                     width: '130px', 
                     padding: '0.4rem 0.8rem', 
-                    background: '#1e293b', 
+                    background: 'var(--card-bg)', 
                     border: '1px solid var(--border)', 
                     borderRadius: '0.5rem', 
                     color: 'var(--text-main)',
@@ -514,7 +514,7 @@ const Rooms = () => {
                   style={{ 
                     width: '130px', 
                     padding: '0.4rem 0.8rem', 
-                    background: '#1e293b', 
+                    background: 'var(--card-bg)', 
                     border: '1px solid var(--border)', 
                     borderRadius: '0.5rem', 
                     color: 'var(--text-main)',
@@ -788,13 +788,13 @@ const Rooms = () => {
             }}>
               <div style={{ 
                 position: 'absolute', bottom: '-40px', left: '50%', transform: 'translateX(-50%)',
-                width: '80px', height: '80px', borderRadius: '20px', border: '4px solid #1e293b',
-                background: '#1e293b', overflow: 'hidden', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.3)'
+                width: '80px', height: '80px', borderRadius: '20px', border: '4px solid var(--card-bg)',
+                background: 'var(--card-bg)', overflow: 'hidden', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.3)'
               }}>
                 {editingBed?.tenant_photo ? (
                   <img src={editingBed.tenant_photo} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
-                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', color: 'var(--primary)' }}>
+                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(128,128,128,0.1)', color: 'var(--primary)' }}>
                     <Users size={40} />
                   </div>
                 )}
@@ -808,7 +808,7 @@ const Rooms = () => {
               <div style={{ 
                 display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', 
                 background: 'rgba(0,0,0,0.2)', padding: '1.5rem', borderRadius: '1.25rem', textAlign: 'left',
-                border: '1px solid rgba(255,255,255,0.05)'
+                border: '1px solid rgba(128,128,128,0.1)'
               }}>
                 <div>
                   <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.3rem' }}>Bed & Room</div>
@@ -829,7 +829,7 @@ const Rooms = () => {
                   <Users size={18} /> View Full Profile
                 </button>
                 <div style={{ display: 'flex', gap: '1rem' }}>
-                  <button className="btn" style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)' }} onClick={() => { setShowTenantModal(false); setShowEditBedModal(true); }}>
+                  <button className="btn" style={{ flex: 1, background: 'rgba(128,128,128,0.1)', border: '1px solid var(--border)' }} onClick={() => { setShowTenantModal(false); setShowEditBedModal(true); }}>
                     Edit Bed
                   </button>
                   <button className="btn" style={{ flex: 1, background: 'transparent' }} onClick={() => setShowTenantModal(false)}>
@@ -844,8 +844,8 @@ const Rooms = () => {
 
       <style dangerouslySetInnerHTML={{ __html: `
         .btn-icon {
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: rgba(128,128,128,0.1);
+          border: 1px solid var(--border);
           border-radius: 8px;
           width: 32px;
           height: 32px;
@@ -856,7 +856,7 @@ const Rooms = () => {
           transition: all 0.2s;
         }
         .btn-icon:hover {
-          background: rgba(255, 255, 255, 0.1);
+          background: var(--border);
           transform: translateY(-1px);
         }
         .modal-overlay {
@@ -870,8 +870,8 @@ const Rooms = () => {
           z-index: 1000;
         }
         .modal-content {
-          background: #1e293b;
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: var(--card-bg);
+          border: 1px solid var(--border);
           border-radius: 1.5rem;
           padding: 2rem;
           width: 100%;

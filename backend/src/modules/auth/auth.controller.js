@@ -60,3 +60,25 @@ exports.claimLicense = async (req, res, next) => {
     res.status(500).json({ error: 'Failed to claim license: ' + err.message });
   }
 };
+
+exports.updateProfile = async (req, res, next) => {
+  try {
+    const result = await service.updateProfile(req.body.email, req.body.display_name);
+    res.json(result);
+  } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
+    console.error('Update Profile Error:', err);
+    res.status(500).json({ error: 'Failed to update profile: ' + err.message });
+  }
+};
+
+exports.updatePassword = async (req, res, next) => {
+  try {
+    const result = await service.updatePassword(req.body.email, req.body.current_password, req.body.new_password);
+    res.json(result);
+  } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
+    console.error('Update Password Error:', err);
+    res.status(500).json({ error: 'Failed to update password: ' + err.message });
+  }
+};

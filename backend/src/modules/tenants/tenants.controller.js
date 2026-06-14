@@ -61,3 +61,11 @@ exports.convertToStaff = async (req, res, next) => {
     res.json(result);
   } catch (err) { next(err); }
 };
+
+exports.resyncBiometrics = async (req, res, next) => {
+  try {
+    const { target_device_sn } = req.body || {};
+    await service.resyncBiometrics(req.params.id, target_device_sn, req.userId);
+    res.json({ message: 'Biometric sync command queued' });
+  } catch (err) { next(err); }
+};

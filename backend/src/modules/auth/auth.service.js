@@ -108,3 +108,62 @@ exports.claimLicense = async (email, activationCode) => {
     status: license.status
   };
 };
+
+exports.updateProfile = async (email, displayName) => {
+  if (!email || !displayName) {
+    const err = new Error('Email and display name are required');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const user = await db('users').where({ email }).first();
+  if (!user) {
+    const err = new Error('User not found');
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const [updated] = await db('users')
+    .where({ email })
+    .update({ display_name: displayName })
+    .returning('*');
+
+  // Handle SQLite (returning array of objects) vs PostgreSQL
+  const updatedUser = typeof updated === 'number' 
+    ? await db('users').where({ email }).first() 
+    : updated;
+
+  return {
+    message: 'Profile updated successfully',
+    display_name: updatedUser.display_name
+  };
+};
+
+exports.updatePassword = async (email, currentPassword, newPassword) => {
+  if (!email || !currentPassword || !newPassword) {
+    const err = new Error('Email, current password, and new password are required');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const user = await db('users').where({ email }).first();
+  if (!user) {
+    const err = new Error('User not found');
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const isMatch = await bcrypt.compare(currentPassword, user.password);
+  if (!isMatch) {
+    const err = new Error('Incorrect current password');
+    err.statusCode = 401;
+    throw err;
+  }
+
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  await db('users').where({ email }).update({ password: hashedPassword });
+
+  return {
+    message: 'Password updated successfully'
+  };
+};

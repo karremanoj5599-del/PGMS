@@ -209,13 +209,13 @@ const AccessSchedules = () => {
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Control building entry rules and individual tenant permissions.</p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
-          <button className="btn" onClick={resyncAll} disabled={syncing} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: syncing ? 'var(--text-muted)' : 'var(--success)', color: 'white', border: 'none', padding: '0.6rem 1.2rem', borderRadius: '8px', cursor: syncing ? 'not-allowed' : 'pointer', fontWeight: 600 }}>
+          <button className="btn" onClick={resyncAll} disabled={syncing} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: syncing ? 'var(--text-muted)' : 'var(--success)', color: 'var(--text-main)', border: 'none', padding: '0.6rem 1.2rem', borderRadius: '8px', cursor: syncing ? 'not-allowed' : 'pointer', fontWeight: 600 }}>
             <RefreshCw size={18} className={syncing ? 'spin' : ''} /> {syncing ? 'Syncing...' : 'Re-Sync to Device'}
           </button>
-          <button className="btn" onClick={() => setShowHolidayModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--success)', color: 'white' }}>
+          <button className="btn" onClick={() => setShowHolidayModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--success)', color: 'var(--text-main)' }}>
             <Clock size={18} /> New Holiday
           </button>
-          <button className="btn" onClick={() => setShowGroupModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--accent)', color: 'white' }}>
+          <button className="btn" onClick={() => setShowGroupModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--accent)', color: 'var(--text-main)' }}>
             <Users size={18} /> New Access Group
           </button>
           <button className="btn btn-primary" onClick={() => setShowAddModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -295,7 +295,7 @@ const AccessSchedules = () => {
               </div>
               <div className="form-group">
                 <label>Anti-Passback</label>
-                <div style={{ padding: '0.6rem', borderRadius: '8px', background: '#2d3748', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <div style={{ padding: '0.6rem', borderRadius: '8px', background: 'var(--bg-dark)', border: '1px solid var(--border)' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', margin: 0, fontSize: '0.85rem' }}>
                     <input 
                       type="checkbox" 
@@ -365,7 +365,7 @@ const AccessSchedules = () => {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.2rem' }}>
               {schedules.map(s => (
-                <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: s.id === 1 ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.05)' }}>
+                <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'rgba(128,128,128,0.1)', borderRadius: '8px', border: s.id === 1 ? '1px solid var(--accent)' : '1px solid rgba(128,128,128,0.1)' }}>
                   <div>
                     <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{s.name}</div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--accent)', fontWeight: 600, marginTop: '2px' }}>
@@ -417,9 +417,9 @@ const AccessSchedules = () => {
                   style={{
                     padding: '0.5rem 1rem',
                     borderRadius: '8px',
-                    background: '#2d3748',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    color: 'white',
+                    background: 'var(--bg-dark)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-main)',
                     outline: 'none',
                     width: '100%'
                   }}
@@ -470,7 +470,7 @@ const AccessSchedules = () => {
                     <Trash2 size={16} />
                   </button>
                 </div>
-                <div style={{ fontSize: '0.85rem', background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '8px' }}>
+                <div style={{ fontSize: '0.85rem', background: 'rgba(128,128,128,0.1)', padding: '12px', borderRadius: '8px' }}>
                   {h.timezone_id ? (
                     <>Uses Schedule: <span style={{ fontWeight: 600, color: 'var(--success)' }}>
                       {schedules.find(s => s.id === h.timezone_id)?.name || 'Full Access'}
@@ -482,7 +482,7 @@ const AccessSchedules = () => {
               </div>
             ))}
             {holidays.length === 0 && (
-              <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', gridColumn: '1/-1', textAlign: 'center', padding: '3rem', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', gridColumn: '1/-1', textAlign: 'center', padding: '3rem', background: 'rgba(128,128,128,0.1)', borderRadius: '12px', border: '1px dashed var(--border)' }}>
                 No holiday rules defined.
               </div>
             )}
@@ -510,7 +510,7 @@ const AccessSchedules = () => {
                   {[g.timezone1_id, g.timezone2_id, g.timezone3_id].map((tid, idx) => {
                     const s = schedules.find(sched => sched.id === tid);
                     return s ? (
-                      <div key={idx} style={{ fontSize: '0.85rem', background: 'rgba(255,255,255,0.03)', padding: '8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                      <div key={idx} style={{ fontSize: '0.85rem', background: 'rgba(128,128,128,0.1)', padding: '8px', borderRadius: '6px', border: '1px solid rgba(128,128,128,0.1)' }}>
                          <span style={{ fontWeight: 600, color: 'var(--accent)' }}>T{idx+1}:</span> {s.name} ({s.start_time}-{s.end_time})
                       </div>
                     ) : null;
@@ -522,7 +522,7 @@ const AccessSchedules = () => {
               </div>
             ))}
             {groups.length === 0 && (
-              <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', gridColumn: '1/-1', textAlign: 'center', padding: '3rem', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', gridColumn: '1/-1', textAlign: 'center', padding: '3rem', background: 'rgba(128,128,128,0.1)', borderRadius: '12px', border: '1px dashed var(--border)' }}>
                 No access groups defined yet. Create one to bundle multiple time schedules.
               </div>
             )}
@@ -556,9 +556,9 @@ const AccessSchedules = () => {
                   width: '100%',
                   padding: '0.5rem 1rem',
                   borderRadius: '8px',
-                  background: '#2d3748',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  color: 'white',
+                  background: 'var(--bg-dark)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text-main)',
                   outline: 'none',
                   fontSize: '0.9rem'
                 }}
@@ -585,7 +585,7 @@ const AccessSchedules = () => {
                       <td>Room {t.room_number || 'N/A'}</td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '4px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                          <div style={{ display: 'flex', background: 'rgba(128,128,128,0.1)', borderRadius: '8px', padding: '4px', border: '1px solid var(--border)' }}>
                             <button 
                               onClick={() => !t.access_granted && toggleAccess(t.tenant_id, false)}
                               style={{ 
@@ -622,11 +622,11 @@ const AccessSchedules = () => {
                         <select 
                           value={t.access_group_id || 'none'}
                           onChange={(e) => updateGroup(t.tenant_id, e.target.value)}
-                          style={{ padding: '0.5rem', borderRadius: '6px', background: '#2d3748', color: 'white', border: '1px solid rgba(255,255,255,0.1)', width: '100%' }}
+                          style={{ padding: '0.5rem', borderRadius: '6px', background: 'var(--bg-dark)', color: 'var(--text-main)', border: '1px solid var(--border)', width: '100%' }}
                         >
-                          <option value="none" style={{ background: '#2d3748' }}>No Group (Default)</option>
+                          <option value="none" style={{ background: 'var(--bg-dark)' }}>No Group (Default)</option>
                           {groups.map(g => (
-                            <option key={g.id} value={g.id} style={{ background: '#2d3748', color: 'white' }}>
+                            <option key={g.id} value={g.id} style={{ background: 'var(--bg-dark)', color: 'var(--text-main)' }}>
                               {g.name}
                             </option>
                           ))}
@@ -658,7 +658,7 @@ const AccessSchedules = () => {
                 <input type="text" required placeholder="e.g. Day Shift" value={newSchedule.name} onChange={e => setNewSchedule({...newSchedule, name: e.target.value})} />
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', background: 'rgba(255,255,255,0.03)', padding: '10px', borderRadius: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', background: 'rgba(128,128,128,0.1)', padding: '10px', borderRadius: '8px' }}>
                 <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Same timings for all days?</span>
                 <input 
                   type="checkbox" 
@@ -706,7 +706,7 @@ const AccessSchedules = () => {
               ) : (
                 <div style={{ maxHeight: '300px', overflowY: 'auto', paddingRight: '10px', marginBottom: '1rem' }}>
                    {['sun','mon','tue','wed','thu','fri','sat'].map((day, idx) => (
-                     <div key={day} style={{ display: 'grid', gridTemplateColumns: '80px 1fr 1fr', gap: '10px', alignItems: 'center', marginBottom: '8px', padding: '8px', background: newSchedule.valid_days[idx] ? 'rgba(255,255,255,0.05)' : 'transparent', borderRadius: '6px' }}>
+                     <div key={day} style={{ display: 'grid', gridTemplateColumns: '80px 1fr 1fr', gap: '10px', alignItems: 'center', marginBottom: '8px', padding: '8px', background: newSchedule.valid_days[idx] ? 'rgba(128,128,128,0.1)' : 'transparent', borderRadius: '6px' }}>
                         <span style={{ fontWeight: 600, textTransform: 'uppercase', fontSize: '0.8rem' }}>{day}</span>
                         <input 
                           type="text" 
@@ -750,7 +750,7 @@ const AccessSchedules = () => {
                       }}
                       style={{
                         padding: '8px 0', flex: 1, textAlign: 'center', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
-                        background: newSchedule.valid_days[idx] ? 'var(--primary)' : 'rgba(255,255,255,0.1)',
+                        background: newSchedule.valid_days[idx] ? 'var(--primary)' : 'var(--border)',
                         color: newSchedule.valid_days[idx] ? 'white' : 'var(--text-muted)',
                         transition: '0.2s'
                       }}
@@ -785,11 +785,11 @@ const AccessSchedules = () => {
                   <select 
                     value={newGroup[`timezone${i}_id`]} 
                     onChange={e => setNewGroup({...newGroup, [`timezone${i}_id`]: e.target.value})}
-                    style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', background: '#2d3748', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }}
+                    style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', background: 'var(--bg-dark)', color: 'var(--text-main)', border: '1px solid var(--border)' }}
                   >
-                    <option value="" style={{ background: '#2d3748', color: 'white' }}>None</option>
+                    <option value="" style={{ background: 'var(--bg-dark)', color: 'var(--text-main)' }}>None</option>
                     {schedules.map(s => (
-                      <option key={s.id} value={s.id} style={{ background: '#2d3748', color: 'white' }}>{s.name} ({s.start_time}-{s.end_time})</option>
+                      <option key={s.id} value={s.id} style={{ background: 'var(--bg-dark)', color: 'var(--text-main)' }}>{s.name} ({s.start_time}-{s.end_time})</option>
                     ))}
                   </select>
                 </div>
@@ -800,11 +800,11 @@ const AccessSchedules = () => {
                 <select 
                   value={newGroup.holiday_id || ''} 
                   onChange={e => setNewGroup({...newGroup, holiday_id: e.target.value})}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', background: '#2d3748', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }}
+                  style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', background: 'var(--bg-dark)', color: 'var(--text-main)', border: '1px solid var(--border)' }}
                 >
-                  <option value="" style={{ background: '#2d3748', color: 'white' }}>No Holiday Rule</option>
+                  <option value="" style={{ background: 'var(--bg-dark)', color: 'var(--text-main)' }}>No Holiday Rule</option>
                   {holidays.map(h => (
-                    <option key={h.id} value={h.id} style={{ background: '#2d3748', color: 'white' }}>{h.name} ({h.start_date.split('T')[0]} to {h.end_date.split('T')[0]})</option>
+                    <option key={h.id} value={h.id} style={{ background: 'var(--bg-dark)', color: 'var(--text-main)' }}>{h.name} ({h.start_date.split('T')[0]} to {h.end_date.split('T')[0]})</option>
                   ))}
                 </select>
               </div>

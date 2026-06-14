@@ -87,8 +87,8 @@ const SupportTickets = () => {
             style={{ 
               width: '100%', padding: '0.75rem 1rem 0.75rem 3rem', 
               background: 'rgba(15, 23, 42, 0.6)', 
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '12px', color: 'white'
+              border: '1px solid var(--border)',
+              borderRadius: '12px', color: 'var(--text-main)'
             }} 
           />
         </div>
@@ -98,8 +98,8 @@ const SupportTickets = () => {
           style={{ 
             padding: '0.75rem 1.5rem', 
             background: 'rgba(15, 23, 42, 0.6)', 
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            borderRadius: '12px', color: 'white',
+            border: '1px solid var(--border)',
+            borderRadius: '12px', color: 'var(--text-main)',
             cursor: 'pointer'
           }}
         >
@@ -113,8 +113,8 @@ const SupportTickets = () => {
       {isLoading ? (
         <div style={{ textAlign: 'center', padding: '4rem', color: '#64748b' }}>Loading tickets...</div>
       ) : filteredTickets.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '4rem', background: 'rgba(255,255,255,0.02)', borderRadius: '24px', border: '1px dashed rgba(255,255,255,0.1)' }}>
-          <MessageSquare size={48} color="#1e293b" style={{ marginBottom: '1rem' }} />
+        <div style={{ textAlign: 'center', padding: '4rem', background: 'rgba(128,128,128,0.1)', borderRadius: '24px', border: '1px dashed var(--border)' }}>
+          <MessageSquare size={48} color="var(--card-bg)" style={{ marginBottom: '1rem' }} />
           <h3 style={{ color: '#94a3b8' }}>No tickets found</h3>
           <p style={{ color: '#64748b' }}>{searchQuery || statusFilter ? 'Try clearing your filters' : 'Tenants haven\'t submitted any requests yet'}</p>
         </div>
@@ -128,7 +128,7 @@ const SupportTickets = () => {
               style={{
                 background: 'rgba(30, 41, 59, 0.7)',
                 backdropFilter: 'blur(10px)',
-                border: '1px solid rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(128,128,128,0.1)',
                 borderRadius: '20px',
                 padding: '1.5rem',
                 cursor: 'pointer',
@@ -150,12 +150,12 @@ const SupportTickets = () => {
                 </div>
               </div>
 
-              <h4 style={{ color: 'white', fontSize: '1.1rem', marginBottom: '0.5rem', fontWeight: 600 }}>{ticket.tenant_name}</h4>
+              <h4 style={{ color: 'var(--text-main)', fontSize: '1.1rem', marginBottom: '0.5rem', fontWeight: 600 }}>{ticket.tenant_name}</h4>
               <p style={{ color: '#94a3b8', fontSize: '0.9rem', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                 {ticket.description}
               </p>
 
-              <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid rgba(255, 255, 255, 0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid rgba(128,128,128,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
                   {new Date(ticket.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                 </span>
@@ -172,15 +172,15 @@ const SupportTickets = () => {
       {/* Ticket Management Modal */}
       {selectedTicket && (
         <div className="modal-overlay" style={{ background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(12px)', zIndex: 9999 }}>
-          <div className="modal-content" style={{ maxWidth: '600px', background: '#0f172a', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '28px', padding: '2rem' }}>
+          <div className="modal-content" style={{ maxWidth: '600px', background: 'var(--bg-dark)', border: '1px solid var(--border)', borderRadius: '28px', padding: '2rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
               <div>
                 <span style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 600 }}>TICKET #{selectedTicket.id}</span>
-                <h2 style={{ color: 'white', marginTop: '0.25rem' }}>Resolve Request</h2>
+                <h2 style={{ color: 'var(--text-main)', marginTop: '0.25rem' }}>Resolve Request</h2>
               </div>
               <button 
                 onClick={() => setSelectedTicket(null)}
-                style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: 'white', borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer' }}
+                style={{ background: 'rgba(128,128,128,0.1)', border: 'none', color: 'var(--text-main)', borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer' }}
               >
                 <X size={20} />
               </button>
@@ -189,7 +189,7 @@ const SupportTickets = () => {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
               <div className="info-block">
                 <label style={{ display: 'block', color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Tenant</label>
-                <div style={{ color: 'white', fontWeight: 600 }}>{selectedTicket.tenant_name}</div>
+                <div style={{ color: 'var(--text-main)', fontWeight: 600 }}>{selectedTicket.tenant_name}</div>
                 <div style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{selectedTicket.tenant_mobile}</div>
               </div>
               <div className="info-block">
@@ -202,7 +202,7 @@ const SupportTickets = () => {
 
             <div style={{ marginBottom: '2rem' }}>
               <label style={{ display: 'block', color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Description</label>
-              <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '16px', padding: '1.25rem', color: '#e2e8f0', lineHeight: 1.6 }}>
+              <div style={{ background: 'rgba(128,128,128,0.1)', border: '1px solid rgba(128,128,128,0.1)', borderRadius: '16px', padding: '1.25rem', color: '#e2e8f0', lineHeight: 1.6 }}>
                 {selectedTicket.description}
               </div>
             </div>
@@ -215,8 +215,8 @@ const SupportTickets = () => {
                 placeholder="Ex: Electrician scheduled for tomorrow morning..."
                 style={{ 
                   width: '100%', height: '120px', padding: '1rem', 
-                  background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255, 255, 255, 0.1)', 
-                  borderRadius: '16px', color: 'white', fontSize: '0.95rem' 
+                  background: 'rgba(15, 23, 42, 0.6)', border: '1px solid var(--border)', 
+                  borderRadius: '16px', color: 'var(--text-main)', fontSize: '0.95rem' 
                 }}
               />
             </div>

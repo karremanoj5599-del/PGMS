@@ -147,7 +147,7 @@ const Staff = () => {
       </div>
 
       {toast && (
-        <div style={{ background: 'var(--success)', color: 'white', padding: '1rem', borderRadius: '0.5rem', marginBottom: '1rem' }}>
+        <div style={{ background: 'var(--success)', color: 'var(--text-main)', padding: '1rem', borderRadius: '0.5rem', marginBottom: '1rem' }}>
           {toast}
         </div>
       )}
@@ -156,7 +156,7 @@ const Staff = () => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
         <div className="stat-card" style={{ background: 'rgba(79, 70, 229, 0.1)', border: '1px solid rgba(79, 70, 229, 0.2)', padding: '1.5rem', borderRadius: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div style={{ background: '#4f46e5', color: 'white', padding: '0.75rem', borderRadius: '0.75rem' }}>
+            <div style={{ background: '#4f46e5', color: 'var(--text-main)', padding: '0.75rem', borderRadius: '0.75rem' }}>
               <Users size={24} />
             </div>
             <div>
@@ -309,7 +309,7 @@ const Staff = () => {
                 </div>
               </div>
               
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: 'rgba(128,128,128,0.1)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(128,128,128,0.1)' }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label>Shift Start Time (Optional)</label>
                   <input type="time" value={newStaff.shift_start_time || ''} onChange={e => setNewStaff({ ...newStaff, shift_start_time: e.target.value })} />
@@ -339,7 +339,7 @@ const Staff = () => {
             </div>
             
             {attendanceModal.logs.length > 0 && (
-              <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px' }}>
+              <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', background: 'rgba(128,128,128,0.1)', padding: '1rem', borderRadius: '8px' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Total Punches</div>
                   <div style={{ fontSize: '1.2rem', fontWeight: 600 }}>{attendanceModal.logs.length}</div>
@@ -359,7 +359,7 @@ const Staff = () => {
               <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
-                    <tr style={{ background: 'rgba(255,255,255,0.05)' }}>
+                    <tr style={{ background: 'rgba(128,128,128,0.1)' }}>
                       <th style={{ padding: '10px', textAlign: 'left' }}>Date & Time</th>
                       <th style={{ padding: '10px', textAlign: 'left' }}>Status</th>
                       <th style={{ padding: '10px', textAlign: 'left' }}>Device SN</th>
@@ -367,7 +367,7 @@ const Staff = () => {
                   </thead>
                   <tbody>
                     {attendanceModal.logs.map(log => (
-                      <tr key={log.log_id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <tr key={log.log_id} style={{ borderBottom: '1px solid rgba(128,128,128,0.1)' }}>
                         <td style={{ padding: '10px' }}>{new Date(log.punch_time).toLocaleString()}</td>
                         <td style={{ padding: '10px', display: 'flex', gap: '8px', alignItems: 'center' }}>
                           <span style={{ 

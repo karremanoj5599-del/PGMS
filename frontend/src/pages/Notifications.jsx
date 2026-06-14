@@ -45,7 +45,7 @@ const Notifications = () => {
       <div style={{ marginBottom: '2rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border)' }}>
           {icon}
-          <h2 style={{ margin: 0, fontSize: '1.25rem' }}>{title} <span style={{ background: 'rgba(255,255,255,0.1)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.8rem', marginLeft: '0.5rem' }}>{items.length}</span></h2>
+          <h2 style={{ margin: 0, fontSize: '1.25rem' }}>{title} <span style={{ background: 'var(--border)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.8rem', marginLeft: '0.5rem' }}>{items.length}</span></h2>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           {items.map(item => (
@@ -90,7 +90,7 @@ const Notifications = () => {
                   {item.message}
                 </p>
                 {item.location && (
-                  <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', background: 'rgba(255,255,255,0.05)', display: 'inline-block', padding: '2px 8px', borderRadius: '4px' }}>
+                  <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', background: 'rgba(128,128,128,0.1)', display: 'inline-block', padding: '2px 8px', borderRadius: '4px' }}>
                     Location: {item.location}
                   </div>
                 )}

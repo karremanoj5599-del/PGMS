@@ -520,7 +520,7 @@ const Tenants = () => {
                       height: '32px',
                       borderRadius: '50%',
                       overflow: 'hidden',
-                      background: 'rgba(255,255,255,0.05)',
+                      background: 'rgba(128,128,128,0.1)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -631,7 +631,7 @@ const Tenants = () => {
         <div style={{
           position: 'fixed', bottom: '2rem', left: '50%', transform: 'translateX(-50%)',
           background: selectionMode === 'delete' ? 'var(--danger)' : 'var(--primary)', 
-          color: 'white', padding: '1rem 2rem',
+          color: 'var(--text-main)', padding: '1rem 2rem',
           borderRadius: '1rem', boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
           display: 'flex', alignItems: 'center', gap: '2rem', zIndex: 1000,
           animation: 'slideUp 0.3s ease-out'
@@ -639,12 +639,12 @@ const Tenants = () => {
           <div style={{ fontWeight: 600 }}>{selectedTenants.length} Tenants Selected</div>
           <div style={{ display: 'flex', gap: '1rem' }}>
             {selectionMode === 'sync' && (
-              <button className="btn" style={{ background: 'rgba(255,255,255,0.2)', color: 'white' }} onClick={handleBulkSync}>Confirm Bulk Sync</button>
+              <button className="btn" style={{ background: 'var(--border)', color: 'var(--text-main)' }} onClick={handleBulkSync}>Confirm Bulk Sync</button>
             )}
             {selectionMode === 'delete' && (
-              <button className="btn" style={{ background: 'rgba(255,255,255,0.2)', color: 'white' }} onClick={handleBulkDelete}>Confirm Bulk Delete</button>
+              <button className="btn" style={{ background: 'var(--border)', color: 'var(--text-main)' }} onClick={handleBulkDelete}>Confirm Bulk Delete</button>
             )}
-            <button className="btn" style={{ background: 'transparent', color: 'white' }} onClick={() => { setSelectedTenants([]); setSelectionMode(null); }}>Cancel</button>
+            <button className="btn" style={{ background: 'transparent', color: 'var(--text-main)' }} onClick={() => { setSelectedTenants([]); setSelectionMode(null); }}>Cancel</button>
           </div>
         </div>
       )}
@@ -665,7 +665,7 @@ const Tenants = () => {
                     Convert to Staff
                   </button>
                 )}
-                {isEditing && <span style={{ background: 'var(--accent)', color: 'white', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.8rem' }}>ID: #{newTenant.tenant_id}</span>}
+                {isEditing && <span style={{ background: 'var(--accent)', color: 'var(--text-main)', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.8rem' }}>ID: #{newTenant.tenant_id}</span>}
                 <button onClick={() => setShowModal(false)} className="btn btn-icon-only"><X size={20} /></button>
               </div>
             </div>
@@ -740,7 +740,7 @@ const Tenants = () => {
                           padding: '0.5rem 1rem', 
                           fontSize: '0.85rem', 
                           background: 'var(--primary)', 
-                          color: 'white', 
+                          color: 'var(--text-main)', 
                           cursor: 'pointer',
                           borderRadius: '0.5rem',
                           textAlign: 'center'

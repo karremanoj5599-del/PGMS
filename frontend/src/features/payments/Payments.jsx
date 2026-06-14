@@ -106,9 +106,9 @@ const Payments = () => {
         <button className={`btn ${filterStatus === 'All' ? 'btn-primary' : ''}`} onClick={() => setFilterStatus('All')} style={{ fontSize: '0.8rem', padding: '0.4rem 1rem' }}>All Tenants</button>
         <button className={`btn ${filterStatus === 'Pending' ? 'btn-primary' : ''}`} onClick={() => setFilterStatus('Pending')} style={{ fontSize: '0.8rem', padding: '0.4rem 1rem' }}>Pending Rent</button>
         <button className={`btn ${filterStatus === 'Balance' ? 'btn-primary' : ''}`} onClick={() => setFilterStatus('Balance')} style={{ fontSize: '0.8rem', padding: '0.4rem 1rem' }}>Balance Due</button>
-        <button className={`btn ${filterStatus === 'Upcoming' ? 'btn-primary' : ''}`} onClick={() => setFilterStatus('Upcoming')} style={{ fontSize: '0.8rem', padding: '0.4rem 1rem', background: filterStatus === 'Upcoming' ? 'var(--primary)' : 'var(--accent)', color: 'white' }}>Upcoming Rent</button>
+        <button className={`btn ${filterStatus === 'Upcoming' ? 'btn-primary' : ''}`} onClick={() => setFilterStatus('Upcoming')} style={{ fontSize: '0.8rem', padding: '0.4rem 1rem', background: filterStatus === 'Upcoming' ? 'var(--primary)' : 'var(--accent)', color: 'var(--text-main)' }}>Upcoming Rent</button>
         <button className={`btn ${filterStatus === 'Completed' ? 'btn-primary' : ''}`} onClick={() => setFilterStatus('Completed')} style={{ fontSize: '0.8rem', padding: '0.4rem 1rem' }}>Completed</button>
-        <button className={`btn ${filterStatus === 'Advances' ? 'btn-primary' : ''}`} onClick={() => setFilterStatus('Advances')} style={{ fontSize: '0.8rem', padding: '0.4rem 1rem', background: filterStatus === 'Advances' ? '#6366f1' : '', color: 'white' }}>Advances</button>
+        <button className={`btn ${filterStatus === 'Advances' ? 'btn-primary' : ''}`} onClick={() => setFilterStatus('Advances')} style={{ fontSize: '0.8rem', padding: '0.4rem 1rem', background: filterStatus === 'Advances' ? '#6366f1' : '', color: 'var(--text-main)' }}>Advances</button>
       </div>
 
       {filterStatus === 'Advances' && (
@@ -213,9 +213,9 @@ const Payments = () => {
                           ₹{t.advance_amount.toLocaleString()}
                         </td>
                         <td>
-                          {advanceSubTab === 'paid' && <span style={{ fontSize: '0.75rem', background: 'var(--success)', color: 'white', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>Paid</span>}
-                          {advanceSubTab === 'pending' && <span style={{ fontSize: '0.75rem', background: 'var(--danger)', color: 'white', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>Pending</span>}
-                          {advanceSubTab === 'returnable' && <span style={{ fontSize: '0.75rem', background: 'var(--accent)', color: 'white', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>Refundable</span>}
+                          {advanceSubTab === 'paid' && <span style={{ fontSize: '0.75rem', background: 'var(--success)', color: 'var(--text-main)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>Paid</span>}
+                          {advanceSubTab === 'pending' && <span style={{ fontSize: '0.75rem', background: 'var(--danger)', color: 'var(--text-main)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>Pending</span>}
+                          {advanceSubTab === 'returnable' && <span style={{ fontSize: '0.75rem', background: 'var(--accent)', color: 'var(--text-main)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>Refundable</span>}
                         </td>
                         {advanceSubTab === 'pending' && (
                           <td>
@@ -305,11 +305,11 @@ const Payments = () => {
                   </td>
                   <td>
                     {(t.total_pending === 0) ? (
-                      <span style={{ fontSize: '0.75rem', background: 'var(--success)', color: 'white', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>Completed</span>
+                      <span style={{ fontSize: '0.75rem', background: 'var(--success)', color: 'var(--text-main)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>Completed</span>
                     ) : t.total_pending >= (t.bed_cost || 0) && t.bed_cost > 0 ? (
-                      <span style={{ fontSize: '0.75rem', background: 'var(--danger)', color: 'white', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>Pending</span>
+                      <span style={{ fontSize: '0.75rem', background: 'var(--danger)', color: 'var(--text-main)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>Pending</span>
                     ) : (
-                      <span style={{ fontSize: '0.75rem', background: 'var(--accent)', color: 'white', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>Balance</span>
+                      <span style={{ fontSize: '0.75rem', background: 'var(--accent)', color: 'var(--text-main)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>Balance</span>
                     )}
                   </td>
                   {filterStatus !== 'All' && filterStatus !== 'Completed' && (
@@ -394,7 +394,7 @@ const Payments = () => {
                 </div>
               </div>
 
-              <div style={{ marginBottom: '1rem', padding: '0.8rem', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px' }}>
+              <div style={{ marginBottom: '1rem', padding: '0.8rem', border: '1px solid var(--border)', borderRadius: '4px' }}>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Calculation:</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.4rem' }}>
                   <span>{paymentData.payment_type === 'Rent + Advance' ? 'Charges' : 'Fixed Rent'} + Balance from {prevMonth}</span>
@@ -402,7 +402,7 @@ const Payments = () => {
                 </div>
               </div>
 
-              <div className="form-group" style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '4px' }}>
+              <div className="form-group" style={{ background: 'rgba(128,128,128,0.1)', padding: '1rem', borderRadius: '4px' }}>
                 <div style={{ fontSize: '1rem' }}>
                   Balance for {currentMonth} will be:{' '}
                   <strong style={{ color: ((selectedTenant.computed_balance) + (parseFloat(paymentData.balance) || 0)) > 0 ? 'var(--danger)' : 'var(--success)', fontSize: '1.2rem' }}>
@@ -458,7 +458,7 @@ const Payments = () => {
             <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.15)', borderRadius: '0.5rem' }}>
               <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Tenant</div>
               <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>{selectedTenant.name} (Room {selectedTenant.room_number})</div>
-              <div style={{ marginTop: '0.5rem', color: 'white', fontSize: '0.9rem' }}>
+              <div style={{ marginTop: '0.5rem', color: 'var(--text-main)', fontSize: '0.9rem' }}>
                 Paid Advance Amount: <strong>₹{(selectedTenant.advance_amount || 0).toLocaleString()}</strong>
               </div>
             </div>
@@ -520,9 +520,9 @@ const Payments = () => {
                     width: '100%',
                     padding: '0.6rem 0.8rem',
                     borderRadius: '6px',
-                    background: '#2d3748',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    color: 'white',
+                    background: 'var(--bg-dark)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-main)',
                     minHeight: '80px',
                     outline: 'none',
                     fontFamily: 'inherit'
@@ -530,7 +530,7 @@ const Payments = () => {
                 />
               </div>
 
-              <div style={{ background: 'rgba(255, 255, 255, 0.05)', padding: '1rem', borderRadius: '4px', marginBottom: '1.25rem' }}>
+              <div style={{ background: 'rgba(128,128,128,0.1)', padding: '1rem', borderRadius: '4px', marginBottom: '1.25rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem', fontWeight: 'bold' }}>
                   <span>Net Refund Amount:</span>
                   <span style={{ color: 'var(--success)' }}>
@@ -563,7 +563,7 @@ const Payments = () => {
               <button 
                 type="submit" 
                 className="btn btn-primary" 
-                style={{ width: '100%', background: 'var(--danger)', borderColor: 'var(--danger)', color: 'white', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}
+                style={{ width: '100%', background: 'var(--danger)', borderColor: 'var(--danger)', color: 'var(--text-main)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}
                 disabled={loading}
               >
                 Confirm Refund & Vacate Tenant

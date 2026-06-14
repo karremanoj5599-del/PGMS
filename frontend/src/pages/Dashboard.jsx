@@ -15,7 +15,7 @@ const Dashboard = () => {
   });
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem('pgms_notifications_enabled');
     return stored === null ? true : stored === 'true';
   });
   const [notifications, setNotifications] = useState([]);

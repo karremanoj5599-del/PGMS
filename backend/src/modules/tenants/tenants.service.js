@@ -137,9 +137,7 @@ exports.remove = async (id, userId) => {
   for (const device of devices) {
     if (!device.sn) continue;
     await db('device_commands').insert([
-      { device_sn: device.sn, command: `DATA DELETE USERINFO PIN=${pin}`, user_id: userId },
-      { device_sn: device.sn, command: `DATA DELETE BIODATA PIN=${pin}`, user_id: userId },
-      { device_sn: device.sn, command: `DATA DELETE FINGERTMP PIN=${pin}`, user_id: userId }
+      { device_sn: device.sn, command: `DATA DELETE USERINFO PIN=${pin}`, user_id: userId }
     ]);
   }
 
@@ -181,9 +179,7 @@ exports.revokeTenant = async (id, userId) => {
   for (const device of devices) {
     if (!device.sn) continue;
     await db('device_commands').insert([
-      { device_sn: device.sn, command: `DATA DELETE USERINFO PIN=${pin}`, user_id: userId },
-      { device_sn: device.sn, command: `DATA DELETE BIODATA PIN=${pin}`, user_id: userId },
-      { device_sn: device.sn, command: `DATA DELETE FINGERTMP PIN=${pin}`, user_id: userId }
+      { device_sn: device.sn, command: `DATA DELETE USERINFO PIN=${pin}`, user_id: userId }
     ]);
   }
 };
@@ -241,4 +237,43 @@ exports.convertToStaff = async (id, userId) => {
   await syncStaffAccess(staffId);
 
   return { message: 'Converted to staff successfully', staff_id: staffId };
+};
+
+exports.resyncBiometrics = async (id, target_device_sn, userId) => {
+  const tenant = await db('tenants').where({ tenant_id: id, user_id: userId }).first();
+  if (!tenant) {
+    const err = new Error('Tenant not found');
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const templates = await db('biometric_templates').where('tenant_id', id);
+  if (templates.length === 0) return;
+
+  const pin = tenant.biometric_pin || tenant.tenant_id.toString();
+  const devicesQuery = db('devices').where({ user_id: userId, adms_status: true });
+  if (target_device_sn) {
+    devicesQuery.andWhere('sn', target_device_sn);
+  }
+  const devices = await devicesQuery;
+
+  for (const device of devices) {
+    if (!device.sn) continue;
+    const commands = [];
+    for (const tpl of templates) {
+      const major = tpl.major_ver ? `\tMajorVer=${tpl.major_ver}` : '';
+      const minor = tpl.minor_ver ? `\tMinorVer=${tpl.minor_ver}` : '';
+      const format = tpl.format ? `\tFormat=${tpl.format}` : '';
+      const size = tpl.template_data ? `\tSize=${Buffer.from(tpl.template_data, 'base64').length}` : '';
+      const bioType = tpl.type === 'face' ? '9' : (tpl.type === 'palm' ? '8' : '1');
+      commands.push({
+        device_sn: device.sn,
+        command: `DATA UPDATE BIODATA Pin=${pin}\tNo=0\tIndex=${tpl.finger_index}\tValid=1\tDuress=0\tType=${bioType}${major}${minor}${format}${size}\tTmp=${tpl.template_data}`,
+        user_id: userId
+      });
+    }
+    if (commands.length > 0) {
+      await db('device_commands').insert(commands);
+    }
+  }
 };

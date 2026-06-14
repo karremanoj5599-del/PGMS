@@ -137,7 +137,7 @@ const ActivationPage = () => {
         .login-card {
           background: rgba(30, 41, 59, 0.7);
           backdrop-filter: blur(10px);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          border: 1px solid var(--border);
           border-radius: 20px;
           padding: 40px;
           width: 100%;
@@ -185,7 +185,7 @@ const ActivationPage = () => {
           margin-bottom: 24px;
           font-size: 14px;
           color: #cbd5e1;
-          border: 1px solid rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(128,128,128,0.1);
         }
 
         .activation-info p {
@@ -247,7 +247,7 @@ const ActivationPage = () => {
         .input-wrapper input {
           width: 100%;
           background: rgba(15, 23, 42, 0.5);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          border: 1px solid var(--border);
           border-radius: 12px;
           padding: 12px 12px 12px 40px;
           color: white;

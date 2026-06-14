@@ -71,13 +71,13 @@ const TenantAttendance = () => {
         <button
           onClick={() => navigate('/reports')}
           style={{
-            background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)',
+            background: 'rgba(128,128,128,0.1)', border: '1px solid var(--border)',
             borderRadius: '10px', padding: '0.6rem', cursor: 'pointer',
             color: 'var(--text-muted)', display: 'flex', alignItems: 'center',
             transition: 'all 0.2s'
           }}
           onMouseEnter={e => { e.target.style.background = 'rgba(99,102,241,0.15)'; e.target.style.color = 'var(--primary)'; }}
-          onMouseLeave={e => { e.target.style.background = 'rgba(255,255,255,0.05)'; e.target.style.color = 'var(--text-muted)'; }}
+          onMouseLeave={e => { e.target.style.background = 'rgba(128,128,128,0.1)'; e.target.style.color = 'var(--text-muted)'; }}
         >
           <ArrowLeft size={20} />
         </button>
@@ -160,12 +160,12 @@ const TenantAttendance = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem' }}>
               <span style={{ color: 'var(--text-muted)' }}>From:</span>
               <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-                style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--border)', background: 'rgba(0,0,0,0.2)', color: 'white' }} />
+                style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--border)', background: 'rgba(0,0,0,0.2)', color: 'var(--text-main)' }} />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem' }}>
               <span style={{ color: 'var(--text-muted)' }}>To:</span>
               <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-                style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--border)', background: 'rgba(0,0,0,0.2)', color: 'white' }} />
+                style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--border)', background: 'rgba(0,0,0,0.2)', color: 'var(--text-main)' }} />
             </div>
           </div>
         </div>
@@ -184,7 +184,7 @@ const TenantAttendance = () => {
                 transition: 'background 0.2s',
                 cursor: 'default'
               }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(128,128,128,0.1)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               >
                 {/* Day header row */}
@@ -240,7 +240,7 @@ const TenantAttendance = () => {
                     {day.all_punches.map((punch, pIdx) => {
                       const isFirst = pIdx === 0;
                       const isLast = pIdx === day.all_punches.length - 1 && day.all_punches.length > 1;
-                      let bgColor = 'rgba(255,255,255,0.05)';
+                      let bgColor = 'rgba(128,128,128,0.1)';
                       let textColor = 'var(--text)';
                       let borderColor = 'var(--border)';
                       if (isFirst) { bgColor = 'rgba(16,185,129,0.1)'; textColor = '#10b981'; borderColor = 'rgba(16,185,129,0.3)'; }

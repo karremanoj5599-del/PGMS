@@ -88,7 +88,7 @@ const RegisterPage = () => {
           .login-card {
             background: rgba(30, 41, 59, 0.7);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border);
             border-radius: 20px;
             padding: 40px;
             width: 100%;
@@ -106,7 +106,7 @@ const RegisterPage = () => {
             border-radius: 12px;
             padding: 20px;
             margin: 24px 0;
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(128,128,128,0.1);
           }
           .info-label {
             color: #94a3b8;
@@ -262,7 +262,7 @@ const RegisterPage = () => {
           display: flex;
           align-items: center;
           justify-content: center;
-          background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+          background: linear-gradient(135deg, var(--bg-dark) 0%, #1e1b4b 100%);
           padding: 20px;
           font-family: 'Inter', sans-serif;
         }
@@ -270,7 +270,7 @@ const RegisterPage = () => {
         .login-card {
           background: rgba(30, 41, 59, 0.7);
           backdrop-filter: blur(10px);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          border: 1px solid var(--border);
           border-radius: 20px;
           padding: 40px;
           width: 100%;
@@ -354,7 +354,7 @@ const RegisterPage = () => {
         .input-wrapper input {
           width: 100%;
           background: rgba(15, 23, 42, 0.5);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          border: 1px solid var(--border);
           border-radius: 12px;
           padding: 12px 12px 12px 40px;
           color: white;

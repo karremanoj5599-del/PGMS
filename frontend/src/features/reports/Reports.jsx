@@ -230,11 +230,11 @@ const Reports = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem' }}>
               <span style={{ color: 'var(--text-muted)' }}>From:</span>
-              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border)', background: 'rgba(0,0,0,0.2)', color: 'white' }} />
+              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border)', background: 'rgba(0,0,0,0.2)', color: 'var(--text-main)' }} />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem' }}>
               <span style={{ color: 'var(--text-muted)' }}>To:</span>
-              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border)', background: 'rgba(0,0,0,0.2)', color: 'white' }} />
+              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border)', background: 'rgba(0,0,0,0.2)', color: 'var(--text-main)' }} />
             </div>
             {reportType !== 'attendance' && (
               <select style={{ fontSize: '0.8rem', padding: '4px' }} value={filters.payment_via} onChange={e => setFilters({...filters, payment_via: e.target.value})}>
@@ -342,7 +342,7 @@ const Reports = () => {
                     <td style={{ fontWeight: 600, color: t.total_balance > 0 ? 'var(--danger)' : 'var(--success)' }}>₹{(t.total_balance || 0).toLocaleString()}</td>
                     <td>₹{t.bed_cost ? t.bed_cost.toLocaleString() : 0}</td>
                     <td style={{ color: t.present_month_balance > 0 ? 'var(--danger)' : 'var(--text-muted)' }}>₹{(t.present_month_balance || 0).toLocaleString()}</td>
-                    <td><span style={{ fontSize: '0.8rem', background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: '4px' }}>{t.last_payment_type}</span></td>
+                    <td><span style={{ fontSize: '0.8rem', background: 'var(--border)', padding: '2px 6px', borderRadius: '4px' }}>{t.last_payment_type}</span></td>
                     <td>{formatDate(t.last_payment_date)}</td>
                   </tr>
                 ))
@@ -395,7 +395,7 @@ const Reports = () => {
                           {t.punch_count} punches ▾
                         </span>
                         <div style={{ display: 'none', position: 'absolute', right: 0, top: '100%', marginTop: '5px', background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '6px', padding: '0.5rem', zIndex: 10, minWidth: '120px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
-                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '4px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '4px' }}>All Logs</div>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '4px', borderBottom: '1px solid var(--border)', paddingBottom: '4px' }}>All Logs</div>
                           <div style={{ maxHeight: '150px', overflowY: 'auto' }}>
                             {t.all_punches?.map((p, i) => (
                               <div key={i} style={{ fontSize: '0.8rem', padding: '3px 0', fontFamily: 'monospace', color: 'var(--text)' }}>
@@ -448,7 +448,7 @@ const Reports = () => {
                           {t.punch_count} punches ▾
                         </span>
                         <div style={{ display: 'none', position: 'absolute', right: 0, top: '100%', marginTop: '5px', background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '6px', padding: '0.5rem', zIndex: 10, minWidth: '120px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
-                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '4px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '4px' }}>All Logs</div>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '4px', borderBottom: '1px solid var(--border)', paddingBottom: '4px' }}>All Logs</div>
                           <div style={{ maxHeight: '150px', overflowY: 'auto' }}>
                             {t.all_punches?.map((p, i) => (
                               <div key={i} style={{ fontSize: '0.8rem', padding: '3px 0', fontFamily: 'monospace', color: 'var(--text)' }}>

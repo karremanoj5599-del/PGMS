@@ -6,5 +6,6 @@ router.post('/login', controller.login);
 router.post('/activate', controller.activate);
 router.post('/validate', controller.validate);
 router.post('/claim-license', controller.claimLicense);
-
+router.put('/profile', controller.updateProfile);
+router.put('/password', controller.updatePassword);
 module.exports = router;
