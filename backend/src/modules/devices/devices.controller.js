@@ -7,7 +7,7 @@ exports.remove = async (req, res, next) => { try { await service.remove(req.para
 exports.getSyncHistory = async (req, res, next) => { try { res.json(await service.getSyncHistory(req.userId)); } catch(e){next(e);} };
 
 exports.syncUser = async (req, res, next) => {
-  try { const t = await service.syncUser(req.body.sn, req.body.tenant_id, req.userId); res.json({ message: `Sync queued for ${t.name}` }); } catch(e){next(e);}
+  try { const t = await service.syncUser(req.body.sn, req.body.tenant_id, req.userId, req.body.is_staff); res.json({ message: `Sync queued for ${t.name}` }); } catch(e){next(e);}
 };
 
 exports.bulkSync = async (req, res, next) => {

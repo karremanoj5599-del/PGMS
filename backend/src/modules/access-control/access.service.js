@@ -250,9 +250,21 @@ const syncTenantAccess = async (tenant_id, toggleOnly = false) => {
           user_id: tenant.user_id
         });
 
-        // Biometric Templates sync is intentionally skipped during a regular tenant update 
-        // to avoid rewriting biometric data unnecessarily, per user request.
-        // Users can still have their biometrics pushed via the 'Sync Bio' device operation.
+        // ZKTeco ADMS devices clear biometric templates when USERINFO is updated. 
+        // We MUST resync the templates immediately after the USERINFO update to prevent them from being lost.
+        const templates = await db('biometric_templates').where('tenant_id', tid);
+        for (const tpl of templates) {
+          const major = tpl.major_ver ? `\tMajorVer=${tpl.major_ver}` : '';
+          const minor = tpl.minor_ver ? `\tMinorVer=${tpl.minor_ver}` : '';
+          const format = tpl.format ? `\tFormat=${tpl.format}` : '';
+          const size = tpl.template_data ? `\tSize=${Buffer.from(tpl.template_data, 'base64').length}` : '';
+          const bioType = tpl.type === 'face' ? '9' : (tpl.type === 'palm' ? '8' : '1');
+          commands.push({
+            device_sn: device.sn,
+            command: `DATA UPDATE BIODATA Pin=${pin}\tNo=0\tIndex=${tpl.finger_index}\tValid=1\tDuress=0\tType=${bioType}${major}${minor}${format}${size}\tTmp=${tpl.template_data}`,
+            user_id: tenant.user_id
+          });
+        }
       }
 
       if (commands.length > 0) {
@@ -364,6 +376,21 @@ const syncStaffAccess = async (staff_id, toggleOnly = false) => {
           command: `DATA UPDATE USERINFO PIN=${pin}\tEnabled=1`,
           user_id: staff.admin_user_id
         });
+
+        // Resync biometric templates because updating USERINFO deletes them on the device
+        const templates = await db('biometric_templates').where('staff_id', sid);
+        for (const tpl of templates) {
+          const major = tpl.major_ver ? `\tMajorVer=${tpl.major_ver}` : '';
+          const minor = tpl.minor_ver ? `\tMinorVer=${tpl.minor_ver}` : '';
+          const format = tpl.format ? `\tFormat=${tpl.format}` : '';
+          const size = tpl.template_data ? `\tSize=${Buffer.from(tpl.template_data, 'base64').length}` : '';
+          const bioType = tpl.type === 'face' ? '9' : (tpl.type === 'palm' ? '8' : '1');
+          commands.push({
+            device_sn: device.sn,
+            command: `DATA UPDATE BIODATA Pin=${pin}\tNo=0\tIndex=${tpl.finger_index}\tValid=1\tDuress=0\tType=${bioType}${major}${minor}${format}${size}\tTmp=${tpl.template_data}`,
+            user_id: staff.admin_user_id
+          });
+        }
       }
 
       if (commands.length > 0) {

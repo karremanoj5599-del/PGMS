@@ -55,12 +55,27 @@ exports.getSyncHistory = (userId) => {
   return db('device_commands').where({ user_id: userId }).orderBy('id', 'desc').limit(100);
 };
 
-exports.syncUser = async (sn, tenantId, userId) => {
-  const tenant = await db('tenants').where({ tenant_id: tenantId, user_id: userId }).first();
-  if (!tenant) { const err = new Error('Tenant not found'); err.statusCode = 404; throw err; }
-  const { syncTenantAccess } = require('../access-control/access.service');
-  await syncTenantAccess(tenantId);
-  return tenant;
+exports.syncUser = async (sn, tenantId, userId, isStaff = false) => {
+  if (isStaff) {
+    const staff = await db('staff')
+      .where('admin_user_id', userId)
+      .andWhere(function() {
+        this.where('staff_id', tenantId).orWhere('biometric_pin', String(tenantId));
+      })
+      .first();
+
+    if (!staff) { const err = new Error('Staff not found'); err.statusCode = 404; throw err; }
+    
+    const { syncStaffAccess } = require('../access-control/access.service');
+    await syncStaffAccess(staff.staff_id);
+    return staff;
+  } else {
+    const tenant = await db('tenants').where({ tenant_id: tenantId, user_id: userId }).first();
+    if (!tenant) { const err = new Error('Tenant not found'); err.statusCode = 404; throw err; }
+    const { syncTenantAccess } = require('../access-control/access.service');
+    await syncTenantAccess(tenantId);
+    return tenant;
+  }
 };
 
 exports.bulkSync = async (tenantIds, userId) => {
