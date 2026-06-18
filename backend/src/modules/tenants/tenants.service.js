@@ -15,7 +15,7 @@ exports.getAll = (userId) => {
       'floors.floor_id', 'floors.floor_name', 'access_control.access_granted',
       db.raw('(SELECT COUNT(*) FROM biometric_templates WHERE biometric_templates.tenant_id = tenants.tenant_id) as biometric_count'),
       db.raw(`CASE 
-        WHEN tenants.access_expiry_date IS NOT NULL AND tenants.access_expiry_date < NOW() THEN true
+        WHEN tenants.access_expiry_date IS NOT NULL AND tenants.access_expiry_date < CURRENT_TIMESTAMP THEN true
         WHEN tenants.expiry_date IS NOT NULL AND tenants.expiry_date < CURRENT_DATE THEN true
         ELSE false 
       END as is_expired`)

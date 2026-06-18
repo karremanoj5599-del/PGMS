@@ -48,8 +48,9 @@ exports.getAttendance = async (id, userId) => {
       const punchDate = new Date(log.punch_time);
       const shiftStartTime = new Date(`${punchDate.toISOString().split('T')[0]}T${staff.shift_start_time}`);
       
-      // If punch is more than 15 minutes after shift start
-      if (punchDate.getTime() > shiftStartTime.getTime() + (15 * 60 * 1000)) {
+      // If punch is more than grace time after shift start
+      const graceTimeMinutes = staff.shift_grace_time != null ? staff.shift_grace_time : 15;
+      if (punchDate.getTime() > shiftStartTime.getTime() + (graceTimeMinutes * 60 * 1000)) {
         isLate = true;
       }
     }

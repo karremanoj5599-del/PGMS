@@ -14,7 +14,7 @@ const Staff = () => {
   
   const [newStaff, setNewStaff] = useState({
     name: '', mobile: '', role: '', joining_date: new Date().toISOString().split('T')[0], 
-    status: 'Active', biometric_pin: '', shift_start_time: '', shift_end_time: ''
+    status: 'Active', biometric_pin: '', shift_start_time: '', shift_end_time: '', shift_grace_time: 15
   });
   
   const [toast, setToast] = useState(null);
@@ -43,7 +43,8 @@ const Staff = () => {
       status: staff.status,
       biometric_pin: staff.biometric_pin || '',
       shift_start_time: staff.shift_start_time || '',
-      shift_end_time: staff.shift_end_time || ''
+      shift_end_time: staff.shift_end_time || '',
+      shift_grace_time: staff.shift_grace_time !== null && staff.shift_grace_time !== undefined ? staff.shift_grace_time : 15
     });
     setIsEditing(true);
     setShowModal(true);
@@ -138,7 +139,7 @@ const Staff = () => {
           </button>
           <button className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => { 
             setIsEditing(false); 
-            setNewStaff({ name: '', mobile: '', role: '', joining_date: new Date().toISOString().split('T')[0], status: 'Active', biometric_pin: '', shift_start_time: '', shift_end_time: '' }); 
+            setNewStaff({ name: '', mobile: '', role: '', joining_date: new Date().toISOString().split('T')[0], status: 'Active', biometric_pin: '', shift_start_time: '', shift_end_time: '', shift_grace_time: 15 }); 
             setShowModal(true); 
           }}>
             <UserPlus size={18} /> Add Staff
@@ -309,14 +310,21 @@ const Staff = () => {
                 </div>
               </div>
               
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: 'rgba(128,128,128,0.1)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(128,128,128,0.1)' }}>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label>Shift Start Time (Optional)</label>
-                  <input type="time" value={newStaff.shift_start_time || ''} onChange={e => setNewStaff({ ...newStaff, shift_start_time: e.target.value })} />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label>Shift End Time (Optional)</label>
-                  <input type="time" value={newStaff.shift_end_time || ''} onChange={e => setNewStaff({ ...newStaff, shift_end_time: e.target.value })} />
+              <div style={{ marginTop: '1rem' }}>
+                <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>Shift Details</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', background: 'rgba(128,128,128,0.1)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(128,128,128,0.1)' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>Start Time</label>
+                    <input type="time" value={newStaff.shift_start_time || ''} onChange={e => setNewStaff({ ...newStaff, shift_start_time: e.target.value })} />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>End Time</label>
+                    <input type="time" value={newStaff.shift_end_time || ''} onChange={e => setNewStaff({ ...newStaff, shift_end_time: e.target.value })} />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>Grace Time (mins)</label>
+                    <input type="number" min="0" value={newStaff.shift_grace_time} onChange={e => setNewStaff({ ...newStaff, shift_grace_time: parseInt(e.target.value) || 0 })} />
+                  </div>
                 </div>
               </div>
               

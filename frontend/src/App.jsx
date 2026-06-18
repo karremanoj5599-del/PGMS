@@ -14,6 +14,7 @@ import SupportTickets from './features/tickets/SupportTickets';
 import LoginPage from './features/auth/LoginPage';
 import RegisterPage from './features/auth/RegisterPage';
 import ActivationPage from './features/auth/ActivationPage';
+import ReportIssuePage from './features/tickets/ReportIssuePage';
 import AccessSchedules from './features/schedules/AccessSchedules';
 import Notifications from './pages/Notifications';
 
@@ -32,6 +33,7 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/activate" element={<ActivationPage />} />
+          <Route path="/report-issue" element={<ReportIssuePage />} />
           
           {/* Protected Dashboard Routes */}
           <Route path="/" element={<ProtectedRoute><DashboardLayout><Dashboard /></DashboardLayout></ProtectedRoute>} />

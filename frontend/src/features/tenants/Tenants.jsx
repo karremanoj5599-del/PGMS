@@ -215,7 +215,7 @@ const Tenants = () => {
           ...targetPayload 
         });
       }
-      if (syncBiometrics && syncTargetTenant.biometric_count > 0) {
+      if (syncBiometrics && Number(syncTargetTenant.biometric_count) > 0) {
         await api.post(`/api/tenants/${syncTargetTenant.tenant_id}/resync-biometrics`, targetPayload);
       }
       setToast(`Sync commands queued for ${syncTargetTenant.name}`);
@@ -230,7 +230,7 @@ const Tenants = () => {
     setSyncTargetTenant(tenant);
     setTargetDeviceSn('ALL');
     setSyncUserInfo(true);
-    setSyncBiometrics(tenant.biometric_count > 0);
+    setSyncBiometrics(Number(tenant.biometric_count) > 0);
     setSyncModal(true);
   };
 

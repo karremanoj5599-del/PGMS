@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from '../../services/api';
-import { LayoutGrid, Bed, Plus, Trash2, X, Pencil, Building2, Map as MapIcon, Users } from 'lucide-react';
+import { LayoutGrid, Bed, Plus, Trash2, X, Pencil, Building2, Map as MapIcon, Users, QrCode } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { QRCodeSVG } from 'qrcode.react';
 
 const Rooms = () => {
   const location = useLocation();
@@ -36,6 +37,8 @@ const Rooms = () => {
   const [editingFloor, setEditingFloor] = useState(null);
   const [editingBed, setEditingBed] = useState(null);
   const [showTenantModal, setShowTenantModal] = useState(false);
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [selectedRoomQR, setSelectedRoomQR] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -185,6 +188,9 @@ const Rooms = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1>Rooms & Beds Setup</h1>
         <div style={{ display: 'flex', gap: '1rem' }}>
+          <button className="btn" style={{ background: 'var(--card-bg)', border: '1px solid #8b5cf6', color: '#8b5cf6', display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => setShowQRModal(true)}>
+            <QrCode size={18} /> Print Issue QR
+          </button>
           <button className="btn" style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => setShowFloorModal(true)}>
             <Building2 size={18} /> Add Floor
           </button>
@@ -435,8 +441,8 @@ const Rooms = () => {
                       </td>
                       <td style={{ padding: '1rem', textAlign: 'right' }}>
                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                          <button onClick={() => { setEditingRoom(room); setShowEditRoomModal(true); }} className="btn-icon" style={{ color: 'var(--primary)' }}><Pencil size={16} /></button>
-                          <button onClick={() => handleDeleteRoom(room.room_id)} className="btn-icon" style={{ color: 'var(--danger)' }}><Trash2 size={16} /></button>
+                          <button onClick={() => { setEditingRoom(room); setShowEditRoomModal(true); }} className="btn-icon" style={{ color: 'var(--primary)' }} title="Edit"><Pencil size={16} /></button>
+                          <button onClick={() => handleDeleteRoom(room.room_id)} className="btn-icon" style={{ color: 'var(--danger)' }} title="Delete"><Trash2 size={16} /></button>
                         </div>
                       </td>
                     </tr>
@@ -837,6 +843,61 @@ const Rooms = () => {
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showQRModal && (
+        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+          <div className="modal-content" style={{ textAlign: 'center', maxWidth: '400px' }}>
+            <h2 style={{ marginBottom: '0.5rem' }}>Report Issue QR Code</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '2rem' }}>
+              Print and paste this anywhere on the property. Tenants can scan this to raise tickets.
+            </p>
+            
+            <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '1rem', display: 'inline-block', marginBottom: '2rem' }}>
+              <QRCodeSVG 
+                value={`${window.location.origin}/report-issue`}
+                size={200}
+                level={"H"}
+                includeMargin={true}
+              />
+            </div>
+            
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button 
+                className="btn btn-primary" 
+                style={{ flex: 1 }}
+                onClick={() => {
+                  // Create a canvas from the SVG to enable downloading as PNG
+                  const svg = document.querySelector('.modal-content svg');
+                  const canvas = document.createElement('canvas');
+                  const ctx = canvas.getContext('2d');
+                  const data = (new XMLSerializer()).serializeToString(svg);
+                  const DOMURL = window.URL || window.webkitURL || window;
+                  const img = new Image();
+                  const svgBlob = new Blob([data], {type: 'image/svg+xml;charset=utf-8'});
+                  const url = DOMURL.createObjectURL(svgBlob);
+                  img.onload = function () {
+                    canvas.width = 250;
+                    canvas.height = 250;
+                    ctx.drawImage(img, 0, 0);
+                    DOMURL.revokeObjectURL(url);
+                    const imgURI = canvas.toDataURL('image/png').replace('image/png', 'image/octet-stream');
+                    const a = document.createElement('a');
+                    a.href = imgURI;
+                    a.download = `report-issue-qr.png`;
+                    a.click();
+                  };
+                  img.src = url;
+                }}
+              >
+                Download QR
+              </button>
+              <button className="btn" style={{ flex: 1, background: 'rgba(128,128,128,0.1)' }} onClick={() => setShowQRModal(false)}>
+                Close
+              </button>
             </div>
           </div>
         </div>

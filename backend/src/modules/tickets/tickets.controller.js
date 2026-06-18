@@ -11,3 +11,12 @@ exports.update = async (req, res, next) => {
     res.json({ success: true, message: 'Ticket updated' });
   } catch (err) { res.status(500).json({ error: 'Failed to update ticket' }); }
 };
+
+exports.createPublic = async (req, res, next) => {
+  try {
+    const result = await service.createPublic(req.body);
+    res.status(201).json({ success: true, message: 'Ticket created', id: result.id });
+  } catch (err) { 
+    res.status(400).json({ error: err.message || 'Failed to create ticket' }); 
+  }
+};

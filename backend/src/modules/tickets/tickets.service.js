@@ -15,3 +15,28 @@ exports.update = async (id, data, userId) => {
     updated_at: db.fn.now()
   });
 };
+
+exports.createPublic = async (data) => {
+  const { mobile, floorName, roomNumber, category, description } = data;
+  
+  // Find tenant by mobile
+  const tenant = await db('tenants').where({ mobile }).first();
+  if (!tenant) {
+    throw new Error('Tenant not found with this mobile number');
+  }
+
+  const fullDescription = `[Location: ${floorName}, Room: ${roomNumber}]\n\n${description}`;
+
+  // Insert ticket
+  const [id] = await db('tickets').insert({
+    tenant_id: tenant.tenant_id,
+    user_id: tenant.user_id, // Inherit user_id from the tenant
+    category,
+    description: fullDescription,
+    status: 'Pending',
+    created_at: db.fn.now(),
+    updated_at: db.fn.now()
+  });
+
+  return { id };
+};
