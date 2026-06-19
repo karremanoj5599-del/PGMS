@@ -7,6 +7,8 @@ const Payments = () => {
   const [tenants, setTenants] = useState([]);
   const location = useLocation();
   const [searchTerm, setSearchTerm] = useState(location.state?.searchTerm || '');
+  const [filterFloor, setFilterFloor] = useState('All');
+  const [filterRoom, setFilterRoom] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All'); // All | Pending | Balance | Completed | Advances
   const [advanceSubTab, setAdvanceSubTab] = useState('paid'); // paid | pending | returnable
   const [showPayModal, setShowPayModal] = useState(false);
@@ -61,9 +63,16 @@ const Payments = () => {
     total_pending: !t.last_payment_date ? (t.bed_cost || 0) : (t.pending_balance || 0)
   }));
 
+  const uniqueFloors = [...new Set(processedTenants.map(t => t.floor_name).filter(Boolean))].sort();
+  const availableRooms = filterFloor === 'All' ? processedTenants : processedTenants.filter(t => t.floor_name === filterFloor);
+  const uniqueRooms = [...new Set(availableRooms.map(t => String(t.room_number)).filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
   const filtered = processedTenants.filter(t => {
     const searchMatch = t.name.toLowerCase().includes(searchTerm.toLowerCase()) || (t.room_number?.toString() || '').includes(searchTerm);
     if (!searchMatch) return false;
+
+    if (filterFloor !== 'All' && t.floor_name !== filterFloor) return false;
+    if (filterRoom !== 'All' && String(t.room_number) !== filterRoom) return false;
 
     if (filterStatus === 'All') return true;
     
@@ -90,15 +99,33 @@ const Payments = () => {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1>Payments Management</h1>
-        <div style={{ position: 'relative' }}>
-          <Search size={18} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-muted)' }} />
-          <input 
-            type="text" 
-            placeholder="Search tenant or room..." 
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            style={{ paddingLeft: '2.5rem', width: '250px' }}
-          />
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <select 
+            value={filterFloor} 
+            onChange={e => { setFilterFloor(e.target.value); setFilterRoom('All'); }}
+            style={{ padding: '0.4rem 0.8rem', borderRadius: '4px', background: 'var(--bg-dark)', color: 'var(--text-main)', border: '1px solid var(--border)', outline: 'none' }}
+          >
+            <option value="All">All Floors</option>
+            {uniqueFloors.map(f => <option key={f} value={f}>{f}</option>)}
+          </select>
+          <select 
+            value={filterRoom} 
+            onChange={e => setFilterRoom(e.target.value)}
+            style={{ padding: '0.4rem 0.8rem', borderRadius: '4px', background: 'var(--bg-dark)', color: 'var(--text-main)', border: '1px solid var(--border)', outline: 'none' }}
+          >
+            <option value="All">All Rooms</option>
+            {uniqueRooms.map(r => <option key={r} value={r}>Room {r}</option>)}
+          </select>
+          <div style={{ position: 'relative' }}>
+            <Search size={18} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-muted)' }} />
+            <input 
+              type="text" 
+              placeholder="Search tenant or room..." 
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              style={{ paddingLeft: '2.5rem', width: '250px' }}
+            />
+          </div>
         </div>
       </div>
 
@@ -182,6 +209,10 @@ const Payments = () => {
                 const list = processedTenants.filter(t => {
                   const searchMatch = t.name.toLowerCase().includes(searchTerm.toLowerCase()) || (t.room_number?.toString() || '').includes(searchTerm);
                   if (!searchMatch) return false;
+
+                  if (filterFloor !== 'All' && t.floor_name !== filterFloor) return false;
+                  if (filterRoom !== 'All' && String(t.room_number) !== filterRoom) return false;
+
                   if (t.advance_amount <= 0 || !t.advance_amount) return false;
 
                   if (advanceSubTab === 'paid') {

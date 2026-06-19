@@ -16,11 +16,12 @@ exports.getStatus = async (userId) => {
   const tenants = await db('tenants')
     .leftJoin('beds', 'tenants.bed_id', '=', 'beds.bed_id')
     .leftJoin('rooms', 'beds.room_id', '=', 'rooms.room_id')
+    .leftJoin('floors', 'rooms.floor_id', '=', 'floors.floor_id')
     .where({ 'tenants.status': 'Staying', 'tenants.user_id': userId })
     .select(
       'tenants.tenant_id', 'tenants.name', 'tenants.expiry_date',
       'tenants.custom_rent', 'tenants.custom_advance', 'tenants.discount_amount',
-      'beds.bed_number', 'rooms.room_number', 'beds.bed_cost', 'beds.advance_amount'
+      'beds.bed_number', 'rooms.room_number', 'floors.floor_name', 'beds.bed_cost', 'beds.advance_amount'
     );
 
   if (tenants.length === 0) return [];
