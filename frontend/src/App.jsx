@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute, DashboardLayout } from './components/layouts/DashboardLayout';
 
 import Dashboard from './pages/Dashboard';
@@ -47,6 +47,10 @@ function App() {
           <Route path="/schedules" element={<ProtectedRoute><DashboardLayout><AccessSchedules /></DashboardLayout></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute><DashboardLayout><Reports /></DashboardLayout></ProtectedRoute>} />
           <Route path="/tenants/:id/attendance" element={<ProtectedRoute><DashboardLayout><TenantAttendance /></DashboardLayout></ProtectedRoute>} />
+          
+          {/* Redirects and 404 */}
+          <Route path="/beds" element={<Navigate to="/rooms" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
     </ThemeProvider>
