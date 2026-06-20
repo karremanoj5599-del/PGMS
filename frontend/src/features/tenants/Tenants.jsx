@@ -80,45 +80,18 @@ const Tenants = () => {
       };
 
       eventSource.onerror = (err) => {
-        console.warn('SSE connection error, browser will automatically retry.');
+        if (eventSource.readyState === EventSource.CLOSED) {
+          // connection was closed, browser will retry
+        }
       };
     };
 
-    if (navigator.onLine) {
-      connectSSE();
-    }
-
-    const handleOnline = () => {
-      console.log('[SSE] Browser online. Reconnecting...');
-      connectSSE();
-    };
-
-    const handleOffline = () => {
-      console.log('[SSE] Browser offline. Closing connection...');
-      if (eventSource) {
-        eventSource.close();
-        eventSource = null;
-      }
-    };
-
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible' && navigator.onLine) {
-        console.log('[SSE] Page visible. Reconnecting...');
-        connectSSE();
-      }
-    };
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    document.addEventListener('visibilitychange', handleVisibility);
+    connectSSE();
 
     return () => {
       if (eventSource) {
         eventSource.close();
       }
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, []);
 

@@ -57,45 +57,18 @@ const Devices = () => {
       };
 
       es.onerror = (err) => {
-        console.warn('SSE connection error, browser will automatically retry.');
+        if (es.readyState === EventSource.CLOSED) {
+          // connection was closed, browser will retry
+        }
       };
     };
 
-    if (navigator.onLine) {
-      connectSSE();
-    }
-
-    const handleOnline = () => {
-      console.log('[SSE] Browser online. Reconnecting...');
-      connectSSE();
-    };
-
-    const handleOffline = () => {
-      console.log('[SSE] Browser offline. Closing connection...');
-      if (es) {
-        es.close();
-        es = null;
-      }
-    };
-
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible' && navigator.onLine) {
-        console.log('[SSE] Page visible. Reconnecting...');
-        connectSSE();
-      }
-    };
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    document.addEventListener('visibilitychange', handleVisibility);
+    connectSSE();
 
     return () => {
       if (es) {
         es.close();
       }
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, []);
 

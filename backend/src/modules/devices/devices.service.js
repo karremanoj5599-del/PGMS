@@ -89,8 +89,11 @@ exports.bulkSync = async (tenantIds, userId) => {
     .whereIn('tenant_id', tenantIds.map(Number))
     .andWhere('user_id', userId);
 
-  for (const tenant of tenants) {
-    await syncTenantAccess(tenant.tenant_id);
+  // Process in chunks of 20 to prevent Vercel 504 timeouts but avoid DB connection exhaustion
+  const chunkSize = 20;
+  for (let i = 0; i < tenants.length; i += chunkSize) {
+    const chunk = tenants.slice(i, i + chunkSize);
+    await Promise.all(chunk.map(tenant => syncTenantAccess(tenant.tenant_id)));
   }
   return tenants.length;
 };
