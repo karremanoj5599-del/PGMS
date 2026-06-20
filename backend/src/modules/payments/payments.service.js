@@ -117,7 +117,17 @@ exports.create = async (paymentData, userId) => {
     let currentExpiry = tenant.expiry_date ? new Date(tenant.expiry_date) : new Date();
     currentExpiry.setMonth(currentExpiry.getMonth() + 1);
     const newExpiry = currentExpiry.toISOString().split('T')[0];
-    await db('tenants').where('tenant_id', tenant_id).update({ expiry_date: newExpiry });
+    
+    let updateData = { expiry_date: newExpiry };
+    
+    // Also extend access_expiry_date if it was explicitly set
+    if (tenant.access_expiry_date) {
+      let currentAccessExpiry = new Date(tenant.access_expiry_date);
+      currentAccessExpiry.setMonth(currentAccessExpiry.getMonth() + 1);
+      updateData.access_expiry_date = currentAccessExpiry;
+    }
+
+    await db('tenants').where('tenant_id', tenant_id).update(updateData);
   }
 
   // Update/Sync Billing Table for this Month

@@ -377,7 +377,7 @@ const Staff = () => {
                   </span>
                 </td>
                 <td>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                     <button onClick={() => viewAttendance(s.staff_id, s.name)} className="btn btn-icon-only" style={{ color: 'var(--accent)' }} title="View Attendance">
                       <Calendar size={16} />
                     </button>

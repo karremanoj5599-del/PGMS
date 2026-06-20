@@ -618,7 +618,7 @@ const Tenants = () => {
                   </div>
                 </td>
                 <td>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                     <button onClick={() => handleEditClick(t)} className="btn btn-icon-only" style={{ color: 'var(--text-muted)' }} title="Edit">
                       <Edit size={16} />
                     </button>
