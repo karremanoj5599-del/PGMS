@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
-import { UserPlus, Search, RefreshCw, X, ShieldAlert, ShieldCheck, Users, Fingerprint, Calendar, Activity, CheckSquare, Trash2 } from 'lucide-react';
+import { UserPlus, Search, RefreshCw, X, ShieldAlert, ShieldCheck, Users, Fingerprint, Calendar, Activity, CheckSquare, Trash2, Edit } from 'lucide-react';
 
 const Staff = () => {
   const [staffList, setStaffList] = useState([]);
@@ -381,7 +381,9 @@ const Staff = () => {
                     <button onClick={() => viewAttendance(s.staff_id, s.name)} className="btn btn-icon-only" style={{ color: 'var(--accent)' }} title="View Attendance">
                       <Calendar size={16} />
                     </button>
-                    <button onClick={() => handleEditClick(s)} className="btn btn-icon-only" title="Edit">Edit</button>
+                    <button onClick={() => handleEditClick(s)} className="btn btn-icon-only" style={{ color: 'var(--text-muted)' }} title="Edit">
+                      <Edit size={16} />
+                    </button>
                     <button
                       onClick={() => handleToggleAccess(s.staff_id, s.access_granted)}
                       className="btn btn-icon-only" 
@@ -404,7 +406,7 @@ const Staff = () => {
                       <RefreshCw size={16} />
                     </button>
                     <button onClick={() => handleDeleteStaff(s.staff_id)} className="btn btn-icon-only" style={{ color: 'var(--danger)' }} title="Delete">
-                      Del
+                      <Trash2 size={16} />
                     </button>
                   </div>
                 </td>

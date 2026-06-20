@@ -64,6 +64,7 @@ exports.getStatus = async (userId) => {
 
     // Calculate pending balance based on expiry date
     let pendingBalance = lastPay ? lastPay.balance : 0;
+    let carryForward = lastPay ? lastPay.balance : 0;
     
     // If the rent expiry date has passed, they owe for the new month
     const today = new Date();
@@ -87,6 +88,7 @@ exports.getStatus = async (userId) => {
       last_payment_id: lastPay ? lastPay.payment_id : null,
       last_payment_date: lastPay ? lastPay.payment_date : null,
       pending_balance: pendingBalance,
+      carry_forward_balance: carryForward,
       access_granted: access ? access.access_granted : false,
       schedule_id: access ? access.schedule_id : 1,
       access_group_id: access ? access.access_group_id : null

@@ -74,7 +74,7 @@ const Payments = () => {
 
   const processedTenants = tenants.map(t => ({
     ...t,
-    computed_balance: !t.last_payment_date ? 0 : (t.pending_balance || 0),
+    computed_balance: !t.last_payment_date ? 0 : (t.carry_forward_balance !== undefined ? t.carry_forward_balance : t.pending_balance || 0),
     total_pending: !t.last_payment_date ? (t.bed_cost || 0) : (t.pending_balance || 0)
   }));
 

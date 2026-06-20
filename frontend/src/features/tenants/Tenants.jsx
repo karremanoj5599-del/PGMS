@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
-import { UserPlus, Search, Filter, Smartphone, Fingerprint, Server, RefreshCw, X, ShieldCheck, ShieldAlert, Users, AlertTriangle, FileText, MessageSquare, PhoneCall } from 'lucide-react';
+import { UserPlus, Search, Filter, Smartphone, Fingerprint, Server, RefreshCw, X, ShieldCheck, ShieldAlert, Users, AlertTriangle, FileText, MessageSquare, PhoneCall, Edit, Trash2 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import TenantDocuments from './TenantDocuments';
 
@@ -619,7 +619,9 @@ const Tenants = () => {
                 </td>
                 <td>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button onClick={() => handleEditClick(t)} className="btn btn-icon-only" title="Edit">Edit</button>
+                    <button onClick={() => handleEditClick(t)} className="btn btn-icon-only" style={{ color: 'var(--text-muted)' }} title="Edit">
+                      <Edit size={16} />
+                    </button>
                     <button onClick={() => { setDocsTenant(t); setDocsModal(true); }} className="btn btn-icon-only" style={{ color: '#10b981' }} title="Documents">
                       <FileText size={16} />
                     </button>
@@ -659,7 +661,7 @@ const Tenants = () => {
                       className="btn btn-icon-only" style={{ color: 'var(--danger)' }}
                       title="Delete"
                     >
-                      Del
+                      <Trash2 size={16} />
                     </button>
                   </div>
                 </td>
