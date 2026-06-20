@@ -166,3 +166,36 @@ exports.getNotifications = async (userId) => {
 
   return alerts;
 };
+
+/**
+ * Send a rent reminder via WhatsApp deep link and log it.
+ */
+exports.sendReminder = async (userId, data) => {
+  const { tenant_id, message, channel, recipient } = data;
+  
+  if (!recipient) {
+    throw new Error('Recipient phone number is missing');
+  }
+
+  // Determine the WhatsApp wa.me link
+  // Clean the phone number (remove spaces, plus sign, etc)
+  const cleanPhone = recipient.replace(/\D/g, '');
+  
+  // Create message log entry
+  const [logId] = await db('message_logs').insert({
+    user_id: userId,
+    tenant_id: tenant_id,
+    channel: channel || 'whatsapp',
+    recipient: cleanPhone,
+    message_text: message,
+    status: 'sent'
+  }).returning('message_id');
+
+  const id = typeof logId === 'object' ? logId.message_id : logId;
+
+  return {
+    success: true,
+    message_id: id,
+    whatsapp_url: `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
+  };
+};

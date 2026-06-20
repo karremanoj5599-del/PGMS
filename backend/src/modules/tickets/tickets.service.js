@@ -1,4 +1,5 @@
 const db = require('../../config/database');
+const activityService = require('../system/activity.service');
 
 exports.getAll = (userId) => {
   return db('tickets')
@@ -28,7 +29,7 @@ exports.createPublic = async (data) => {
   const fullDescription = `[Location: ${floorName}, Room: ${roomNumber}]\n\n${description}`;
 
   // Insert ticket
-  const [id] = await db('tickets').insert({
+  const [idRes] = await db('tickets').insert({
     tenant_id: tenant.tenant_id,
     user_id: tenant.user_id, // Inherit user_id from the tenant
     category,
@@ -36,6 +37,16 @@ exports.createPublic = async (data) => {
     status: 'Pending',
     created_at: db.fn.now(),
     updated_at: db.fn.now()
+  }).returning('id');
+
+  const id = typeof idRes === 'object' ? idRes.id : idRes;
+
+  await activityService.logActivity(tenant.user_id, {
+    event_type: 'system',
+    action: 'created',
+    title: 'New Support Ticket',
+    description: `A new ${category} ticket was raised by ${tenant.name}.`,
+    metadata: { ticket_id: id, tenant_id: tenant.tenant_id }
   });
 
   return { id };

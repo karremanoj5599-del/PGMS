@@ -1,5 +1,6 @@
 const db = require('../../config/database');
 const { MONTH_NAMES } = require('../../shared/constants');
+const activityService = require('../system/activity.service');
 
 exports.getAll = (userId) => {
   return db('payments')
@@ -83,6 +84,7 @@ exports.getStatus = async (userId) => {
       ...t,
       bed_cost: rentVal,
       advance_amount: advVal,
+      last_payment_id: lastPay ? lastPay.payment_id : null,
       last_payment_date: lastPay ? lastPay.payment_date : null,
       pending_balance: pendingBalance,
       access_granted: access ? access.access_granted : false,
@@ -134,6 +136,15 @@ exports.create = async (paymentData, userId) => {
       await db('tenants').where('tenant_id', tenant_id).update({ access_status: 'active' });
     }
   }
+
+  // Log activity and emit SSE
+  await activityService.logActivity(userId, {
+    event_type: 'payment',
+    action: 'created',
+    title: 'Payment Received',
+    description: `₹${paymentData.amount_paid} received from ${tenant ? tenant.name : 'Unknown Tenant'} via ${paymentData.payment_via || 'Cash'}.`,
+    metadata: { payment_id: id, tenant_id }
+  });
 
   return { payment, tenant_id };
 };

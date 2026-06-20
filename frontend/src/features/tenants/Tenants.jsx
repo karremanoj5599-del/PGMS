@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
-import { UserPlus, Search, Filter, Smartphone, Fingerprint, Server, RefreshCw, X, ShieldCheck, ShieldAlert, Users, AlertTriangle } from 'lucide-react';
+import { UserPlus, Search, Filter, Smartphone, Fingerprint, Server, RefreshCw, X, ShieldCheck, ShieldAlert, Users, AlertTriangle, FileText, MessageSquare, PhoneCall } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
+import TenantDocuments from './TenantDocuments';
 
 const Tenants = () => {
   const location = useLocation();
@@ -12,6 +13,14 @@ const Tenants = () => {
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState(null);
+  
+  const [docsModal, setDocsModal] = useState(false);
+  const [docsTenant, setDocsTenant] = useState(null);
+  
+  const [commsModal, setCommsModal] = useState(false);
+  const [commsTenant, setCommsTenant] = useState(null);
+  const [tenantPrefs, setTenantPrefs] = useState({ sms: 'global', whatsapp: 'global', voicecall: 'global' });
+  const [savingPrefs, setSavingPrefs] = useState(false);
   
   const [devices, setDevices] = useState([]);
   const [syncModal, setSyncModal] = useState(false);
@@ -232,6 +241,34 @@ const Tenants = () => {
     setSyncUserInfo(true);
     setSyncBiometrics(Number(tenant.biometric_count) > 0);
     setSyncModal(true);
+  };
+
+  const openCommsModal = async (tenant) => {
+    setCommsTenant(tenant);
+    setCommsModal(true);
+    try {
+      const res = await api.get(`/api/communication/tenant/${tenant.tenant_id}/preferences`);
+      setTenantPrefs(res.data);
+    } catch (err) {
+      console.error('Failed to fetch prefs', err);
+      setToast('Failed to load communication preferences');
+      setTimeout(() => setToast(null), 5000);
+    }
+  };
+
+  const handleSavePrefs = async () => {
+    try {
+      setSavingPrefs(true);
+      await api.put(`/api/communication/tenant/${commsTenant.tenant_id}/preferences`, tenantPrefs);
+      setToast('Communication preferences updated');
+      setTimeout(() => setToast(null), 5000);
+      setCommsModal(false);
+    } catch (err) {
+      console.error('Failed to save prefs', err);
+      alert('Failed to save communication preferences');
+    } finally {
+      setSavingPrefs(false);
+    }
   };
 
   const handleEditClick = (tenant) => {
@@ -583,6 +620,12 @@ const Tenants = () => {
                 <td>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <button onClick={() => handleEditClick(t)} className="btn btn-icon-only" title="Edit">Edit</button>
+                    <button onClick={() => { setDocsTenant(t); setDocsModal(true); }} className="btn btn-icon-only" style={{ color: '#10b981' }} title="Documents">
+                      <FileText size={16} />
+                    </button>
+                    <button onClick={() => openCommsModal(t)} className="btn btn-icon-only" style={{ color: '#8b5cf6' }} title="Communication Preferences">
+                      <MessageSquare size={16} />
+                    </button>
                     <button onClick={() => { setPinTenant(t); setNewPin(t.biometric_pin || ''); setShowPinModal(true); }} className="btn btn-icon-only" style={{ color: 'var(--primary)' }} title="Mobile App Access">
                       <Smartphone size={16} />
                     </button>
@@ -1233,6 +1276,76 @@ const Tenants = () => {
           >
             ×
           </button>
+        </div>
+      )}
+
+      {docsModal && docsTenant && (
+        <TenantDocuments 
+          tenantId={docsTenant.tenant_id} 
+          tenantName={docsTenant.name} 
+          onClose={() => { setDocsModal(false); setDocsTenant(null); }} 
+        />
+      )}
+
+      {/* Communication Preferences Modal */}
+      {commsModal && commsTenant && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '450px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <MessageSquare size={20} color="var(--primary)" />
+                Communication Overrides
+              </h2>
+              <button 
+                onClick={() => setCommsModal(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+              Override the global communication settings for <strong>{commsTenant.name}</strong>.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {[
+                { key: 'whatsapp', label: 'WhatsApp', icon: <MessageSquare size={16} color="#25D366" /> },
+                { key: 'sms', label: 'SMS / Text', icon: <Smartphone size={16} color="#3b82f6" /> },
+                { key: 'voicecall', label: 'Voice Call', icon: <PhoneCall size={16} color="#8b5cf6" /> }
+              ].map(ch => (
+                <div key={ch.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-color)', padding: '1rem', borderRadius: '0.5rem', border: '1px solid var(--border)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    {ch.icon}
+                    <span style={{ fontWeight: 600 }}>{ch.label}</span>
+                  </div>
+                  <select 
+                    value={tenantPrefs[ch.key] || 'global'} 
+                    onChange={e => setTenantPrefs({ ...tenantPrefs, [ch.key]: e.target.value })}
+                    className="form-control"
+                    style={{ width: '140px', padding: '0.25rem 0.5rem', fontSize: '0.85rem' }}
+                  >
+                    <option value="global">Global Setting</option>
+                    <option value="on">Force ON</option>
+                    <option value="off">Force OFF</option>
+                  </select>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem' }}>
+              <button className="btn" onClick={() => setCommsModal(false)} style={{ background: 'transparent' }}>Cancel</button>
+              <button 
+                className="btn btn-primary"
+                disabled={savingPrefs}
+                onClick={handleSavePrefs}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+              >
+                {savingPrefs ? <RefreshCw size={16} className="spin" /> : null}
+                {savingPrefs ? 'Saving...' : 'Save Preferences'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

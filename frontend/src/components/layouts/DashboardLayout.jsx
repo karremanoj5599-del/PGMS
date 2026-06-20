@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { NavLink, Navigate, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Bed, Tablet, FileText, CreditCard, LogOut, User, Settings, ShieldCheck, Key, Copy, X, MessageSquare, Calendar, Briefcase, Bell, Palette, Lock } from 'lucide-react';
+import { LayoutDashboard, Users, Bed, Tablet, FileText, CreditCard, LogOut, User, Settings, ShieldCheck, Key, Copy, X, MessageSquare, Calendar, Briefcase, Bell, Palette, Lock, DollarSign } from 'lucide-react';
 import api from '../../services/api';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useNotifications } from '../../contexts/NotificationContext';
 export const ProtectedRoute = ({ children }) => {
   const userString = localStorage.getItem('pgms_user');
   if (!userString) return <Navigate to="/login" />;
@@ -16,6 +17,7 @@ export const ProtectedRoute = ({ children }) => {
 const Sidebar = ({ onProfileClick }) => {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('pgms_user') || '{}');
+  const { unreadCount, clearUnread } = useNotifications();
 
   const handleLogout = () => {
     localStorage.removeItem('pgms_user');
@@ -34,8 +36,29 @@ const Sidebar = ({ onProfileClick }) => {
         <NavLink to="/" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <LayoutDashboard size={20} /> Dashboard
         </NavLink>
-        <NavLink to="/notifications" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-          <Bell size={20} /> Notifications
+        <NavLink 
+          to="/notifications" 
+          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+          onClick={clearUnread}
+        >
+          <div style={{ position: 'relative' }}>
+            <Bell size={20} />
+            {unreadCount > 0 && (
+              <span style={{
+                position: 'absolute', top: '-4px', right: '-4px',
+                background: '#ef4444', color: 'white',
+                fontSize: '10px', fontWeight: 'bold',
+                width: '16px', height: '16px', borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}>
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </div>
+          Notifications
+        </NavLink>
+        <NavLink to="/communication" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+          <MessageSquare size={20} /> Communication
         </NavLink>
         <NavLink to="/tenants" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <Users size={20} /> Tenants
@@ -51,6 +74,9 @@ const Sidebar = ({ onProfileClick }) => {
         </NavLink>
         <NavLink to="/payments" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <CreditCard size={20} /> Payments
+        </NavLink>
+        <NavLink to="/expenses" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+          <DollarSign size={20} /> Expenses
         </NavLink>
         <NavLink to="/tickets" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <MessageSquare size={20} /> Support Tickets

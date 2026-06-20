@@ -17,17 +17,21 @@ import ActivationPage from './features/auth/ActivationPage';
 import ReportIssuePage from './features/tickets/ReportIssuePage';
 import AccessSchedules from './features/schedules/AccessSchedules';
 import Notifications from './pages/Notifications';
+import Expenses from './features/expenses/Expenses';
+import CommunicationSettings from './features/communication/CommunicationSettings';
 
 // Note: The global axios interceptor has been moved to src/services/api.js.
 // When features are fully refactored, they should import api from services instead of raw axios.
 import './services/api';
 
 import { ThemeProvider } from './contexts/ThemeContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 
 function App() {
   return (
     <ThemeProvider>
-      <Router>
+      <NotificationProvider>
+        <Router>
         <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<LoginPage />} />
@@ -42,6 +46,8 @@ function App() {
           <Route path="/rooms" element={<ProtectedRoute><DashboardLayout><Rooms /></DashboardLayout></ProtectedRoute>} />
           <Route path="/devices" element={<ProtectedRoute><DashboardLayout><Devices /></DashboardLayout></ProtectedRoute>} />
           <Route path="/payments" element={<ProtectedRoute><DashboardLayout><Payments /></DashboardLayout></ProtectedRoute>} />
+          <Route path="/expenses" element={<ProtectedRoute><DashboardLayout><Expenses /></DashboardLayout></ProtectedRoute>} />
+          <Route path="/communication" element={<ProtectedRoute><DashboardLayout><CommunicationSettings /></DashboardLayout></ProtectedRoute>} />
           <Route path="/notifications" element={<ProtectedRoute><DashboardLayout><Notifications /></DashboardLayout></ProtectedRoute>} />
           <Route path="/tickets" element={<ProtectedRoute><DashboardLayout><SupportTickets /></DashboardLayout></ProtectedRoute>} />
           <Route path="/schedules" element={<ProtectedRoute><DashboardLayout><AccessSchedules /></DashboardLayout></ProtectedRoute>} />
@@ -53,6 +59,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
+      </NotificationProvider>
     </ThemeProvider>
   );
 }

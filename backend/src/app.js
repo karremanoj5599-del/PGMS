@@ -57,6 +57,8 @@ app.use('/api/events',              require('./modules/events/events.routes'));
 app.use('/api/notifications',       require('./modules/notifications/notifications.routes'));
 app.use('/api/system',              require('./modules/system/system.routes'));
 app.use('/api/staff',               require('./modules/staff/staff.routes'));
+app.use('/api/expenses',            require('./modules/expenses/expenses.routes'));
+app.use('/api/communication',       require('./modules/communication/communication.routes'));
 
 // ── ADMS Protocol (Device Communication) ─────────────────────────────────────
 require('./modules/devices/adms/adms.routes')(app);

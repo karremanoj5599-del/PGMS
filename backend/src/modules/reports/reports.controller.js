@@ -1,4 +1,5 @@
 const service = require('./reports.service');
+const dashboardService = require('./dashboard.service');
 
 exports.stats = async (req, res, next) => {
   try { res.json(await service.getStats(req.userId, req.query.startDate, req.query.endDate)); }
@@ -28,5 +29,10 @@ exports.staffAttendance = async (req, res, next) => {
 
 exports.transactions = async (req, res, next) => {
   try { res.json(await service.getTransactions(req.userId, req.query)); }
+  catch (err) { next(err); }
+};
+
+exports.dashboardCharts = async (req, res, next) => {
+  try { res.json(await dashboardService.getDashboardCharts(req.userId)); }
   catch (err) { next(err); }
 };

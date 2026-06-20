@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
-import { UserPlus, Search, RefreshCw, X, ShieldAlert, ShieldCheck, Users, Fingerprint, Calendar, Activity } from 'lucide-react';
+import { UserPlus, Search, RefreshCw, X, ShieldAlert, ShieldCheck, Users, Fingerprint, Calendar, Activity, CheckSquare, Trash2 } from 'lucide-react';
 
 const Staff = () => {
   const [staffList, setStaffList] = useState([]);
@@ -19,6 +19,11 @@ const Staff = () => {
   
   const [toast, setToast] = useState(null);
   const [attendanceModal, setAttendanceModal] = useState(null);
+
+  // Bulk selection state
+  const [bulkMode, setBulkMode] = useState(null); // null | 'sync' | 'delete'
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   useEffect(() => {
     fetchStaff();
@@ -127,11 +132,85 @@ const Staff = () => {
 
   const roles = [...new Set(staffList.map(s => s.role).filter(Boolean))];
 
+  // Bulk selection helpers
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredStaff.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredStaff.map(s => s.staff_id)));
+    }
+  };
+
+  const exitBulkMode = () => {
+    setBulkMode(null);
+    setSelectedIds(new Set());
+  };
+
+  const handleBulkSync = async () => {
+    const selected = staffList.filter(s => selectedIds.has(s.staff_id));
+    const withPin = selected.filter(s => s.biometric_pin);
+    if (withPin.length === 0) {
+      alert('None of the selected staff have a Biometric PIN.');
+      return;
+    }
+    if (!window.confirm(`Sync ${withPin.length} staff member(s) to devices?`)) return;
+    setBulkLoading(true);
+    let success = 0;
+    let failed = 0;
+    for (const s of withPin) {
+      try {
+        await api.post('/api/devices/sync-user', { tenant_id: parseInt(s.biometric_pin) || s.staff_id, is_staff: true });
+        success++;
+      } catch {
+        failed++;
+      }
+    }
+    setBulkLoading(false);
+    setToast(`Sync queued for ${success} staff${failed ? `, ${failed} failed` : ''}`);
+    setTimeout(() => setToast(null), 5000);
+    exitBulkMode();
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!window.confirm(`Are you sure you want to delete ${selectedIds.size} staff member(s)? This cannot be undone.`)) return;
+    setBulkLoading(true);
+    try {
+      await api.post('/api/staff/bulk-delete', { ids: [...selectedIds] });
+      setToast(`${selectedIds.size} staff member(s) deleted`);
+      setTimeout(() => setToast(null), 5000);
+      fetchStaff();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to delete staff');
+    }
+    setBulkLoading(false);
+    exitBulkMode();
+  };
+
   return (
     <div style={{ paddingBottom: '20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1>Staff Management</h1>
         <div style={{ display: 'flex', gap: '1rem' }}>
+          {!bulkMode && (
+            <>
+              <button className="btn" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--card-bg)', border: '1px solid var(--border)' }} onClick={() => { setBulkMode('sync'); setSelectedIds(new Set()); }}>
+                <CheckSquare size={18} /> Select & Sync
+              </button>
+              <button className="btn" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--card-bg)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444' }} onClick={() => { setBulkMode('delete'); setSelectedIds(new Set()); }}>
+                <Trash2 size={18} /> Select & Delete
+              </button>
+            </>
+          )}
           <button className="btn" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--card-bg)', border: '1px solid var(--border)' }} onClick={() => { 
             window.location.href = '/reports?tab=staff_attendance';
           }}>
@@ -190,10 +269,65 @@ const Staff = () => {
         </select>
       </div>
 
+      {/* Bulk Action Toolbar */}
+      {bulkMode && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '0.75rem 1.25rem', marginBottom: '1rem', borderRadius: '0.75rem',
+          background: bulkMode === 'delete' ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.08)',
+          border: `1px solid ${bulkMode === 'delete' ? 'rgba(239,68,68,0.25)' : 'rgba(16,185,129,0.25)'}`,
+          animation: 'fadeIn 0.2s ease'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>
+              {selectedIds.size} selected
+            </span>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+              {bulkMode === 'sync' ? 'Select staff to sync with devices' : 'Select staff to delete'}
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            {bulkMode === 'sync' && (
+              <button
+                className="btn btn-primary"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', fontSize: '0.85rem', background: '#10b981' }}
+                disabled={selectedIds.size === 0 || bulkLoading}
+                onClick={handleBulkSync}
+              >
+                <RefreshCw size={16} className={bulkLoading ? 'spin' : ''} /> Sync {selectedIds.size > 0 ? `(${selectedIds.size})` : ''}
+              </button>
+            )}
+            {bulkMode === 'delete' && (
+              <button
+                className="btn"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', fontSize: '0.85rem', background: '#ef4444', color: '#fff', border: 'none' }}
+                disabled={selectedIds.size === 0 || bulkLoading}
+                onClick={handleBulkDelete}
+              >
+                <Trash2 size={16} /> Delete {selectedIds.size > 0 ? `(${selectedIds.size})` : ''}
+              </button>
+            )}
+            <button className="btn" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }} onClick={exitBulkMode}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="data-table-container">
         <table>
           <thead>
             <tr>
+              {bulkMode && (
+                <th style={{ width: '40px' }}>
+                  <input
+                    type="checkbox"
+                    checked={filteredStaff.length > 0 && selectedIds.size === filteredStaff.length}
+                    onChange={toggleSelectAll}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: bulkMode === 'delete' ? '#ef4444' : '#10b981' }}
+                  />
+                </th>
+              )}
               <th style={{ width: '60px' }}>ID</th>
               <th>Name</th>
               <th>Role</th>
@@ -205,7 +339,17 @@ const Staff = () => {
           </thead>
           <tbody>
             {filteredStaff.map(s => (
-              <tr key={s.staff_id}>
+              <tr key={s.staff_id} style={selectedIds.has(s.staff_id) ? { background: bulkMode === 'delete' ? 'rgba(239,68,68,0.06)' : 'rgba(16,185,129,0.06)' } : {}}>
+                {bulkMode && (
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(s.staff_id)}
+                      onChange={() => toggleSelect(s.staff_id)}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: bulkMode === 'delete' ? '#ef4444' : '#10b981' }}
+                    />
+                  </td>
+                )}
                 <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>#{s.staff_id}</td>
                 <td style={{ fontWeight: 600 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

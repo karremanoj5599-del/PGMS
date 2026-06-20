@@ -33,6 +33,13 @@ exports.remove = async (id, userId) => {
     .del();
 };
 
+exports.bulkRemove = async (ids, userId) => {
+  return await db('staff')
+    .where('admin_user_id', userId)
+    .whereIn('staff_id', ids)
+    .del();
+};
+
 exports.getAttendance = async (id, userId) => {
   const staff = await db('staff').where({ staff_id: id, admin_user_id: userId }).first();
   const logs = await db('attendance_logs')

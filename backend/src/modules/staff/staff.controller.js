@@ -30,6 +30,17 @@ exports.remove = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+exports.bulkRemove = async (req, res, next) => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'ids array is required' });
+    }
+    const deleted = await service.bulkRemove(ids, req.userId);
+    res.json({ message: `${deleted} staff member(s) deleted` });
+  } catch (err) { next(err); }
+};
+
 exports.getAttendance = async (req, res, next) => {
   try {
     const logs = await service.getAttendance(req.params.id, req.userId);

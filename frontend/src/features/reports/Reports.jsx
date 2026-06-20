@@ -3,6 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { FileText, Download, Printer, Filter, Calendar, Search } from 'lucide-react';
 
+const handleDownloadReceipt = async (paymentId) => {
+  try {
+    const res = await api.get(`/api/payments/${paymentId}/receipt`, { responseType: 'blob' });
+    const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `receipt-${paymentId}.pdf`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error('Failed to download receipt:', err);
+    alert('Failed to download receipt');
+  }
+};
+
 class ErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { hasError: false, error: null }; }
   static getDerivedStateFromError(error) { return { hasError: true, error }; }
@@ -283,6 +298,7 @@ const Reports = () => {
                 <th>Payment Method</th>
                 <th>Amount</th>
                 <th>Balance</th>
+                <th style={{ width: '70px' }}>Receipt</th>
               </tr>
             </thead>
             <tbody>
@@ -303,10 +319,20 @@ const Reports = () => {
                     </td>
                     <td>₹{(t.amount_paid || 0).toLocaleString()}</td>
                     <td style={{ color: t.balance > 0 ? 'var(--danger)' : 'var(--success)' }}>₹{(t.balance || 0).toLocaleString()}</td>
+                    <td>
+                      <button
+                        onClick={() => handleDownloadReceipt(t.payment_id)}
+                        className="btn btn-icon-only"
+                        style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}
+                        title="Download Receipt PDF"
+                      >
+                        <Download size={14} /> PDF
+                      </button>
+                    </td>
                   </tr>
                 ))
               ) : (
-                <tr><td colSpan="7" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No records found.</td></tr>
+                <tr><td colSpan="8" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No records found.</td></tr>
               )}
             </tbody>
           </table>

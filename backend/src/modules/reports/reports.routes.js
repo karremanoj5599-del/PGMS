@@ -6,5 +6,6 @@ router.get('/tenant-wise', controller.tenantWise);
 router.get('/tenant-attendance', controller.tenantAttendance);
 router.get('/staff-attendance', controller.staffAttendance);
 router.get('/transactions', controller.transactions);
+router.get('/dashboard-charts', controller.dashboardCharts);
 
 module.exports = router;

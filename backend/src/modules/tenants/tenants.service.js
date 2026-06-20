@@ -1,6 +1,7 @@
 const db = require('../../config/database');
 const bcrypt = require('bcryptjs');
 const { toNull } = require('../../shared/utils/toNull');
+const activityService = require('../system/activity.service');
 
 exports.getAll = (userId) => {
   return db('tenants')
@@ -68,6 +69,14 @@ exports.create = async (data, userId) => {
 
   // Create access control record
   await db('access_control').insert({ tenant_id: newId, access_granted: true }).catch(() => {});
+
+  await activityService.logActivity(userId, {
+    event_type: 'access',
+    action: 'created',
+    title: 'New Tenant Added',
+    description: `Tenant ${name} was added and assigned to bed ${bedId || 'none'}.`,
+    metadata: { tenant_id: newId }
+  });
 
   return newId;
 };
@@ -144,6 +153,14 @@ exports.remove = async (id, userId) => {
   await db('access_control').where('tenant_id', id).del().catch(() => {});
   await db('biometric_templates').where('tenant_id', id).del().catch(() => {});
   await db('tenants').where({ tenant_id: id, user_id: userId }).del();
+
+  await activityService.logActivity(userId, {
+    event_type: 'access',
+    action: 'deleted',
+    title: 'Tenant Deleted',
+    description: `Tenant ${tenant.name} was permanently removed.`,
+    metadata: { tenant_id: id }
+  });
 };
 
 exports.bulkDelete = async (ids, userId) => {

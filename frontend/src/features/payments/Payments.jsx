@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from '../../services/api';
-import { CreditCard, CheckCircle, XCircle, Search, AlertCircle } from 'lucide-react';
+import { CreditCard, CheckCircle, XCircle, Search, AlertCircle, Download } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 
 const Payments = () => {
@@ -55,6 +55,21 @@ const Payments = () => {
       setShowPayModal(false);
       fetchStatus();
     } catch (err) { console.error(err); }
+  };
+
+  const handleDownloadReceipt = async (paymentId) => {
+    try {
+      const res = await axios.get(`/api/payments/${paymentId}/receipt`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `receipt-${paymentId}.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to download receipt:', err);
+      alert('Failed to download receipt');
+    }
   };
 
   const processedTenants = tenants.map(t => ({
@@ -345,21 +360,33 @@ const Payments = () => {
                   </td>
                   {filterStatus !== 'All' && filterStatus !== 'Completed' && (
                     <td>
-                      <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={() => { 
-                        setSelectedTenant(t); 
-                        const rent = (t.bed_cost || 0);
-                        setPaymentData({ 
-                          rent_charged: rent.toString(), 
-                          amount_paid: rent.toString(), 
-                          payment_type: 'Rent', 
-                          balance: 0, 
-                          utr_number: '', 
-                          payment_via: 'Cash' 
-                        });
-                        setShowPayModal(true); 
-                      }}>
-                        Record Pay
-                      </button>
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={() => { 
+                          setSelectedTenant(t); 
+                          const rent = (t.bed_cost || 0);
+                          setPaymentData({ 
+                            rent_charged: rent.toString(), 
+                            amount_paid: rent.toString(), 
+                            payment_type: 'Rent', 
+                            balance: 0, 
+                            utr_number: '', 
+                            payment_via: 'Cash' 
+                          });
+                          setShowPayModal(true); 
+                        }}>
+                          Record Pay
+                        </button>
+                        {t.last_payment_id && (
+                          <button
+                            onClick={() => handleDownloadReceipt(t.last_payment_id)}
+                            className="btn btn-icon-only"
+                            style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', padding: '0.4rem 0.8rem', width: 'auto' }}
+                            title="Download Last Receipt"
+                          >
+                            <Download size={14} /> Receipt
+                          </button>
+                        )}
+                      </div>
                     </td>
                   )}
                 </tr>
