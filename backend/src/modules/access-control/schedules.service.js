@@ -17,19 +17,6 @@ exports.createSchedule = async (data, userId) => {
 
   const [id] = await db('access_schedules').insert(row).returning('id');
 
-  const devices = await db('devices').where({ adms_status: true, user_id: userId });
-  for (const device of devices) {
-    if (!device.sn) continue;
-    const dStr = row.valid_days;
-    const daysMap = DAYS.map((day, i) => {
-      const isActive = dStr[i] === '1';
-      return `${day.toUpperCase()}=${isActive ? row[`${day}_start`] + '-' + row[`${day}_end`] : '00:00-00:00'}`;
-    }).join('\t');
-    await db('device_commands').insert([
-      { device_sn: device.sn, command: `DATA UPDATE timezone TimezoneId=${nextId}\t${daysMap}`, user_id: userId },
-      { device_sn: device.sn, command: `DATA UPDATE accgroup id=${id}\ttimezone1=${nextId}\ttimezone2=0\ttimezone3=0\tholiday=0\tverifystyle=0`, user_id: userId }
-    ]);
-  }
   return { id, nextId };
 };
 

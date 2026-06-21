@@ -762,7 +762,7 @@ const AccessSchedules = () => {
               </div>
 
               <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} disabled={loading}>
-                {loading ? 'Creating...' : 'Create & Sync'}
+                {loading ? 'Creating...' : 'Create'}
               </button>
             </form>
           </div>
