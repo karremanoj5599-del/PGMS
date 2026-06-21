@@ -280,7 +280,7 @@ const toggleAccess = async (tenantId, accessGranted) => {
   await syncTenantAccess(tid, true);
 };
 
-// Assign schedule to tenant
+// Assign schedule to tenant (DB only — sync via Re-Sync button)
 const assignSchedule = async (tenantId, scheduleId) => {
   const tid = Number(tenantId);
   const sid = Number(scheduleId);
@@ -290,10 +290,9 @@ const assignSchedule = async (tenantId, scheduleId) => {
   } else {
     await db('access_control').insert({ tenant_id: tid, schedule_id: sid, access_granted: true });
   }
-  await syncTenantAccess(tid);
 };
 
-// Assign access group to tenant
+// Assign access group to tenant (DB only — sync via Re-Sync button)
 const assignGroup = async (tenantId, groupId) => {
   const tid = Number(tenantId);
   const existing = await db('access_control').where('tenant_id', tid).first();
@@ -302,7 +301,6 @@ const assignGroup = async (tenantId, groupId) => {
   } else {
     await db('access_control').insert({ tenant_id: tid, access_group_id: toNull(groupId), access_granted: true });
   }
-  await syncTenantAccess(tid);
 };
 
 const toggleStaffAccess = async (staffId, accessGranted) => {

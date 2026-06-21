@@ -28,7 +28,7 @@ exports.deleteSchedule = async (id, userId) => {
 exports.resyncAll = async (userId) => {
   const { syncTenantAccess } = require('./access.service');
   const schedules = await db('access_schedules').where('user_id', userId);
-  const devices = await db('devices').where('adms_status', true);
+  const devices = await db('devices').where({ adms_status: true, user_id: userId });
 
   for (const device of devices) {
     if (!device.sn) continue;
