@@ -192,7 +192,7 @@ exports.broadcastTemplates = async (sn, userId) => {
     }
     const extraString = extraParams.length > 0 ? '\t' + extraParams.join('\t') : '';
     allCommands.push({ device_sn: sn, command: `DATA UPDATE USERINFO PIN=${pin}\tName=${cleanName}\tPri=0\tPass=\tCard=\tGrp=${grpId}\tTZ=${tzMask}\tPIN2=${pin}${extraString}`, user_id: userId });
-    allCommands.push({ device_sn: sn, command: `DATA UPDATE USERINFO PIN=${pin}\tEnabled=1`, user_id: userId });
+    allCommands.push({ device_sn: sn, command: `DATA UPDATE USERINFO PIN=${pin}\tEnable=1`, user_id: userId });
 
     // --- 4. BIODATA (fingerprint/face/palm templates) ---
     const templates = await db('biometric_templates').where('tenant_id', tenant.tenant_id);

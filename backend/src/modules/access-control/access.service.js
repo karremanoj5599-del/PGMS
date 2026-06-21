@@ -147,7 +147,7 @@ const syncTenantAccess = async (tenant_id, toggleOnly = false) => {
       if (toggleOnly) {
         commands.push({
           device_sn: device.sn,
-          command: `DATA UPDATE USERINFO PIN=${pin}\tEnabled=${isApproved ? 1 : 0}`,
+          command: `DATA UPDATE USERINFO PIN=${pin}\tEnable=${isApproved ? 1 : 0}`,
           user_id: tenant.user_id
         });
       } else if (!isApproved) {
@@ -155,11 +155,11 @@ const syncTenantAccess = async (tenant_id, toggleOnly = false) => {
         // This keeps templates intact on the device and avoids unnecessary heavy writes.
         commands.push({
           device_sn: device.sn,
-          command: `DATA UPDATE USERINFO PIN=${pin}\tEnabled=0`,
+          command: `DATA UPDATE USERINFO PIN=${pin}\tEnable=0`,
           user_id: tenant.user_id
         });
       } else {
-        // If approved, perform full sync (Timezones, Groups, USERINFO, user Enabled=1, BIODATA)
+        // If approved, perform full sync (Timezones, Groups, USERINFO, user Enable=1, BIODATA)
         let grpId = 1;
         let tzIds = [1, 0, 0];
 
@@ -246,7 +246,7 @@ const syncTenantAccess = async (tenant_id, toggleOnly = false) => {
         
         commands.push({
           device_sn: device.sn,
-          command: `DATA UPDATE USERINFO PIN=${pin}\tEnabled=1`,
+          command: `DATA UPDATE USERINFO PIN=${pin}\tEnable=1`,
           user_id: tenant.user_id
         });
 
@@ -350,13 +350,13 @@ const syncStaffAccess = async (staff_id, toggleOnly = false) => {
       if (toggleOnly) {
         commands.push({
           device_sn: device.sn,
-          command: `DATA UPDATE USERINFO PIN=${pin}\tEnabled=${isApproved ? 1 : 0}`,
+          command: `DATA UPDATE USERINFO PIN=${pin}\tEnable=${isApproved ? 1 : 0}`,
           user_id: staff.admin_user_id
         });
       } else if (!isApproved) {
         commands.push({
           device_sn: device.sn,
-          command: `DATA UPDATE USERINFO PIN=${pin}\tEnabled=0`,
+          command: `DATA UPDATE USERINFO PIN=${pin}\tEnable=0`,
           user_id: staff.admin_user_id
         });
       } else {
@@ -373,7 +373,7 @@ const syncStaffAccess = async (staff_id, toggleOnly = false) => {
         
         commands.push({
           device_sn: device.sn,
-          command: `DATA UPDATE USERINFO PIN=${pin}\tEnabled=1`,
+          command: `DATA UPDATE USERINFO PIN=${pin}\tEnable=1`,
           user_id: staff.admin_user_id
         });
 

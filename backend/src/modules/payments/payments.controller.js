@@ -14,7 +14,7 @@ exports.create = async (req, res, next) => {
   try {
     const { payment, tenant_id } = await service.create(req.body, req.userId);
     // Trigger hardware sync after payment
-    // Only toggle Enabled=1 — templates are already on the device
+    // Only toggle Enable=1 — templates are already on the device
     await accessService.syncTenantAccess(tenant_id, true);
     res.json(payment);
   } catch (err) {
