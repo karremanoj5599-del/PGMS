@@ -144,25 +144,12 @@ const syncTenantAccess = async (tenant_id, toggleOnly = false) => {
 
       let commands = [];
 
-      if (toggleOnly) {
-        commands.push({
-          device_sn: device.sn,
-          command: `DATA UPDATE USERINFO PIN=${pin}\tEnable=${isApproved ? 1 : 0}`,
-          user_id: tenant.user_id
-        });
-      } else if (!isApproved) {
-        // If restricted/blocked, ONLY send the disable command.
-        // This keeps templates intact on the device and avoids unnecessary heavy writes.
-        commands.push({
-          device_sn: device.sn,
-          command: `DATA UPDATE USERINFO PIN=${pin}\tEnable=0`,
-          user_id: tenant.user_id
-        });
-      } else {
-        // If approved, perform full sync (Timezones, Groups, USERINFO, user Enable=1, BIODATA)
-        let grpId = 1;
-        let tzIds = [1, 0, 0];
+      // Always perform full sync (Timezones, Groups, USERINFO, BIODATA)
+      // because restricting a user requires setting TZ=0, which deletes templates on the device.
+      let grpId = 1;
+      let tzIds = [1, 0, 0];
 
+      if (isApproved) {
         if (access && access.access_group_id) {
           const group = await db('access_groups').where({ id: access.access_group_id, user_id: tenant.user_id }).first();
           if (group) {
@@ -207,10 +194,13 @@ const syncTenantAccess = async (tenant_id, toggleOnly = false) => {
             tzIds = [tid, 0, 0];
           }
         }
+      } else {
+        // Not approved -> Restricted Timezone
+      }
 
         // Queue Group Definition
-        let holidayId = 0;
-        if (access && access.access_group_id) {
+      let holidayId = 0;
+      if (isApproved && access && access.access_group_id) {
           const group = await db('access_groups').where({ id: access.access_group_id, user_id: tenant.user_id }).first();
           if (group && group.holiday_id) {
             holidayId = group.holiday_id;
@@ -246,7 +236,7 @@ const syncTenantAccess = async (tenant_id, toggleOnly = false) => {
         
         commands.push({
           device_sn: device.sn,
-          command: `DATA UPDATE USERINFO PIN=${pin}\tEnable=1`,
+          command: `DATA UPDATE USERINFO PIN=${pin}\tEnable=${isApproved ? 1 : 0}`,
           user_id: tenant.user_id
         });
 
@@ -259,13 +249,12 @@ const syncTenantAccess = async (tenant_id, toggleOnly = false) => {
           const format = tpl.format ? `\tFormat=${tpl.format}` : '';
           const size = tpl.template_data ? `\tSize=${Buffer.from(tpl.template_data, 'base64').length}` : '';
           const bioType = tpl.type === 'face' ? '9' : (tpl.type === 'palm' ? '8' : '1');
-          commands.push({
+        commands.push({
             device_sn: device.sn,
             command: `DATA UPDATE BIODATA Pin=${pin}\tNo=0\tIndex=${tpl.finger_index}\tValid=1\tDuress=0\tType=${bioType}${major}${minor}${format}${size}\tTmp=${tpl.template_data}`,
             user_id: tenant.user_id
           });
         }
-      }
 
       if (commands.length > 0) {
         await db('device_commands').insert(commands);
@@ -347,50 +336,37 @@ const syncStaffAccess = async (staff_id, toggleOnly = false) => {
 
       let commands = [];
 
-      if (toggleOnly) {
-        commands.push({
-          device_sn: device.sn,
-          command: `DATA UPDATE USERINFO PIN=${pin}\tEnable=${isApproved ? 1 : 0}`,
-          user_id: staff.admin_user_id
-        });
-      } else if (!isApproved) {
-        commands.push({
-          device_sn: device.sn,
-          command: `DATA UPDATE USERINFO PIN=${pin}\tEnable=0`,
-          user_id: staff.admin_user_id
-        });
-      } else {
-        // Full sync: Give staff 24/7 access (Group 1, TZ 1)
-        const cleanName = staff.name.replace(/[^\w]/g, '');
-        const grpId = 1;
-        const tzMask = generateTZMask(1);
-        
-        commands.push({
-          device_sn: device.sn,
-          command: `DATA UPDATE USERINFO PIN=${pin}\tName=${cleanName}\tPri=0\tPass=\tCard=\tGrp=${grpId}\tTZ=${tzMask}\tPIN2=${pin}`,
-          user_id: staff.admin_user_id
-        });
-        
-        commands.push({
-          device_sn: device.sn,
-          command: `DATA UPDATE USERINFO PIN=${pin}\tEnable=1`,
-          user_id: staff.admin_user_id
-        });
+      // Always do full sync for staff to ensure Timezone 0 is set if restricted
+      const cleanName = staff.name.replace(/[^\w]/g, '');
+      const grpId = 1;
+      const tzIds = isApproved ? [1, 0, 0] : [0, 0, 0];
+      const tzMask = generateTZMask(tzIds[0]);
+      
+      commands.push({
+        device_sn: device.sn,
+        command: `DATA UPDATE USERINFO PIN=${pin}\tName=${cleanName}\tPri=0\tPass=\tCard=\tGrp=${grpId}\tTZ=${tzMask}\tPIN2=${pin}`,
+        user_id: staff.admin_user_id
+      });
+      
+      commands.push({
+        device_sn: device.sn,
+        command: `DATA UPDATE USERINFO PIN=${pin}\tEnable=${isApproved ? 1 : 0}`,
+        user_id: staff.admin_user_id
+      });
 
-        // Resync biometric templates because updating USERINFO deletes them on the device
-        const templates = await db('biometric_templates').where('staff_id', sid);
-        for (const tpl of templates) {
-          const major = tpl.major_ver ? `\tMajorVer=${tpl.major_ver}` : '';
-          const minor = tpl.minor_ver ? `\tMinorVer=${tpl.minor_ver}` : '';
-          const format = tpl.format ? `\tFormat=${tpl.format}` : '';
-          const size = tpl.template_data ? `\tSize=${Buffer.from(tpl.template_data, 'base64').length}` : '';
-          const bioType = tpl.type === 'face' ? '9' : (tpl.type === 'palm' ? '8' : '1');
-          commands.push({
-            device_sn: device.sn,
-            command: `DATA UPDATE BIODATA Pin=${pin}\tNo=0\tIndex=${tpl.finger_index}\tValid=1\tDuress=0\tType=${bioType}${major}${minor}${format}${size}\tTmp=${tpl.template_data}`,
-            user_id: staff.admin_user_id
-          });
-        }
+      // Resync biometric templates because updating USERINFO deletes them on the device
+      const templates = await db('biometric_templates').where('staff_id', sid);
+      for (const tpl of templates) {
+        const major = tpl.major_ver ? `\tMajorVer=${tpl.major_ver}` : '';
+        const minor = tpl.minor_ver ? `\tMinorVer=${tpl.minor_ver}` : '';
+        const format = tpl.format ? `\tFormat=${tpl.format}` : '';
+        const size = tpl.template_data ? `\tSize=${Buffer.from(tpl.template_data, 'base64').length}` : '';
+        const bioType = tpl.type === 'face' ? '9' : (tpl.type === 'palm' ? '8' : '1');
+        commands.push({
+          device_sn: device.sn,
+          command: `DATA UPDATE BIODATA Pin=${pin}\tNo=0\tIndex=${tpl.finger_index}\tValid=1\tDuress=0\tType=${bioType}${major}${minor}${format}${size}\tTmp=${tpl.template_data}`,
+          user_id: staff.admin_user_id
+        });
       }
 
       if (commands.length > 0) {
