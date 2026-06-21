@@ -195,28 +195,30 @@ const syncTenantAccess = async (tenant_id, toggleOnly = false) => {
           }
         }
       } else {
-        // Not approved -> Restricted Timezone
+        // Not approved -> Restricted Timezone and Restricted Group
+        tzIds = [0, 0, 0];
+        grpId = 99; // Dedicated group for restricted users
       }
 
-        // Queue Group Definition
+      // Queue Group Definition
       let holidayId = 0;
       if (isApproved && access && access.access_group_id) {
-          const group = await db('access_groups').where({ id: access.access_group_id, user_id: tenant.user_id }).first();
-          if (group && group.holiday_id) {
-            holidayId = group.holiday_id;
-            const holiday = await db('holidays').where('id', holidayId).first();
-            if (holiday) {
-              const hDate = new Date(holiday.start_date);
-              commands.push({
-                device_sn: device.sn,
-                command: `DATA UPDATE holiday Holiday=${holiday.id}\tName=${holiday.name.replace(/\s+/g,'')}\tTimezone=${holiday.timezone_id || 0}\tMonth=${hDate.getMonth()+1}\tDay=${hDate.getDate()}`,
-                user_id: tenant.user_id
-              });
-            }
+        const group = await db('access_groups').where({ id: access.access_group_id, user_id: tenant.user_id }).first();
+        if (group && group.holiday_id) {
+          holidayId = group.holiday_id;
+          const holiday = await db('holidays').where('id', holidayId).first();
+          if (holiday) {
+            const hDate = new Date(holiday.start_date);
+            commands.push({
+              device_sn: device.sn,
+              command: `DATA UPDATE holiday Holiday=${holiday.id}\tName=${holiday.name.replace(/\s+/g,'')}\tTimezone=${holiday.timezone_id || 0}\tMonth=${hDate.getMonth()+1}\tDay=${hDate.getDate()}`,
+              user_id: tenant.user_id
+            });
           }
         }
+      }
         
-        commands.push({ device_sn: device.sn, command: `DATA UPDATE accgroup id=${grpId}\ttimezone1=${tzIds[0]}\ttimezone2=${tzIds[1]}\ttimezone3=${tzIds[2]}\tholiday=${holidayId}\tverifystyle=0`, user_id: tenant.user_id });
+      commands.push({ device_sn: device.sn, command: `DATA UPDATE accgroup id=${grpId}\ttimezone1=${tzIds[0]}\ttimezone2=${tzIds[1]}\ttimezone3=${tzIds[2]}\tholiday=${holidayId}\tverifystyle=0`, user_id: tenant.user_id });
 
         // Grant/Update: DATA UPDATE USERINFO
         const cleanName = tenant.name.replace(/[^\w]/g, '');
@@ -338,10 +340,14 @@ const syncStaffAccess = async (staff_id, toggleOnly = false) => {
 
       // Always do full sync for staff to ensure Timezone 0 is set if restricted
       const cleanName = staff.name.replace(/[^\w]/g, '');
-      const grpId = 1;
+      const grpId = isApproved ? 1 : 99;
       const tzIds = isApproved ? [1, 0, 0] : [0, 0, 0];
       const tzMask = generateTZMask(tzIds[0]);
       
+      if (!isApproved) {
+        commands.push({ device_sn: device.sn, command: `DATA UPDATE accgroup id=99\ttimezone1=0\ttimezone2=0\ttimezone3=0\tholiday=0\tverifystyle=0`, user_id: staff.admin_user_id });
+      }
+
       commands.push({
         device_sn: device.sn,
         command: `DATA UPDATE USERINFO PIN=${pin}\tName=${cleanName}\tPri=0\tPass=\tCard=\tGrp=${grpId}\tTZ=${tzMask}\tPIN2=${pin}`,
