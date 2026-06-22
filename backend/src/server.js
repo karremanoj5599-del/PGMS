@@ -7,10 +7,12 @@ if (!config.isVercel) {
   const inactivityEnforcer = require('./jobs/inactivityEnforcer');
   const rentReminders = require('./jobs/rentReminders');
   const communicationJob = require('./jobs/communicationJob');
+  const backupJob = require('./jobs/backupJob');
   paymentEnforcer.start();
   inactivityEnforcer.start();
   rentReminders.start();
   communicationJob.start();
+  backupJob.start();
 }
 
 // ── Start HTTP Server ────────────────────────────────────────────────────────

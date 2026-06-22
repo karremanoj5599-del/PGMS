@@ -12,3 +12,6 @@ node_modules
 dev.sqlite3
 dev.sqlite3-shm
 dev.sqlite3-wal
+
+# Backups
+backups/
