@@ -3,7 +3,7 @@ const backupService = require('./backup.service');
 // POST /api/system/backup — Trigger a manual backup
 exports.createBackup = async (req, res) => {
   try {
-    const result = await backupService.performBackup();
+    const result = await backupService.performBackup(req.userId);
     res.json({ success: true, backup: result });
   } catch (err) {
     console.error('[BACKUP] Manual backup failed:', err.message);
@@ -14,7 +14,7 @@ exports.createBackup = async (req, res) => {
 // GET /api/system/backups — List all backups
 exports.listBackups = (req, res) => {
   try {
-    const backups = backupService.listBackups();
+    const backups = backupService.listBackups(req.userId);
     res.json(backups);
   } catch (err) {
     console.error('[BACKUP] List failed:', err.message);
@@ -25,7 +25,7 @@ exports.listBackups = (req, res) => {
 // GET /api/system/backups/:filename/download — Download a backup file
 exports.downloadBackup = (req, res) => {
   try {
-    const filepath = backupService.getBackupFilePath(req.params.filename);
+    const filepath = backupService.getBackupFilePath(req.params.filename, req.userId);
     res.download(filepath, req.params.filename);
   } catch (err) {
     console.error('[BACKUP] Download failed:', err.message);
@@ -33,12 +33,10 @@ exports.downloadBackup = (req, res) => {
   }
 };
 
-
-
 // POST /api/system/backups/:filename/restore — Restore from a backup
 exports.restoreBackup = async (req, res) => {
   try {
-    const result = await backupService.restoreBackup(req.params.filename);
+    const result = await backupService.restoreBackup(req.params.filename, req.userId);
     res.json({ success: true, ...result });
   } catch (err) {
     console.error('[BACKUP] Restore failed:', err.message);
@@ -49,7 +47,7 @@ exports.restoreBackup = async (req, res) => {
 // GET /api/system/backup-stats — Get backup statistics
 exports.getBackupStats = (req, res) => {
   try {
-    const stats = backupService.getBackupStats();
+    const stats = backupService.getBackupStats(req.userId);
     res.json(stats);
   } catch (err) {
     console.error('[BACKUP] Stats failed:', err.message);
@@ -67,7 +65,7 @@ exports.uploadBackup = (req, res) => {
 
     // Decode base64 file content
     const fileBuffer = Buffer.from(data, 'base64');
-    const result = backupService.uploadBackup(filename, fileBuffer);
+    const result = backupService.uploadBackup(filename, fileBuffer, req.userId);
     res.json({ success: true, backup: result });
   } catch (err) {
     console.error('[BACKUP] Upload failed:', err.message);

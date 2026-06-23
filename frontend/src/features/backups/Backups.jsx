@@ -42,8 +42,39 @@ const Backups = () => {
     setActionLoading('create');
     try {
       const res = await api.post('/api/system/backup');
-      showMessage('success', `Backup created: ${res.data.backup.filename}`);
+      const backupFilename = res.data.backup.filename;
       fetchData();
+
+      try {
+        if (window.showSaveFilePicker) {
+          const fileHandle = await window.showSaveFilePicker({
+            suggestedName: backupFilename,
+            types: [{
+              description: 'JSON Backup File',
+              accept: { 'application/json': ['.json'] },
+            }],
+          });
+          
+          showMessage('success', 'Downloading backup...');
+          const blobRes = await api.get(`/api/system/backups/${backupFilename}/download`, { responseType: 'blob' });
+          
+          const writable = await fileHandle.createWritable();
+          await writable.write(blobRes.data);
+          await writable.close();
+          showMessage('success', `Backup saved successfully!`);
+        } else {
+          // Fallback
+          handleDownload(backupFilename);
+          showMessage('success', `Backup created and downloading...`);
+        }
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error(err);
+          showMessage('error', 'Failed to save to local computer, but backup is created on server.');
+        } else {
+          showMessage('success', `Backup created: ${backupFilename}`);
+        }
+      }
     } catch (err) {
       showMessage('error', err.response?.data?.error || 'Backup failed');
     } finally {
@@ -56,8 +87,8 @@ const Backups = () => {
     if (!file) return;
 
     // Validate file type
-    if (!file.name.endsWith('.sqlite3') && !file.name.endsWith('.json')) {
-      showMessage('error', 'Invalid file. Only .sqlite3 and .json backup files are accepted.');
+    if (!file.name.endsWith('.json')) {
+      showMessage('error', 'Invalid file. Only .json tenant backup files are accepted.');
       e.target.value = '';
       return;
     }
@@ -96,8 +127,6 @@ const Backups = () => {
   };
 
   const handleDownload = (filename) => {
-    const userString = localStorage.getItem('pgms_user');
-    const userId = userString ? JSON.parse(userString).user_id : '';
     // Create a temporary link for download
     const link = document.createElement('a');
     link.href = `/api/system/backups/${filename}/download`;
@@ -183,7 +212,7 @@ const Backups = () => {
             type="file"
             ref={fileInputRef}
             onChange={handleUpload}
-            accept=".sqlite3,.json"
+            accept=".json"
             style={{ display: 'none' }}
           />
           <button
@@ -280,7 +309,7 @@ const Backups = () => {
               <span className="stat-label" style={{ fontSize: '0.75rem' }}>Database Type</span>
             </div>
             <div className="stat-value" style={{ color: '#a78bfa', fontSize: '1.25rem', textTransform: 'capitalize' }}>
-              {stats.db_type}
+              Tenant Export
             </div>
           </div>
         </div>
@@ -336,10 +365,8 @@ const Backups = () => {
                       <div style={{
                         width: '36px', height: '36px', borderRadius: '8px',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        background: backup.type === 'sqlite'
-                          ? 'rgba(16, 185, 129, 0.1)'
-                          : 'rgba(99, 102, 241, 0.1)',
-                        color: backup.type === 'sqlite' ? '#34d399' : '#818cf8',
+                        background: 'rgba(16, 185, 129, 0.1)',
+                        color: '#34d399',
                         flexShrink: 0
                       }}>
                         <Database size={16} />
@@ -365,10 +392,8 @@ const Backups = () => {
                       borderRadius: '2rem',
                       fontSize: '0.75rem',
                       fontWeight: 600,
-                      background: backup.type === 'sqlite'
-                        ? 'rgba(16, 185, 129, 0.1)'
-                        : 'rgba(99, 102, 241, 0.1)',
-                      color: backup.type === 'sqlite' ? '#34d399' : '#818cf8',
+                      background: 'rgba(16, 185, 129, 0.1)',
+                      color: '#34d399',
                       textTransform: 'uppercase'
                     }}>
                       {backup.type}
@@ -437,8 +462,8 @@ const Backups = () => {
         marginTop: '1.5rem',
         padding: '1rem 1.25rem',
         borderRadius: '0.75rem',
-        background: 'rgba(99, 102, 241, 0.05)',
-        border: '1px solid rgba(99, 102, 241, 0.1)',
+        background: 'rgba(16, 185, 129, 0.05)',
+        border: '1px solid rgba(16, 185, 129, 0.1)',
         display: 'flex',
         alignItems: 'flex-start',
         gap: '0.75rem',
@@ -446,16 +471,9 @@ const Backups = () => {
         color: 'var(--text-muted)',
         lineHeight: 1.6
       }}>
-        <Shield size={16} style={{ color: '#818cf8', flexShrink: 0, marginTop: '2px' }} />
+        <Shield size={16} style={{ color: '#34d399', flexShrink: 0, marginTop: '2px' }} />
         <div>
-          <strong style={{ color: '#818cf8' }}>Auto-backup enabled</strong> — Your database is automatically backed up every 24 hours.
-          All backups are stored on your local computer. You can set <code style={{
-            background: 'rgba(99, 102, 241, 0.1)', padding: '1px 6px', borderRadius: '4px', fontSize: '0.75rem'
-          }}>BACKUP_INTERVAL_HOURS</code> in your <code style={{
-            background: 'rgba(99, 102, 241, 0.1)', padding: '1px 6px', borderRadius: '4px', fontSize: '0.75rem'
-          }}>.env</code> file to change the frequency (e.g., <code style={{
-            background: 'rgba(99, 102, 241, 0.1)', padding: '1px 6px', borderRadius: '4px', fontSize: '0.75rem'
-          }}>168</code> for weekly).
+          <strong style={{ color: '#34d399' }}>Account-Specific Export</strong> — Backups created here are secure, tenant-specific JSON exports. They only contain data belonging to your account and will not affect or expose other accounts.
         </div>
       </div>
     </div>
