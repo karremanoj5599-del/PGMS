@@ -3,7 +3,7 @@ import axios from '../../services/api';
 import { MessageSquare, AlertCircle, CheckCircle } from 'lucide-react';
 
 const ReportIssuePage = () => {
-  const [mobile, setMobile] = useState('');
+  const [mobile, setMobile] = useState('+91 ');
   const [floor, setFloor] = useState('');
   const [room, setRoom] = useState('');
   const [category, setCategory] = useState('');
