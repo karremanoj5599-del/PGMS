@@ -9,6 +9,113 @@ exports.getAll = (userId) => {
     .select('payments.*', 'tenants.name as tenant_name');
 };
 
+exports.getMonthlyReport = async (userId, month, year) => {
+  if (!userId || isNaN(userId)) return [];
+
+  // Query all beds
+  const beds = await db('beds')
+    .leftJoin('rooms', 'beds.room_id', 'rooms.room_id')
+    .leftJoin('floors', 'rooms.floor_id', 'floors.floor_id')
+    .leftJoin('tenants', function() {
+      this.on('beds.bed_id', '=', 'tenants.bed_id')
+        .andOn('tenants.status', '=', db.raw("'Staying'"));
+    })
+    .where('beds.user_id', userId)
+    .select(
+      'beds.bed_id', 'beds.bed_number', 'beds.bed_cost', 'beds.advance_amount as default_advance',
+      'rooms.room_number', 'floors.floor_name',
+      'tenants.tenant_id', 'tenants.name as tenant_name', 'tenants.mobile as tenant_mobile',
+      'tenants.joining_date', 'tenants.custom_rent', 'tenants.custom_advance'
+    );
+
+  if (beds.length === 0) return [];
+
+  const tenantIds = beds.map(b => b.tenant_id).filter(Boolean);
+
+  let billings = [];
+  if (tenantIds.length > 0) {
+    billings = await db('billing')
+      .whereIn('tenant_id', tenantIds)
+      .where({ month, year });
+  }
+
+  const billingMap = {};
+  for (const b of billings) {
+    billingMap[b.tenant_id] = b;
+  }
+
+  const monthMap = {
+    "January": 0, "February": 1, "March": 2, "April": 3,
+    "May": 4, "June": 5, "July": 6, "August": 7,
+    "September": 8, "October": 9, "November": 10, "December": 11
+  };
+  const monthIdx = monthMap[month];
+  
+  // Format local YYYY-MM-DD instead of UTC to avoid timezone shifts
+  const monthStr = (monthIdx + 1).toString().padStart(2, '0');
+  const startDate = `${year}-${monthStr}-01`;
+  
+  const end = new Date(year, monthIdx + 1, 0);
+  const endDateStr = `${year}-${monthStr}-${end.getDate().toString().padStart(2, '0')}`;
+
+  let payments = [];
+  if (tenantIds.length > 0) {
+    payments = await db('payments')
+      .whereIn('tenant_id', tenantIds)
+      .where('payment_date', '>=', startDate)
+      .where('payment_date', '<=', endDateStr)
+      .orderBy('payment_date', 'desc');
+  }
+
+  const paymentsMap = {};
+  for (const p of payments) {
+    if (!paymentsMap[p.tenant_id]) {
+      paymentsMap[p.tenant_id] = { total_paid: 0, latest_date: p.payment_date };
+    }
+    paymentsMap[p.tenant_id].total_paid += p.amount_paid;
+  }
+
+  return beds.map(bed => {
+    let tenantId = bed.tenant_id;
+    let tenantName = bed.tenant_name;
+    let tenantMobile = bed.tenant_mobile;
+    let joiningDate = bed.joining_date;
+    
+    let fixedRent = bed.custom_rent !== null && bed.custom_rent !== undefined ? bed.custom_rent : bed.bed_cost;
+    let advance = bed.custom_advance !== null && bed.custom_advance !== undefined ? bed.custom_advance : bed.default_advance;
+
+    // If the tenant joined AFTER the end of the requested month, they were not in this bed during that month
+    if (joiningDate && new Date(joiningDate) > end) {
+      tenantId = null;
+      tenantName = null;
+      tenantMobile = null;
+      joiningDate = null;
+      fixedRent = 0; // Bed was vacant, so no rent owed
+      advance = 0;
+    }
+
+    const bill = tenantId ? billingMap[tenantId] : null;
+    const pay = tenantId ? paymentsMap[tenantId] : null;
+
+    return {
+      floor_name: bed.floor_name || 'Unassigned',
+      room_number: bed.room_number || 'N/A',
+      bed_number: bed.bed_number,
+      tenant_id: tenantId,
+      tenant_name: tenantName,
+      tenant_mobile: tenantMobile,
+      joining_date: joiningDate,
+      fixed_rent: fixedRent,
+      advance: advance,
+      previous_month_balance: bill ? bill.previous_balance : 0,
+      this_month_rent: bill ? bill.fixed_rent : fixedRent,
+      this_month_balance: bill ? bill.current_balance : 0,
+      amount_paid: pay ? pay.total_paid : 0,
+      paid_date: pay ? pay.latest_date : null
+    };
+  });
+};
+
 exports.getStatus = async (userId) => {
   if (!userId || isNaN(userId)) {
     return [];

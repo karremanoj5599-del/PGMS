@@ -10,6 +10,15 @@ exports.status = async (req, res, next) => {
   try { res.json(await service.getStatus(req.userId)); } catch (err) { next(err); }
 };
 
+exports.monthlyReport = async (req, res, next) => {
+  try {
+    const { month, year } = req.query;
+    res.json(await service.getMonthlyReport(req.userId, month, parseInt(year)));
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.create = async (req, res, next) => {
   try {
     const { payment, tenant_id } = await service.create(req.body, req.userId);

@@ -3,6 +3,7 @@ const controller = require('./payments.controller');
 
 router.get('/', controller.list);
 router.get('/status', controller.status);
+router.get('/report', controller.monthlyReport);
 router.get('/:id/receipt', controller.receipt);
 router.post('/', controller.create);
 

@@ -1,10 +1,91 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from '../../services/api';
-import { CreditCard, CheckCircle, XCircle, Search, AlertCircle, Download } from 'lucide-react';
+import { CreditCard, CheckCircle, XCircle, Search, AlertCircle, Download, ChevronDown } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
+
+const CustomSelect = ({ value, onChange, options, style }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (ref.current && !ref.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div ref={ref} style={{ position: 'relative', ...style }}>
+      <div 
+        onClick={() => setIsOpen(!isOpen)}
+        style={{ 
+          padding: '0.4rem 0.8rem', 
+          borderRadius: '4px', 
+          background: 'var(--bg-dark)', 
+          color: 'var(--text-main)', 
+          border: '1px solid var(--border)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          cursor: 'pointer',
+          minWidth: '120px',
+          userSelect: 'none'
+        }}
+      >
+        <span>{options.find(o => o.value === value)?.label || value}</span>
+        <ChevronDown size={16} style={{ marginLeft: '0.5rem', color: 'var(--text-muted)' }} />
+      </div>
+      {isOpen && (
+        <div style={{
+          position: 'absolute',
+          top: '100%',
+          left: 0,
+          right: 0,
+          marginTop: '0.5rem',
+          background: 'var(--card-bg)',
+          border: '1px solid var(--border)',
+          borderRadius: '8px',
+          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)',
+          zIndex: 50,
+          maxHeight: '250px',
+          overflowY: 'auto',
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
+          {options.map(o => (
+            <div 
+              key={o.value}
+              onClick={() => { onChange(o.value); setIsOpen(false); }}
+              style={{
+                padding: '0.6rem 1rem',
+                cursor: 'pointer',
+                background: value === o.value ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
+                color: value === o.value ? 'var(--primary)' : 'var(--text-main)',
+                transition: 'background 0.2s',
+                fontSize: '0.9rem'
+              }}
+              onMouseEnter={(e) => {
+                if (value !== o.value) e.target.style.background = 'rgba(255,255,255,0.05)';
+              }}
+              onMouseLeave={(e) => {
+                if (value !== o.value) e.target.style.background = 'transparent';
+              }}
+            >
+              {o.label}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const Payments = () => {
   const [tenants, setTenants] = useState([]);
+  const [monthlyReport, setMonthlyReport] = useState([]);
   const location = useLocation();
   const [searchTerm, setSearchTerm] = useState(location.state?.searchTerm || '');
   const [filterFloor, setFilterFloor] = useState('All');
@@ -28,12 +109,34 @@ const Payments = () => {
   const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
   const now = new Date();
   const currentMonth = monthNames[now.getMonth()];
+  const currentYear = now.getFullYear();
   const prevMonth = monthNames[now.getMonth() === 0 ? 11 : now.getMonth() - 1];
 
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [activeFloorTab, setActiveFloorTab] = useState('');
 
   useEffect(() => {
     fetchStatus();
   }, []);
+
+  useEffect(() => {
+    fetchMonthlyReport();
+  }, [selectedMonth, selectedYear]);
+
+  useEffect(() => {
+    if (monthlyReport.length > 0 && !activeFloorTab) {
+      const floors = [...new Set(monthlyReport.map(b => b.floor_name))].sort();
+      if (floors.length > 0) setActiveFloorTab(floors[0]);
+    }
+  }, [monthlyReport]);
+
+  const fetchMonthlyReport = async () => {
+    try {
+      const res = await axios.get(`/api/payments/report?month=${selectedMonth}&year=${selectedYear}`);
+      setMonthlyReport(res.data);
+    } catch (err) { console.error(err); }
+  };
 
   const fetchStatus = async () => {
     try {
@@ -110,27 +213,148 @@ const Payments = () => {
     return status === filterStatus;
   });
 
+  const renderMonthlyReport = () => {
+    const list = monthlyReport.filter(b => {
+      const searchMatch = (b.tenant_name || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          (b.room_number?.toString() || '').includes(searchTerm) ||
+                          (b.bed_number || '').toLowerCase().includes(searchTerm.toLowerCase());
+      if (!searchMatch) return false;
+      if (filterFloor !== 'All' && b.floor_name !== filterFloor) return false;
+      if (filterRoom !== 'All' && String(b.room_number) !== filterRoom) return false;
+      return true;
+    });
+
+    const floors = {};
+    for (const b of list) {
+      if (!floors[b.floor_name]) floors[b.floor_name] = {};
+      if (!floors[b.floor_name][b.room_number]) floors[b.floor_name][b.room_number] = [];
+      floors[b.floor_name][b.room_number].push(b);
+    }
+
+    const sortedFloors = Object.keys(floors).sort();
+    
+    // Fallback to the first floor if activeFloorTab is empty or invalid
+    const currentFloor = sortedFloors.includes(activeFloorTab) ? activeFloorTab : sortedFloors[0];
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        {sortedFloors.length === 0 && <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No data available.</div>}
+        
+        {sortedFloors.length > 0 && (
+          <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', overflowX: 'auto' }}>
+            {sortedFloors.map(floor => (
+              <button
+                key={floor}
+                onClick={() => setActiveFloorTab(floor)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: currentFloor === floor ? 'var(--primary)' : 'var(--text-muted)',
+                  fontWeight: currentFloor === floor ? '600' : '400',
+                  padding: '0.5rem 1rem',
+                  cursor: 'pointer',
+                  borderBottom: currentFloor === floor ? '2px solid var(--primary)' : '2px solid transparent',
+                  whiteSpace: 'nowrap',
+                  fontSize: '1rem'
+                }}
+              >
+                {floor}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {currentFloor && floors[currentFloor] && (
+          <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '8px', padding: '1rem', border: '1px solid var(--border)' }}>
+            <h3 style={{ margin: '0 0 1rem 0', color: 'var(--primary)' }}>Floor: {currentFloor}</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {Object.keys(floors[currentFloor]).sort((a,b) => a.localeCompare(b, undefined, {numeric: true})).map(room => (
+                <div key={room} style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '6px', padding: '1rem' }}>
+                  <h4 style={{ margin: '0 0 1rem 0', color: 'var(--text-main)', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>Room {room}</h4>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                      <thead>
+                        <tr style={{ color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                          <th style={{ textAlign: 'left', padding: '0.5rem' }}>Bed</th>
+                          <th style={{ textAlign: 'left', padding: '0.5rem' }}>Name</th>
+                          <th style={{ textAlign: 'left', padding: '0.5rem' }}>Mobile</th>
+                          <th style={{ textAlign: 'left', padding: '0.5rem' }}>Joining Date</th>
+                          <th style={{ textAlign: 'right', padding: '0.5rem' }}>Fixed Rent</th>
+                          <th style={{ textAlign: 'right', padding: '0.5rem' }}>Advance</th>
+                          <th style={{ textAlign: 'right', padding: '0.5rem' }}>Prev. Balance</th>
+                          <th style={{ textAlign: 'right', padding: '0.5rem' }}>This Month Rent</th>
+                          <th style={{ textAlign: 'right', padding: '0.5rem' }}>This Month Balance</th>
+                          <th style={{ textAlign: 'right', padding: '0.5rem' }}>Amount Paid</th>
+                          <th style={{ textAlign: 'left', padding: '0.5rem' }}>Paid Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {floors[currentFloor][room].sort((a,b) => a.bed_number.localeCompare(b.bed_number)).map(bed => (
+                          <tr key={bed.bed_id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                            <td style={{ padding: '0.5rem', fontWeight: 600 }}>{bed.bed_number}</td>
+                            <td style={{ padding: '0.5rem' }}>{bed.tenant_name || <span style={{color: 'var(--text-muted)'}}>Vacant</span>}</td>
+                            <td style={{ padding: '0.5rem' }}>{bed.tenant_mobile || '-'}</td>
+                            <td style={{ padding: '0.5rem' }}>{bed.joining_date ? new Date(bed.joining_date).toLocaleDateString() : '-'}</td>
+                            <td style={{ padding: '0.5rem', textAlign: 'right' }}>₹{bed.fixed_rent?.toLocaleString() || 0}</td>
+                            <td style={{ padding: '0.5rem', textAlign: 'right' }}>₹{bed.advance?.toLocaleString() || 0}</td>
+                            <td style={{ padding: '0.5rem', textAlign: 'right', color: bed.previous_month_balance > 0 ? 'var(--danger)' : 'inherit' }}>₹{bed.previous_month_balance?.toLocaleString() || 0}</td>
+                            <td style={{ padding: '0.5rem', textAlign: 'right' }}>₹{bed.this_month_rent?.toLocaleString() || 0}</td>
+                            <td style={{ padding: '0.5rem', textAlign: 'right', color: bed.this_month_balance > 0 ? 'var(--danger)' : 'inherit', fontWeight: 600 }}>₹{bed.this_month_balance?.toLocaleString() || 0}</td>
+                            <td style={{ padding: '0.5rem', textAlign: 'right', color: 'var(--success)' }}>₹{bed.amount_paid?.toLocaleString() || 0}</td>
+                            <td style={{ padding: '0.5rem' }}>{bed.paid_date ? new Date(bed.paid_date).toLocaleDateString() : '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1>Payments Management</h1>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <select 
+          {filterStatus === 'All' && (
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <CustomSelect 
+                value={selectedMonth} 
+                onChange={setSelectedMonth} 
+                options={monthNames.map(m => ({ label: m, value: m }))}
+                style={{ minWidth: '130px' }}
+              />
+              <CustomSelect 
+                value={selectedYear} 
+                onChange={setSelectedYear} 
+                options={[...Array(5)].map((_, i) => ({ label: currentYear - i, value: currentYear - i }))}
+                style={{ minWidth: '100px' }}
+              />
+            </div>
+          )}
+          <CustomSelect 
             value={filterFloor} 
-            onChange={e => { setFilterFloor(e.target.value); setFilterRoom('All'); }}
-            style={{ padding: '0.4rem 0.8rem', borderRadius: '4px', background: 'var(--bg-dark)', color: 'var(--text-main)', border: '1px solid var(--border)', outline: 'none' }}
-          >
-            <option value="All">All Floors</option>
-            {uniqueFloors.map(f => <option key={f} value={f}>{f}</option>)}
-          </select>
-          <select 
+            onChange={(val) => { setFilterFloor(val); setFilterRoom('All'); }}
+            options={[
+              { label: 'All Floors', value: 'All' },
+              ...uniqueFloors.map(f => ({ label: f, value: f }))
+            ]}
+            style={{ minWidth: '140px' }}
+          />
+          <CustomSelect 
             value={filterRoom} 
-            onChange={e => setFilterRoom(e.target.value)}
-            style={{ padding: '0.4rem 0.8rem', borderRadius: '4px', background: 'var(--bg-dark)', color: 'var(--text-main)', border: '1px solid var(--border)', outline: 'none' }}
-          >
-            <option value="All">All Rooms</option>
-            {uniqueRooms.map(r => <option key={r} value={r}>Room {r}</option>)}
-          </select>
+            onChange={setFilterRoom}
+            options={[
+              { label: 'All Rooms', value: 'All' },
+              ...uniqueRooms.map(r => ({ label: `Room ${r}`, value: String(r) }))
+            ]}
+            style={{ minWidth: '140px' }}
+          />
           <div style={{ position: 'relative' }}>
             <Search size={18} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-muted)' }} />
             <input 
@@ -145,7 +369,7 @@ const Payments = () => {
       </div>
 
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-        <button className={`btn ${filterStatus === 'All' ? 'btn-primary' : ''}`} onClick={() => setFilterStatus('All')} style={{ fontSize: '0.8rem', padding: '0.4rem 1rem' }}>All Tenants</button>
+        <button className={`btn ${filterStatus === 'All' ? 'btn-primary' : ''}`} onClick={() => setFilterStatus('All')} style={{ fontSize: '0.8rem', padding: '0.4rem 1rem' }}>Monthly Report</button>
         <button className={`btn ${filterStatus === 'Pending' ? 'btn-primary' : ''}`} onClick={() => setFilterStatus('Pending')} style={{ fontSize: '0.8rem', padding: '0.4rem 1rem' }}>Pending Rent</button>
         <button className={`btn ${filterStatus === 'Balance' ? 'btn-primary' : ''}`} onClick={() => setFilterStatus('Balance')} style={{ fontSize: '0.8rem', padding: '0.4rem 1rem' }}>Balance Due</button>
         <button className={`btn ${filterStatus === 'Upcoming' ? 'btn-primary' : ''}`} onClick={() => setFilterStatus('Upcoming')} style={{ fontSize: '0.8rem', padding: '0.4rem 1rem', background: filterStatus === 'Upcoming' ? 'var(--primary)' : 'var(--accent)', color: 'var(--text-main)' }}>Upcoming Rent</button>
@@ -311,6 +535,8 @@ const Payments = () => {
             </tbody>
           </table>
         </div>
+      ) : filterStatus === 'All' ? (
+        renderMonthlyReport()
       ) : (
         <div className="data-table-container">
           <table>
