@@ -5,16 +5,39 @@ const db = require('../../config/database');
 const config = require('../../config');
 
 // ── Resolve backup directory ─────────────────────────────────────────────────
+let cachedBackupDir = null;
+
 const getBackupDir = () => {
-  if (process.env.BACKUP_DIR) return process.env.BACKUP_DIR;
-  return path.join(os.homedir(), 'Documents', 'PGMS_Backups');
+  if (cachedBackupDir) return cachedBackupDir;
+
+  if (process.env.BACKUP_DIR) {
+    cachedBackupDir = process.env.BACKUP_DIR;
+  } else if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_VERSION) {
+    cachedBackupDir = path.join(os.tmpdir(), 'PGMS_Backups');
+  } else {
+    cachedBackupDir = path.join(os.homedir(), 'Documents', 'PGMS_Backups');
+  }
+  return cachedBackupDir;
 };
 
 const ensureBackupDir = () => {
-  const dir = getBackupDir();
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-    console.log(`[BACKUP] Created backup directory: ${dir}`);
+  let dir = getBackupDir();
+  try {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+      console.log(`[BACKUP] Created backup directory: ${dir}`);
+    }
+    // Verify we have read and write permissions for the directory
+    fs.accessSync(dir, fs.constants.R_OK | fs.constants.W_OK);
+  } catch (err) {
+    console.warn(`[BACKUP] Directory ${dir} not accessible:`, err.message);
+    console.warn(`[BACKUP] Falling back to os.tmpdir()`);
+    dir = path.join(os.tmpdir(), 'PGMS_Backups');
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+      console.log(`[BACKUP] Created fallback backup directory: ${dir}`);
+    }
+    cachedBackupDir = dir; // update cache
   }
   return dir;
 };
