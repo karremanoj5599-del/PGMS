@@ -25,14 +25,16 @@ app.use('/api/public/tickets', require('./modules/tickets/tickets.public.routes'
 app.use(admsDebugLogger);
 app.use(extractUser);
 
-// ── Access Enforcement (Vercel-compatible, replaces setInterval jobs) ────────
+// ── Access Enforcement (Vercel Cron Route) ────────
 const { enforceExpiryRules } = require('./modules/access-control/access.service');
-app.use('/api', async (req, res, next) => {
-  // Fire-and-forget: don't block the request
-  if (req.userId) {
-    enforceExpiryRules().catch(err => console.error('[ENFORCE-MW] Error:', err.message));
+app.get('/api/cron/enforce', async (req, res) => {
+  try {
+    await enforceExpiryRules();
+    res.status(200).json({ success: true, message: 'Enforcement completed successfully' });
+  } catch (err) {
+    console.error('[CRON] Enforcement failed:', err.message);
+    res.status(500).json({ success: false, error: err.message });
   }
-  next();
 });
 
 // ── Feature Routes ───────────────────────────────────────────────────────────

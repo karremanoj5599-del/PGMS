@@ -7,7 +7,8 @@ const INTERVAL_MS = INTERVAL_HOURS * 60 * 60 * 1000;
 const runBackup = async () => {
   try {
     console.log('[JOB] Running scheduled database backup...');
-    const result = await performBackup();
+    // Pass user ID 1 (Admin) to perform a full system backup
+    const result = await performBackup(1);
     console.log(`[JOB] ✅ Scheduled backup completed: ${result.filename}`);
   } catch (err) {
     console.error('[JOB] ❌ Scheduled backup failed:', err.message);
