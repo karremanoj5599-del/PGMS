@@ -5,8 +5,8 @@
 exports.up = function(knex) {
   return knex.schema.createTable('visitors', table => {
     table.increments('id').primary();
-    table.integer('user_id').unsigned().references('id').inTable('users').onDelete('CASCADE');
-    table.string('tenant_id').references('tenant_id').inTable('tenants').onDelete('CASCADE'); // Can be null if admin creates it for someone not in DB, but normally linked to tenant
+    table.integer('user_id').unsigned().references('user_id').inTable('users').onDelete('CASCADE');
+    table.integer('tenant_id').unsigned().nullable().references('tenant_id').inTable('tenants').onDelete('CASCADE'); // Can be null if admin creates it for someone not in DB, but normally linked to tenant
     table.string('name').notNullable();
     table.string('phone');
     table.date('visit_date').notNullable();
