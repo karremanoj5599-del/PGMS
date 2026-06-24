@@ -11,6 +11,14 @@ export const ThemeProvider = ({ children }) => {
     return localStorage.getItem('pgms_primary_color') || '#4f46e5';
   });
 
+  const [fontFamily, setFontFamily] = useState(() => {
+    return localStorage.getItem('pgms_font_family') || 'Inter';
+  });
+
+  const [fontSize, setFontSize] = useState(() => {
+    return localStorage.getItem('pgms_font_size') || '16px';
+  });
+
   useEffect(() => {
     const root = document.documentElement;
     if (theme === 'light') {
@@ -33,12 +41,36 @@ export const ThemeProvider = ({ children }) => {
 
     root.style.setProperty('--primary', primaryColor);
     
+    // Set typography CSS Variables
+    // Using a fallback stack for the fonts
+    const fontStack = fontFamily === 'Inter' ? "'Inter', system-ui, sans-serif" :
+                      fontFamily === 'Roboto' ? "'Roboto', system-ui, sans-serif" :
+                      fontFamily === 'Poppins' ? "'Poppins', system-ui, sans-serif" :
+                      fontFamily === 'Open Sans' ? "'Open Sans', system-ui, sans-serif" :
+                      fontFamily === 'Montserrat' ? "'Montserrat', system-ui, sans-serif" :
+                      fontFamily === 'Lato' ? "'Lato', system-ui, sans-serif" :
+                      fontFamily === 'Nunito' ? "'Nunito', system-ui, sans-serif" :
+                      fontFamily === 'Playfair Display' ? "'Playfair Display', serif" :
+                      fontFamily === 'Merriweather' ? "'Merriweather', serif" :
+                      fontFamily === 'Ubuntu' ? "'Ubuntu', system-ui, sans-serif" :
+                      "'Inter', system-ui, sans-serif";
+                      
+    root.style.setProperty('--font-family', fontStack);
+    root.style.setProperty('--font-size-base', fontSize);
+    
     localStorage.setItem('pgms_theme', theme);
     localStorage.setItem('pgms_primary_color', primaryColor);
-  }, [theme, primaryColor]);
+    localStorage.setItem('pgms_font_family', fontFamily);
+    localStorage.setItem('pgms_font_size', fontSize);
+  }, [theme, primaryColor, fontFamily, fontSize]);
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, primaryColor, setPrimaryColor }}>
+    <ThemeContext.Provider value={{ 
+      theme, setTheme, 
+      primaryColor, setPrimaryColor,
+      fontFamily, setFontFamily,
+      fontSize, setFontSize
+    }}>
       {children}
     </ThemeContext.Provider>
   );

@@ -33,148 +33,135 @@ exports.generateReceipt = async (paymentId, userId) => {
   // Fetch the admin/owner info
   const user = await db('users').where('user_id', userId).first();
   const ownerName = user?.display_name || user?.email || 'PG Admin';
+  const pgName = user?.pg_name || 'PGMS';
+  const pgAddress = user?.pg_address || '';
+  const pgContact = user?.pg_contact || '';
+  const pgSubText = pgAddress ? `${pgAddress}${pgContact ? ` • ${pgContact}` : ''}` : 'Paying Guest Management System';
 
   const doc = new PDFDocument({
     size: 'A4',
     margin: 50,
     info: {
       Title: `Receipt #${payment.payment_id}`,
-      Author: 'PGMS - Paying Guest Management System'
+      Author: `${pgName} - Management System`
     }
   });
 
+  // Colors for premium look
   const primaryColor = '#4f46e5';
   const textDark = '#1e293b';
   const textMuted = '#64748b';
+  const textLight = '#94a3b8';
   const borderColor = '#e2e8f0';
+  
+  // Format currency without rupee symbol to avoid Helvetica encoding issues
+  const formatCurrency = (amt) => `Rs. ${Number(amt || 0).toLocaleString()}`;
 
   // ── Header ──────────────────────────────────────────────────────────────
-  doc.rect(0, 0, doc.page.width, 120).fill(primaryColor);
-
-  doc.fontSize(24).fillColor('#ffffff').font('Helvetica-Bold')
-    .text('PGMS', 50, 35);
-  doc.fontSize(9).fillColor('rgba(255,255,255,0.8)').font('Helvetica')
-    .text('Paying Guest Management System', 50, 65);
+  let y = 50;
   
-  // Receipt label on right
-  doc.fontSize(14).fillColor('#ffffff').font('Helvetica-Bold')
-    .text('PAYMENT RECEIPT', doc.page.width - 250, 35, { width: 200, align: 'right' });
-  doc.fontSize(10).fillColor('rgba(255,255,255,0.8)').font('Helvetica')
-    .text(`#${String(payment.payment_id).padStart(5, '0')}`, doc.page.width - 250, 55, { width: 200, align: 'right' });
+  // Left side: PG Details
+  doc.fontSize(22).fillColor(primaryColor).font('Helvetica-Bold')
+    .text(pgName, 50, y, { width: 300 });
+  y += 26;
+  doc.fontSize(10).fillColor(textMuted).font('Helvetica')
+    .text(pgSubText, 50, y, { width: 300 });
+  
+  // Right side: RECEIPT title
+  doc.fontSize(20).fillColor(textLight).font('Helvetica-Bold')
+    .text('PAYMENT RECEIPT', doc.page.width - 300, 50, { width: 250, align: 'right' });
+  doc.fontSize(10).fillColor(textDark).font('Helvetica')
+    .text(`Receipt No: #${String(payment.payment_id).padStart(5, '0')}`, doc.page.width - 300, 75, { width: 250, align: 'right' });
+  doc.fontSize(10).fillColor(textMuted).font('Helvetica')
+    .text(`Date: ${new Date(payment.payment_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}`, doc.page.width - 300, 90, { width: 250, align: 'right' });
 
-  let y = 145;
-
-  // ── Receipt Info Row ────────────────────────────────────────────────────
-  doc.fontSize(9).fillColor(textMuted).font('Helvetica');
-  doc.text('Date:', 50, y);
-  doc.fillColor(textDark).font('Helvetica-Bold');
-  doc.text(new Date(payment.payment_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }), 120, y);
-
-  doc.fillColor(textMuted).font('Helvetica');
-  doc.text('Payment Via:', 300, y);
-  doc.fillColor(textDark).font('Helvetica-Bold');
-  doc.text(payment.payment_via || 'Cash', 380, y);
-
-  y += 20;
-
-  doc.fillColor(textMuted).font('Helvetica');
-  doc.text('Type:', 50, y);
-  doc.fillColor(textDark).font('Helvetica-Bold');
-  doc.text(payment.payment_type || 'Rent', 120, y);
-
-  if (payment.utr_number) {
-    doc.fillColor(textMuted).font('Helvetica');
-    doc.text('UTR/Ref:', 300, y);
-    doc.fillColor(textDark).font('Helvetica-Bold');
-    doc.text(payment.utr_number, 380, y);
-  }
-
-  y += 35;
+  y = 130;
 
   // ── Divider ─────────────────────────────────────────────────────────────
-  doc.moveTo(50, y).lineTo(doc.page.width - 50, y).strokeColor(borderColor).lineWidth(1).stroke();
+  doc.moveTo(50, y).lineTo(doc.page.width - 50, y).strokeColor(primaryColor).lineWidth(2).stroke();
   y += 20;
 
-  // ── Tenant Details ────────────────────────────────────────────────────
-  doc.fontSize(11).fillColor(primaryColor).font('Helvetica-Bold')
-    .text('TENANT DETAILS', 50, y);
-  y += 20;
-
-  const detailsData = [
-    ['Name', payment.tenant_name || 'N/A'],
-    ['Mobile', payment.tenant_mobile || 'N/A'],
-    ['Room / Bed', `Room ${payment.room_number || 'N/A'} — Bed ${payment.bed_number || 'N/A'}`],
-    ['Floor', payment.floor_name || 'N/A']
-  ];
-
-  if (payment.tenant_email) {
-    detailsData.push(['Email', payment.tenant_email]);
+  // ── Info Row: Billed To & Payment Info ──────────────────────────────────
+  doc.fontSize(10).fillColor(textMuted).font('Helvetica-Bold').text('BILLED TO:', 50, y);
+  doc.fontSize(10).fillColor(textMuted).font('Helvetica-Bold').text('PAYMENT INFO:', 320, y);
+  
+  y += 18;
+  
+  // Billed To Details
+  doc.fontSize(12).fillColor(textDark).font('Helvetica-Bold').text(payment.tenant_name || 'N/A', 50, y);
+  doc.fontSize(10).fillColor(textDark).font('Helvetica').text(`Room ${payment.room_number || 'N/A'} — Bed ${payment.bed_number || 'N/A'}`, 50, y + 16);
+  doc.fontSize(10).fillColor(textDark).font('Helvetica').text(payment.tenant_mobile || 'N/A', 50, y + 32);
+  
+  // Payment Info Details
+  doc.fontSize(10).fillColor(textDark).font('Helvetica')
+     .text(`Method: `, 320, y)
+     .font('Helvetica-Bold').text(payment.payment_via || 'Cash', 380, y);
+     
+  doc.font('Helvetica').text(`Type: `, 320, y + 16)
+     .font('Helvetica-Bold').text(payment.payment_type || 'Rent', 380, y + 16);
+     
+  if (payment.utr_number) {
+    doc.font('Helvetica').text(`Ref/UTR: `, 320, y + 32)
+       .font('Helvetica-Bold').text(payment.utr_number, 380, y + 32);
   }
 
-  detailsData.forEach(([label, value]) => {
-    doc.fontSize(9).fillColor(textMuted).font('Helvetica').text(label, 50, y);
-    doc.fontSize(9).fillColor(textDark).font('Helvetica-Bold').text(value, 180, y);
-    y += 18;
-  });
-
-  y += 15;
+  y += 70;
 
   // ── Payment Breakdown Table ───────────────────────────────────────────
-  doc.fontSize(11).fillColor(primaryColor).font('Helvetica-Bold')
-    .text('PAYMENT BREAKDOWN', 50, y);
-  y += 20;
-
   // Table header
-  doc.rect(50, y, doc.page.width - 100, 28).fill('#f1f5f9');
-  doc.fontSize(9).fillColor(textMuted).font('Helvetica-Bold');
-  doc.text('Description', 60, y + 8);
-  doc.text('Amount', doc.page.width - 150, y + 8, { width: 100, align: 'right' });
-  y += 28;
+  doc.rect(50, y, doc.page.width - 100, 30).fill(primaryColor);
+  doc.fontSize(10).fillColor('#ffffff').font('Helvetica-Bold');
+  doc.text('DESCRIPTION', 65, y + 10);
+  doc.text('AMOUNT', doc.page.width - 180, y + 10, { width: 115, align: 'right' });
+  y += 30;
 
   // Table rows
   const rows = [];
   
   if (payment.rent_charged) {
-    rows.push(['Monthly Rent Charged', `₹${Number(payment.rent_charged).toLocaleString()}`]);
+    rows.push(['Monthly Rent Charged', formatCurrency(payment.rent_charged)]);
   } else {
-    rows.push(['Monthly Rent', `₹${Number(payment.bed_cost || 0).toLocaleString()}`]);
+    rows.push(['Monthly Rent', formatCurrency(payment.bed_cost)]);
   }
 
-  rows.push([`Amount Paid (${payment.payment_type || 'Rent'})`, `₹${Number(payment.amount_paid || 0).toLocaleString()}`]);
+  rows.push([`Amount Paid (${payment.payment_type || 'Rent'})`, formatCurrency(payment.amount_paid)]);
   
   if (payment.balance > 0) {
-    rows.push(['Outstanding Balance', `₹${Number(payment.balance).toLocaleString()}`]);
+    rows.push(['Outstanding Balance', formatCurrency(payment.balance)]);
   }
 
   rows.forEach(([desc, amount], idx) => {
     if (idx % 2 === 0) {
-      doc.rect(50, y, doc.page.width - 100, 25).fill('#fafbfc');
+      doc.rect(50, y, doc.page.width - 100, 28).fill('#f8fafc');
     }
-    doc.fontSize(9).fillColor(textDark).font('Helvetica').text(desc, 60, y + 7);
-    doc.fontSize(9).fillColor(textDark).font('Helvetica-Bold').text(amount, doc.page.width - 150, y + 7, { width: 100, align: 'right' });
-    y += 25;
+    doc.fontSize(10).fillColor(textDark).font('Helvetica').text(desc, 65, y + 9);
+    doc.fontSize(10).fillColor(textDark).font('Helvetica-Bold').text(amount, doc.page.width - 180, y + 9, { width: 115, align: 'right' });
+    y += 28;
   });
 
+  // Table Bottom Border
+  doc.moveTo(50, y).lineTo(doc.page.width - 50, y).strokeColor(borderColor).lineWidth(1).stroke();
+  
   // Total row
-  y += 5;
-  doc.rect(50, y, doc.page.width - 100, 35).fill(primaryColor);
-  doc.fontSize(11).fillColor('#ffffff').font('Helvetica-Bold');
-  doc.text('TOTAL PAID', 60, y + 10);
-  doc.text(`₹${Number(payment.amount_paid || 0).toLocaleString()}`, doc.page.width - 150, y + 10, { width: 100, align: 'right' });
+  y += 15;
+  doc.rect(doc.page.width - 250, y, 200, 35).fill('#f1f5f9');
+  doc.fontSize(12).fillColor(primaryColor).font('Helvetica-Bold');
+  doc.text('TOTAL PAID', doc.page.width - 240, y + 11);
+  doc.fontSize(14).text(formatCurrency(payment.amount_paid), doc.page.width - 160, y + 10, { width: 100, align: 'right' });
   y += 50;
 
   // Balance info
   if (payment.balance > 0) {
-    doc.fontSize(10).fillColor('#ef4444').font('Helvetica-Bold');
-    doc.text(`Remaining Balance: ₹${Number(payment.balance).toLocaleString()}`, 50, y);
-    y += 20;
+    doc.fontSize(11).fillColor('#ef4444').font('Helvetica-Bold');
+    doc.text(`Remaining Balance: ${formatCurrency(payment.balance)}`, doc.page.width - 250, y, { width: 200, align: 'right' });
+    y += 25;
   } else {
-    doc.fontSize(10).fillColor('#10b981').font('Helvetica-Bold');
+    doc.fontSize(11).fillColor('#10b981').font('Helvetica-Bold');
     doc.text('✓ Payment Complete — No balance due', 50, y);
-    y += 20;
+    y += 25;
   }
 
-  y += 30;
+  y += 20;
 
   // ── Footer ──────────────────────────────────────────────────────────────
   doc.moveTo(50, y).lineTo(doc.page.width - 50, y).strokeColor(borderColor).lineWidth(0.5).stroke();

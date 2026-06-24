@@ -9,7 +9,7 @@ exports.getAll = (userId) => {
     .select('rooms.*', 'floors.floor_name');
 };
 
-exports.create = async (floorId, roomNumber, sharingCapacity, userId) => {
+exports.create = async (floorId, roomNumber, sharingCapacity, acType, userId) => {
   const roomNumbers = parseRoomBatch(roomNumber.toString());
   const results = [];
 
@@ -20,6 +20,7 @@ exports.create = async (floorId, roomNumber, sharingCapacity, userId) => {
         floor_id: toNull(floorId),
         room_number: num,
         sharing_capacity: sharingCapacity || 1,
+        ac_type: acType || 'NON-AC',
         user_id: userId
       }).returning('room_id');
       const id = typeof inserted === 'object' ? inserted.room_id : inserted;
@@ -33,7 +34,8 @@ exports.update = async (id, data, userId) => {
   await db('rooms').where({ room_id: id, user_id: userId }).update({
     floor_id: toNull(data.floor_id),
     room_number: data.room_number,
-    sharing_capacity: data.sharing_capacity
+    sharing_capacity: data.sharing_capacity,
+    ac_type: data.ac_type || 'NON-AC'
   });
   const room = await db('rooms').where('room_id', id).first();
   if (!room) {

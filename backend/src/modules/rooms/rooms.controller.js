@@ -9,10 +9,10 @@ exports.list = async (req, res, next) => {
 
 exports.create = async (req, res, next) => {
   try {
-    const { floor_id, room_number, sharing_capacity } = req.body;
+    const { floor_id, room_number, sharing_capacity, ac_type } = req.body;
     if (!room_number) return res.status(400).json({ error: 'Room number is required' });
 
-    const results = await service.create(floor_id, room_number, sharing_capacity, req.userId);
+    const results = await service.create(floor_id, room_number, sharing_capacity, ac_type, req.userId);
     if (results.length === 0) {
       return res.status(400).json({ error: 'Room(s) already exist or invalid input' });
     }

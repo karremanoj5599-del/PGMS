@@ -69,3 +69,10 @@ exports.resyncBiometrics = async (req, res, next) => {
     res.json({ message: 'Biometric sync command queued' });
   } catch (err) { next(err); }
 };
+
+exports.getBedHistory = async (req, res, next) => {
+  try {
+    const history = await service.getBedHistory(req.params.id, req.userId);
+    res.json(history);
+  } catch (err) { next(err); }
+};

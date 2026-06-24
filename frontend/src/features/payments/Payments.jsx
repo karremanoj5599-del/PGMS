@@ -289,8 +289,8 @@ const Payments = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {floors[currentFloor][room].sort((a,b) => a.bed_number.localeCompare(b.bed_number)).map(bed => (
-                          <tr key={bed.bed_id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                        {floors[currentFloor][room].sort((a,b) => a.bed_number.localeCompare(b.bed_number)).map((bed, idx) => (
+                          <tr key={bed.bed_id || `bed-${idx}`} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                             <td style={{ padding: '0.5rem', fontWeight: 600 }}>{bed.bed_number}</td>
                             <td style={{ padding: '0.5rem' }}>{bed.tenant_name || <span style={{color: 'var(--text-muted)'}}>Vacant</span>}</td>
                             <td style={{ padding: '0.5rem' }}>{bed.tenant_mobile || '-'}</td>

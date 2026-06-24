@@ -71,6 +71,10 @@ exports.login = async (email, password) => {
   return {
     user_id: user.user_id,
     email: user.email,
+    display_name: user.display_name,
+    pg_name: user.pg_name,
+    pg_address: user.pg_address,
+    pg_contact: user.pg_contact,
     status,
     message,
     trial_expiry: user.trial_expiry,
@@ -109,7 +113,7 @@ exports.claimLicense = async (email, activationCode) => {
   };
 };
 
-exports.updateProfile = async (email, displayName) => {
+exports.updateProfile = async (email, displayName, pgName, pgAddress, pgContact) => {
   if (!email || !displayName) {
     const err = new Error('Email and display name are required');
     err.statusCode = 400;
@@ -125,7 +129,12 @@ exports.updateProfile = async (email, displayName) => {
 
   const [updated] = await db('users')
     .where({ email })
-    .update({ display_name: displayName })
+    .update({ 
+      display_name: displayName,
+      pg_name: pgName || null,
+      pg_address: pgAddress || null,
+      pg_contact: pgContact || null
+    })
     .returning('*');
 
   // Handle SQLite (returning array of objects) vs PostgreSQL
@@ -135,7 +144,10 @@ exports.updateProfile = async (email, displayName) => {
 
   return {
     message: 'Profile updated successfully',
-    display_name: updatedUser.display_name
+    display_name: updatedUser.display_name,
+    pg_name: updatedUser.pg_name,
+    pg_address: updatedUser.pg_address,
+    pg_contact: updatedUser.pg_contact
   };
 };
 

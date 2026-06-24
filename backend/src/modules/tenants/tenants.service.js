@@ -26,7 +26,7 @@ exports.getAll = (userId) => {
 exports.create = async (data, userId) => {
   const { tenant_id, name, mobile, bed_id, joining_date, id_proof, photo, biometric_pin, status,
           access_expiry_date, punch_limit, gender, occupation, expiry_date, tenant_type,
-          custom_rent, custom_advance, discount_amount, email } = data;
+          custom_rent, custom_advance, discount_amount, email, advance_vacate_date } = data;
 
   const bedId = toNull(bed_id);
   const insertData = {
@@ -42,6 +42,7 @@ exports.create = async (data, userId) => {
     occupation: toNull(occupation),
     expiry_date: toNull(expiry_date),
     tenant_type: tenant_type || 'Permanent',
+    advance_vacate_date: toNull(advance_vacate_date),
     custom_rent: custom_rent !== undefined && custom_rent !== '' ? parseFloat(custom_rent) : null,
     custom_advance: custom_advance !== undefined && custom_advance !== '' ? parseFloat(custom_advance) : null,
     discount_amount: discount_amount !== undefined && discount_amount !== '' ? parseFloat(discount_amount) : 0,
@@ -65,6 +66,13 @@ exports.create = async (data, userId) => {
   // Update bed status
   if (bedId) {
     await db('beds').where('bed_id', bedId).update({ status: 'Occupied' });
+    // Log initial bed assignment
+    await db('tenant_bed_history').insert({
+      tenant_id: newId,
+      bed_id: bedId,
+      start_date: insertData.joining_date,
+      user_id: userId
+    }).catch(err => console.error('Failed to log initial bed history:', err));
   }
 
   // Create access control record
@@ -84,7 +92,7 @@ exports.create = async (data, userId) => {
 exports.update = async (id, data, userId) => {
   const { name, mobile, bed_id, joining_date, id_proof, photo, biometric_pin, status,
           access_expiry_date, punch_limit, gender, occupation, expiry_date, tenant_type,
-          custom_rent, custom_advance, discount_amount, email, country_code } = data;
+          custom_rent, custom_advance, discount_amount, email, country_code, advance_vacate_date } = data;
 
   const tenant = await db('tenants').where({ tenant_id: id, user_id: userId }).first();
   if (!tenant) {
@@ -98,8 +106,21 @@ exports.update = async (id, data, userId) => {
   // If bed changed, update old and new bed statuses
   if (tenant.bed_id && tenant.bed_id !== newBedId) {
     await db('beds').where('bed_id', tenant.bed_id).update({ status: 'Vacant' });
+    await db('tenant_bed_history')
+      .where({ tenant_id: id, bed_id: tenant.bed_id, end_date: null })
+      .update({ end_date: db.fn.now() })
+      .catch(err => console.error('Failed to end old bed history:', err));
   }
-  if (newBedId) {
+  if (newBedId && tenant.bed_id !== newBedId) {
+    await db('beds').where('bed_id', newBedId).update({ status: 'Occupied' });
+    await db('tenant_bed_history').insert({
+      tenant_id: id,
+      bed_id: newBedId,
+      start_date: db.fn.now(),
+      user_id: userId
+    }).catch(err => console.error('Failed to log new bed history:', err));
+  } else if (newBedId && tenant.bed_id === newBedId) {
+    // Ensure it stays occupied just in case
     await db('beds').where('bed_id', newBedId).update({ status: 'Occupied' });
   }
 
@@ -119,6 +140,7 @@ exports.update = async (id, data, userId) => {
     occupation: toNull(occupation),
     expiry_date: toNull(expiry_date),
     tenant_type: tenant_type || tenant.tenant_type,
+    advance_vacate_date: advance_vacate_date !== undefined ? toNull(advance_vacate_date) : tenant.advance_vacate_date,
     custom_rent: custom_rent !== undefined ? (custom_rent !== '' ? parseFloat(custom_rent) : null) : tenant.custom_rent,
     custom_advance: custom_advance !== undefined ? (custom_advance !== '' ? parseFloat(custom_advance) : null) : tenant.custom_advance,
     discount_amount: discount_amount !== undefined ? (discount_amount !== '' ? parseFloat(discount_amount) : 0) : tenant.discount_amount,
@@ -138,6 +160,10 @@ exports.remove = async (id, userId) => {
 
   if (tenant.bed_id) {
     await db('beds').where('bed_id', tenant.bed_id).update({ status: 'Vacant' });
+    await db('tenant_bed_history')
+      .where({ tenant_id: id, end_date: null })
+      .update({ end_date: db.fn.now() })
+      .catch(err => console.error('Failed to end bed history on delete:', err));
   }
 
   // Queue device delete commands
@@ -187,6 +213,10 @@ exports.revokeTenant = async (id, userId) => {
   await db('tenants').where('tenant_id', id).update({ status: 'Vacated' });
   if (tenant.bed_id) {
     await db('beds').where('bed_id', tenant.bed_id).update({ status: 'Vacant' });
+    await db('tenant_bed_history')
+      .where({ tenant_id: id, end_date: null })
+      .update({ end_date: db.fn.now() })
+      .catch(err => console.error('Failed to end bed history on revoke:', err));
   }
   await db('access_control').where('tenant_id', id).update({ access_granted: false }).catch(() => {});
 
@@ -245,6 +275,10 @@ exports.convertToStaff = async (id, userId) => {
   // 5. Clean up tenant records without triggering device deletion commands
   if (tenant.bed_id) {
     await db('beds').where('bed_id', tenant.bed_id).update({ status: 'Vacant' });
+    await db('tenant_bed_history')
+      .where({ tenant_id: id, end_date: null })
+      .update({ end_date: db.fn.now() })
+      .catch(err => console.error('Failed to end bed history on convert to staff:', err));
   }
   await db('access_control').where('tenant_id', id).del().catch(() => {});
   await db('tenants').where({ tenant_id: id, user_id: userId }).del();
@@ -293,4 +327,22 @@ exports.resyncBiometrics = async (id, target_device_sn, userId) => {
       await db('device_commands').insert(commands);
     }
   }
+};
+
+exports.getBedHistory = async (id, userId) => {
+  return db('tenant_bed_history')
+    .leftJoin('beds', 'tenant_bed_history.bed_id', 'beds.bed_id')
+    .leftJoin('rooms', 'beds.room_id', 'rooms.room_id')
+    .leftJoin('floors', 'rooms.floor_id', 'floors.floor_id')
+    .select(
+      'tenant_bed_history.id',
+      'tenant_bed_history.start_date',
+      'tenant_bed_history.end_date',
+      'beds.bed_number',
+      'rooms.room_number',
+      'floors.floor_name'
+    )
+    .where('tenant_bed_history.tenant_id', id)
+    .andWhere('tenant_bed_history.user_id', userId)
+    .orderBy('tenant_bed_history.start_date', 'desc');
 };

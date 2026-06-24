@@ -11,6 +11,7 @@ router.put('/:id/revoke', controller.revoke);
 router.post('/:id/set-pin', controller.setPin);
 router.post('/:id/convert-to-staff', controller.convertToStaff);
 router.post('/:id/resync-biometrics', controller.resyncBiometrics);
+router.get('/:id/bed-history', controller.getBedHistory);
 
 // Documents endpoints
 router.get('/:id/documents', docsController.getDocuments);

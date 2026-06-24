@@ -27,10 +27,33 @@ const Sidebar = ({ onProfileClick }) => {
   return (
     <aside className="sidebar">
       <div className="logo">
-        <div style={{ background: 'var(--primary)', padding: '8px', borderRadius: '8px' }}>
-          <Bed size={24} color="white" />
+        <div style={{ 
+          background: 'var(--primary)', 
+          width: '40px',
+          height: '40px',
+          minWidth: '40px',
+          borderRadius: '8px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'white',
+          fontWeight: 'bold',
+          fontSize: '1.2rem',
+          flexShrink: 0
+        }}>
+          {user?.pg_name ? user.pg_name.charAt(0).toUpperCase() : <Bed size={24} color="white" />}
         </div>
-        PGMS Admin
+        <div style={{
+          fontSize: (user?.pg_name || 'PGMS Admin').length > 12 ? '1rem' : '1.5rem',
+          lineHeight: '1.2',
+          wordBreak: 'break-word',
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden'
+        }}>
+          {user?.pg_name || 'PGMS Admin'}
+        </div>
       </div>
       <nav className="nav-links">
         <NavLink to="/" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
@@ -376,10 +399,13 @@ const Sidebar = ({ onProfileClick }) => {
 export const DashboardLayout = ({ children }) => {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [activeTab, setActiveTab] = useState('account');
-  const { theme, setTheme, primaryColor, setPrimaryColor } = useTheme();
+  const { theme, setTheme, primaryColor, setPrimaryColor, fontFamily, setFontFamily, fontSize, setFontSize } = useTheme();
   
   const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('pgms_user') || '{}'));
   const [displayName, setDisplayName] = useState(user.display_name || '');
+  const [pgName, setPgName] = useState(user.pg_name || '');
+  const [pgAddress, setPgAddress] = useState(user.pg_address || '');
+  const [pgContact, setPgContact] = useState(user.pg_contact || '');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -401,8 +427,20 @@ export const DashboardLayout = ({ children }) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await api.put('/api/auth/profile', { email: user.email, display_name: displayName });
-      const updatedUser = { ...user, display_name: res.data.display_name };
+      const res = await api.put('/api/auth/profile', { 
+        email: user.email, 
+        display_name: displayName,
+        pg_name: pgName,
+        pg_address: pgAddress,
+        pg_contact: pgContact
+      });
+      const updatedUser = { 
+        ...user, 
+        display_name: res.data.display_name,
+        pg_name: res.data.pg_name,
+        pg_address: res.data.pg_address,
+        pg_contact: res.data.pg_contact
+      };
       localStorage.setItem('pgms_user', JSON.stringify(updatedUser));
       setUser(updatedUser);
       setMessage({ type: 'success', text: 'Profile updated successfully!' });
@@ -479,6 +517,18 @@ export const DashboardLayout = ({ children }) => {
                       <label>Display Name</label>
                       <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="E.g. John Doe" />
                     </div>
+                    <div className="form-group">
+                      <label>PG Name</label>
+                      <input type="text" value={pgName} onChange={(e) => setPgName(e.target.value)} placeholder="E.g. Sunrise PG" />
+                    </div>
+                    <div className="form-group">
+                      <label>PG Address</label>
+                      <textarea value={pgAddress} onChange={(e) => setPgAddress(e.target.value)} placeholder="Full address of the PG..." rows="2" style={{ resize: 'vertical' }}></textarea>
+                    </div>
+                    <div className="form-group">
+                      <label>PG Contact Number</label>
+                      <input type="text" value={pgContact} onChange={(e) => setPgContact(e.target.value)} placeholder="E.g. +91 9876543210" />
+                    </div>
                     <button type="submit" disabled={loading} className="save-btn">Update Profile</button>
                   </form>
 
@@ -523,6 +573,45 @@ export const DashboardLayout = ({ children }) => {
                           onClick={() => setPrimaryColor(color)}
                         />
                       ))}
+                    </div>
+                  </div>
+
+                  <hr className="settings-divider" />
+
+                  <div className="form-group">
+                    <label>Typography Font</label>
+                    <div className="font-options">
+                      {['Inter', 'Roboto', 'Poppins', 'Open Sans', 'Montserrat', 'Lato', 'Nunito', 'Playfair Display', 'Merriweather', 'Ubuntu'].map(font => (
+                        <button 
+                          key={font} 
+                          className={`font-btn ${fontFamily === font ? 'active' : ''}`} 
+                          style={{ fontFamily: `'${font}', sans-serif` }}
+                          onClick={() => setFontFamily(font)}
+                        >
+                          {font}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="form-group" style={{ marginTop: '20px' }}>
+                    <label style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      UI Scale (Base Font Size)
+                      <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{fontSize}</span>
+                    </label>
+                    <input 
+                      type="range" 
+                      min="12" 
+                      max="20" 
+                      step="1" 
+                      value={parseInt(fontSize)} 
+                      onChange={(e) => setFontSize(`${e.target.value}px`)} 
+                      style={{ width: '100%', marginTop: '10px', accentColor: 'var(--primary)' }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-muted)', marginTop: '5px' }}>
+                      <span>Small (12px)</span>
+                      <span>Default (16px)</span>
+                      <span>Large (20px)</span>
                     </div>
                   </div>
                 </div>
@@ -691,14 +780,37 @@ export const DashboardLayout = ({ children }) => {
           border-radius: 50%;
           border: 2px solid transparent;
           cursor: pointer;
-          transition: transform 0.2s;
+          transition: all 0.2s;
         }
         .color-btn:hover {
           transform: scale(1.1);
         }
         .color-btn.active {
-          border-color: white;
-          box-shadow: 0 0 0 2px var(--border);
+          border-color: var(--text-main);
+          transform: scale(1.1);
+        }
+        .font-options {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+        }
+        .font-btn {
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid var(--border);
+          color: var(--text-main);
+          padding: 10px;
+          border-radius: 8px;
+          cursor: pointer;
+          transition: all 0.2s;
+          font-size: 14px;
+        }
+        .font-btn:hover {
+          background: rgba(255, 255, 255, 0.1);
+        }
+        .font-btn.active {
+          background: rgba(99, 102, 241, 0.1);
+          border-color: var(--primary);
+          color: var(--primary);
         }
         .settings-alert {
           padding: 8px;

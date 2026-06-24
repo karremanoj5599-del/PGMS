@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
-import { UserPlus, Search, Filter, Smartphone, Fingerprint, Server, RefreshCw, X, ShieldCheck, ShieldAlert, Users, AlertTriangle, FileText, MessageSquare, PhoneCall, Edit, Trash2 } from 'lucide-react';
+import { UserPlus, Search, Filter, Smartphone, Fingerprint, Server, RefreshCw, X, ShieldCheck, ShieldAlert, Users, AlertTriangle, FileText, MessageSquare, PhoneCall, Edit, Trash2, CalendarClock, ArrowRightLeft, History } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import TenantDocuments from './TenantDocuments';
 
@@ -22,6 +22,18 @@ const Tenants = () => {
   const [tenantPrefs, setTenantPrefs] = useState({ sms: 'global', whatsapp: 'global', voicecall: 'global' });
   const [savingPrefs, setSavingPrefs] = useState(false);
   
+  const [reallocateModal, setReallocateModal] = useState(false);
+  const [reallocateTarget, setReallocateTarget] = useState(null);
+  const [newBedId, setNewBedId] = useState('');
+
+  const [vacateDateModal, setVacateDateModal] = useState(false);
+  const [vacateTarget, setVacateTarget] = useState(null);
+  const [vacateDate, setVacateDate] = useState('');
+  
+  const [historyModal, setHistoryModal] = useState(false);
+  const [historyTenant, setHistoryTenant] = useState(null);
+  const [bedHistory, setBedHistory] = useState([]);
+  
   const [devices, setDevices] = useState([]);
   const [syncModal, setSyncModal] = useState(false);
   const [syncTargetTenant, setSyncTargetTenant] = useState(null);
@@ -37,8 +49,7 @@ const Tenants = () => {
   });
   const [newTenant, setNewTenant] = useState({
     tenant_id: '', name: '', mobile: '', gender: 'Male', joining_date: new Date().toISOString().split('T')[0], 
-    expiry_date: '', access_expiry_date: '', punch_limit: '', bed_id: '', status: 'Staying', initial_payment: 'Pending', tenant_type: 'Permanent',
-    expiry_date: '', access_expiry_date: '', punch_limit: '', bed_id: '', status: 'Staying', initial_payment: 'Pending', tenant_type: 'Permanent',
+    expiry_date: '', access_expiry_date: '', advance_vacate_date: '', punch_limit: '', bed_id: '', status: 'Staying', initial_payment: 'Pending', tenant_type: 'Permanent',
     custom_rent: '', custom_advance: '', discount_amount: '', photo: '', email: ''
   });
   const [toast, setToast] = useState(null);
@@ -244,6 +255,64 @@ const Tenants = () => {
     }
   };
 
+  const handleReallocateSubmit = async (e) => {
+    e.preventDefault();
+    if (!newBedId) return alert('Please select a new bed');
+    try {
+      const payload = { ...reallocateTarget };
+      payload.bed_id = newBedId;
+      payload.joining_date = payload.joining_date ? payload.joining_date.split('T')[0] : '';
+      payload.expiry_date = payload.expiry_date ? payload.expiry_date.split('T')[0] : '';
+      payload.access_expiry_date = payload.access_expiry_date ? payload.access_expiry_date.split('T')[0] : '';
+      payload.advance_vacate_date = payload.advance_vacate_date ? payload.advance_vacate_date.split('T')[0] : '';
+      payload.photo = payload.photo || '';
+      
+      await api.put(`/api/tenants/${reallocateTarget.tenant_id}`, payload);
+      setToast('Bed reallocated successfully');
+      setTimeout(() => setToast(null), 5000);
+      setReallocateModal(false);
+      setReallocateTarget(null);
+      setNewBedId('');
+      fetchTenants();
+      fetchVacantBeds();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to reallocate bed');
+    }
+  };
+
+  const handleVacateDateSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = { ...vacateTarget };
+      payload.advance_vacate_date = vacateDate;
+      payload.joining_date = payload.joining_date ? payload.joining_date.split('T')[0] : '';
+      payload.expiry_date = payload.expiry_date ? payload.expiry_date.split('T')[0] : '';
+      payload.access_expiry_date = payload.access_expiry_date ? payload.access_expiry_date.split('T')[0] : '';
+      payload.photo = payload.photo || '';
+      
+      await api.put(`/api/tenants/${vacateTarget.tenant_id}`, payload);
+      setToast('Advance vacate date set successfully');
+      setTimeout(() => setToast(null), 5000);
+      setVacateDateModal(false);
+      setVacateTarget(null);
+      setVacateDate('');
+      fetchTenants();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to set vacate date');
+    }
+  };
+
+  const openHistoryModal = async (tenant) => {
+    try {
+      const res = await api.get(`/api/tenants/${tenant.tenant_id}/bed-history`);
+      setBedHistory(res.data);
+      setHistoryTenant(tenant);
+      setHistoryModal(true);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to fetch bed history');
+    }
+  };
+
   const handleEditClick = (tenant) => {
     let cCode = '+91';
     let mob = tenant.mobile || '';
@@ -266,6 +335,7 @@ const Tenants = () => {
       joining_date: tenant.joining_date.split('T')[0],
       expiry_date: tenant.expiry_date ? tenant.expiry_date.split('T')[0] : '',
       access_expiry_date: tenant.access_expiry_date ? tenant.access_expiry_date.split('T')[0] : '',
+      advance_vacate_date: tenant.advance_vacate_date ? tenant.advance_vacate_date.split('T')[0] : '',
       punch_limit: tenant.punch_limit || '',
       bed_id: tenant.bed_id || '',
       status: tenant.status || 'Staying',
@@ -337,7 +407,11 @@ const Tenants = () => {
   const filteredTenants = tenants.filter(t => {
     const matchesFloor = !filters.floor || t.floor_id == filters.floor;
     const matchesRoom = !filters.room || t.room_id == filters.room;
-    const matchesStatus = !filters.status || t.status?.toLowerCase() === filters.status.toLowerCase();
+    
+    const matchesStatus = !filters.status || 
+      (filters.status === 'Vacating' 
+        ? (t.status === 'Staying' && t.advance_vacate_date) 
+        : t.status?.toLowerCase() === filters.status.toLowerCase());
 
     // Mock payment status logic since we don't have real billing yet
     // In a real app, this would check if (pending_balance <= 0)
@@ -444,7 +518,7 @@ const Tenants = () => {
           >
             {selectionMode === 'delete' ? 'Exit Delete Mode' : 'Select & Delete'}
           </button>
-          <button className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => { setIsEditing(false); setCountryCode('+91'); setNewTenant({ name: '', mobile: '', email: '', occupation: '', gender: 'Male', joining_date: new Date().toISOString().split('T')[0], expiry_date: '', access_expiry_date: '', punch_limit: '', bed_id: '', status: 'Staying', initial_payment: 'Pending', tenant_type: 'Permanent', biometric_pin: '', custom_rent: '', custom_advance: '', discount_amount: '', photo: '' }); setShowModal(true); }}>
+          <button className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => { setIsEditing(false); setCountryCode('+91'); setNewTenant({ name: '', mobile: '', email: '', occupation: '', gender: 'Male', joining_date: new Date().toISOString().split('T')[0], expiry_date: '', access_expiry_date: '', advance_vacate_date: '', punch_limit: '', bed_id: '', status: 'Staying', initial_payment: 'Pending', tenant_type: 'Permanent', biometric_pin: '', custom_rent: '', custom_advance: '', discount_amount: '', photo: '' }); setShowModal(true); }}>
             <UserPlus size={18} /> Add Tenant
           </button>
         </div>
@@ -473,6 +547,7 @@ const Tenants = () => {
           <option value="">All Status</option>
           <option value="Staying">Staying</option>
           <option value="Vacated">Vacated</option>
+          <option value="Vacating">Expected to Vacate</option>
         </select>
         <select onChange={e => setFilters({ ...filters, payment: e.target.value })}>
           <option value="">All Payments</option>
@@ -575,17 +650,28 @@ const Tenants = () => {
                   <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t.floor_name}</div>
                 </td>
                 <td>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span className={`badge badge-${t.status?.toLowerCase() === 'staying' ? 'vacant' : 'occupied'}`}>
-                      {t.status}
-                    </span>
-                    {(t.is_expired || (t.expiry_date && new Date(t.expiry_date) < new Date())) && t.status === 'Staying' && (
+                  <div style={{ display: 'flex', alignItems: 'flex-start', flexDirection: 'column', gap: '0.2rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span className={`badge badge-${t.status?.toLowerCase() === 'staying' ? 'vacant' : 'occupied'}`}>
+                        {t.status}
+                      </span>
+                      {(t.is_expired || (t.expiry_date && new Date(t.expiry_date) < new Date())) && t.status === 'Staying' && (
+                        <span style={{
+                          fontSize: '0.65rem', fontWeight: 700, padding: '2px 6px', borderRadius: '4px',
+                          background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)',
+                          display: 'flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap'
+                        }}>
+                          <AlertTriangle size={11} /> EXPIRED
+                        </span>
+                      )}
+                    </div>
+                    {t.advance_vacate_date && t.status === 'Staying' && (
                       <span style={{
                         fontSize: '0.65rem', fontWeight: 700, padding: '2px 6px', borderRadius: '4px',
-                        background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)',
-                        display: 'flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap'
+                        background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.3)',
+                        display: 'flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap', marginTop: '2px'
                       }}>
-                        <AlertTriangle size={11} /> EXPIRED
+                        Notice: {new Date(t.advance_vacate_date).toLocaleDateString()}
                       </span>
                     )}
                   </div>
@@ -597,6 +683,15 @@ const Tenants = () => {
                     </button>
                     <button onClick={() => { setDocsTenant(t); setDocsModal(true); }} className="btn btn-icon-only" style={{ color: '#10b981' }} title="Documents">
                       <FileText size={16} />
+                    </button>
+                    <button onClick={() => { setReallocateTarget(t); setNewBedId(t.bed_id); setReallocateModal(true); }} className="btn btn-icon-only" style={{ color: 'var(--primary)' }} title="Reallocate Bed">
+                      <ArrowRightLeft size={16} />
+                    </button>
+                    <button onClick={() => openHistoryModal(t)} className="btn btn-icon-only" style={{ color: '#0ea5e9' }} title="Bed History">
+                      <History size={16} />
+                    </button>
+                    <button onClick={() => { setVacateTarget(t); setVacateDate(t.advance_vacate_date ? t.advance_vacate_date.split('T')[0] : ''); setVacateDateModal(true); }} className="btn btn-icon-only" style={{ color: '#f59e0b' }} title="Advance Vacate Date">
+                      <CalendarClock size={16} />
                     </button>
                     <button onClick={() => openCommsModal(t)} className="btn btn-icon-only" style={{ color: '#8b5cf6' }} title="Communication Preferences">
                       <MessageSquare size={16} />
@@ -1262,6 +1357,82 @@ const Tenants = () => {
         />
       )}
 
+      {/* Reallocate Bed Modal */}
+      {reallocateModal && reallocateTarget && (
+        <div className="modal-overlay">
+          <div className="modal form-card" style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <ArrowRightLeft size={20} color="var(--primary)" /> Reallocate Bed
+              </h2>
+              <button className="btn-icon" onClick={() => setReallocateModal(false)}><X size={20} /></button>
+            </div>
+            <form onSubmit={handleReallocateSubmit} className="modal-body">
+              <p style={{ marginBottom: '1.5rem', color: 'var(--text-muted)' }}>
+                Select a new bed for <strong>{reallocateTarget.name}</strong>. Their current bed will become vacant.
+              </p>
+              <div className="form-group">
+                <label>Select New Bed</label>
+                <select 
+                  className="input" 
+                  value={newBedId} 
+                  onChange={(e) => setNewBedId(e.target.value)}
+                  required
+                >
+                  <option value="">-- Choose Vacant Bed --</option>
+                  {vacantBeds.map(bed => (
+                    <option key={bed.bed_id} value={bed.bed_id}>
+                      {bed.floor_name} - Room {bed.room_number} - Bed {bed.bed_number} (Rent: ₹{bed.bed_cost})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="modal-footer" style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                <button type="button" className="btn btn-outline" onClick={() => setReallocateModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={!newBedId || newBedId == reallocateTarget.bed_id}>Reallocate</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Advance Vacate Date Modal */}
+      {vacateDateModal && vacateTarget && (
+        <div className="modal-overlay">
+          <div className="modal form-card" style={{ maxWidth: '400px' }}>
+            <div className="modal-header">
+              <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <CalendarClock size={20} color="#f59e0b" /> Advance Vacate Date
+              </h2>
+              <button className="btn-icon" onClick={() => setVacateDateModal(false)}><X size={20} /></button>
+            </div>
+            <form onSubmit={handleVacateDateSubmit} className="modal-body">
+              <p style={{ marginBottom: '1.5rem', color: 'var(--text-muted)' }}>
+                Set the expected date when <strong>{vacateTarget.name}</strong> plans to vacate.
+              </p>
+              <div className="form-group">
+                <label>Notice / Vacate Date</label>
+                <input 
+                  type="date" 
+                  className="input"
+                  value={vacateDate} 
+                  onChange={(e) => setVacateDate(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="modal-footer" style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                <button type="button" className="btn btn-outline" onClick={() => {
+                  setVacateDate('');
+                  handleVacateDateSubmit(new Event('submit')); // Allow clearing the date
+                }}>Clear Notice</button>
+                <button type="button" className="btn btn-outline" onClick={() => setVacateDateModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" style={{ background: '#f59e0b', color: 'white', border: 'none' }}>Save Date</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Communication Preferences Modal */}
       {commsModal && commsTenant && (
         <div className="modal-overlay">
@@ -1323,6 +1494,59 @@ const Tenants = () => {
           </div>
         </div>
       )}
+
+      {/* Bed History Modal */}
+      {historyModal && historyTenant && (
+        <div className="modal-overlay">
+          <div className="modal form-card" style={{ maxWidth: '600px' }}>
+            <div className="modal-header">
+              <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <History size={20} color="#0ea5e9" /> Bed Allocation History
+              </h2>
+              <button className="btn-icon" onClick={() => setHistoryModal(false)}><X size={20} /></button>
+            </div>
+            <div className="modal-body">
+              <p style={{ marginBottom: '1rem', color: 'var(--text-muted)' }}>
+                History for <strong>{historyTenant.name}</strong>
+              </p>
+              {bedHistory.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+                  No bed history found.
+                </div>
+              ) : (
+                <div className="table-responsive">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Floor</th>
+                        <th>Room</th>
+                        <th>Bed</th>
+                        <th>From Date</th>
+                        <th>To Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bedHistory.map(record => (
+                        <tr key={record.id}>
+                          <td>{record.floor_name || '-'}</td>
+                          <td>{record.room_number || '-'}</td>
+                          <td>{record.bed_number || 'Unassigned'}</td>
+                          <td>{record.start_date ? new Date(record.start_date).toLocaleDateString() : '-'}</td>
+                          <td>{record.end_date ? new Date(record.end_date).toLocaleDateString() : 'Current'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <div className="modal-footer" style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
+                <button type="button" className="btn btn-outline" onClick={() => setHistoryModal(false)}>Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

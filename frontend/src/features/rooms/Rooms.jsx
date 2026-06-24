@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from '../../services/api';
-import { LayoutGrid, Bed, Plus, Trash2, X, Pencil, Building2, Map as MapIcon, Users, QrCode } from 'lucide-react';
+import { LayoutGrid, Bed, Plus, Trash2, X, Pencil, Building2, Map as MapIcon, Users, QrCode, Snowflake } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 
@@ -11,6 +11,9 @@ const Rooms = () => {
   const [bedStatusFilter, setBedStatusFilter] = useState('');
   const [bedRoomFilter, setBedRoomFilter] = useState('');
   const [bedFloorFilter, setBedFloorFilter] = useState('');
+  const [bedAcFilter, setBedAcFilter] = useState('');
+  const [roomFloorFilter, setRoomFloorFilter] = useState('');
+  const [roomAcFilter, setRoomAcFilter] = useState('');
   
   useEffect(() => {
     if (location.state?.tab) {
@@ -30,7 +33,7 @@ const Rooms = () => {
   const [showEditFloorModal, setShowEditFloorModal] = useState(false);
   const [showEditBedModal, setShowEditBedModal] = useState(false);
   const [bedError, setBedError] = useState('');
-  const [newRoom, setNewRoom] = useState({ room_number: '', floor_id: '', sharing_capacity: '' });
+  const [newRoom, setNewRoom] = useState({ room_number: '', floor_id: '', sharing_capacity: '', ac_type: 'NON-AC' });
   const [newBed, setNewBed] = useState({ room_id: '', bed_number: '', bed_cost: '', daily_cost: '', weekly_cost: '', advance_amount: '' });
   const [newFloor, setNewFloor] = useState({ floor_name: '' });
   const [editingRoom, setEditingRoom] = useState(null);
@@ -180,8 +183,17 @@ const Rooms = () => {
       const room = rooms.find(r => r.room_id === bed.room_id);
       return room && room.floor_id == bedFloorFilter;
     })
+    .filter(bed => {
+      if (!bedAcFilter) return true;
+      const room = rooms.find(r => r.room_id === bed.room_id);
+      return room && room.ac_type === bedAcFilter;
+    })
     .sort((a, b) => a.bed_number.localeCompare(b.bed_number, undefined, { numeric: true }));
-  const filteredRooms = rooms.sort((a, b) => a.room_number.localeCompare(b.room_number, undefined, { numeric: true }));
+    
+  const filteredRooms = rooms
+    .filter(room => !roomFloorFilter || room.floor_id == roomFloorFilter)
+    .filter(room => !roomAcFilter || room.ac_type === roomAcFilter)
+    .sort((a, b) => a.room_number.localeCompare(b.room_number, undefined, { numeric: true }));
 
   return (
     <div>
@@ -339,7 +351,14 @@ const Rooms = () => {
                       justifyContent: 'space-between'
                     }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                        <span style={{ fontWeight: 700, fontSize: '1rem' }}>Room {room.room_number}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ fontWeight: 700, fontSize: '1rem' }}>Room {room.room_number}</span>
+                          {room.ac_type === 'AC' && (
+                            <span title="AC Room" style={{ display: 'flex', alignItems: 'center', color: '#3b82f6', background: 'rgba(59, 130, 246, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>
+                              <Snowflake size={14} />
+                            </span>
+                          )}
+                        </div>
                         <Pencil size={14} style={{ cursor: 'pointer', color: 'var(--text-muted)' }} onClick={() => { setEditingRoom(room); setShowEditRoomModal(true); }} />
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
@@ -415,12 +434,68 @@ const Rooms = () => {
         )}
 
         {activeTab === 'rooms' && (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div>
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              marginBottom: '1.5rem',
+              background: 'var(--card-bg)',
+              padding: '1rem',
+              borderRadius: '0.75rem',
+              border: '1px solid var(--border)'
+            }}>
+              <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                Showing <strong style={{ color: 'var(--primary)' }}>{filteredRooms.length}</strong> of <strong>{rooms.length}</strong> rooms
+              </div>
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Filters:</span>
+                
+                <select 
+                  value={roomFloorFilter} 
+                  onChange={e => setRoomFloorFilter(e.target.value)}
+                  style={{ 
+                    width: '130px', 
+                    padding: '0.4rem 0.8rem', 
+                    background: 'var(--card-bg)', 
+                    border: '1px solid var(--border)', 
+                    borderRadius: '0.5rem', 
+                    color: 'var(--text-main)',
+                    fontSize: '0.85rem'
+                  }}
+                >
+                  <option value="">All Floors</option>
+                  {floors.map(f => (
+                    <option key={f.floor_id} value={f.floor_id}>{f.floor_name}</option>
+                  ))}
+                </select>
+
+                <select 
+                  value={roomAcFilter} 
+                  onChange={e => setRoomAcFilter(e.target.value)}
+                  style={{ 
+                    width: '130px', 
+                    padding: '0.4rem 0.8rem', 
+                    background: 'var(--card-bg)', 
+                    border: '1px solid var(--border)', 
+                    borderRadius: '0.5rem', 
+                    color: 'var(--text-main)',
+                    fontSize: '0.85rem'
+                  }}
+                >
+                  <option value="">All Types</option>
+                  <option value="AC">AC Rooms</option>
+                  <option value="NON-AC">NON-AC Rooms</option>
+                </select>
+              </div>
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)', textAlign: 'left' }}>
                   <th style={{ padding: '1rem' }}>Room Number</th>
                   <th style={{ padding: '1rem' }}>Floor</th>
+                  <th style={{ padding: '1rem' }}>Type</th>
                   <th style={{ padding: '1rem' }}>Capacity</th>
                   <th style={{ padding: '1rem' }}>Beds</th>
                   <th style={{ padding: '1rem', textAlign: 'right' }}>Actions</th>
@@ -433,6 +508,13 @@ const Rooms = () => {
                     <tr key={room.room_id} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ padding: '1rem', fontWeight: 600 }}>Room {room.room_number}</td>
                       <td style={{ padding: '1rem' }}>{room.floor_name}</td>
+                      <td style={{ padding: '1rem' }}>
+                        <span style={{ 
+                          padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600,
+                          background: room.ac_type === 'AC' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(107, 114, 128, 0.1)',
+                          color: room.ac_type === 'AC' ? '#3b82f6' : '#6b7280'
+                        }}>{room.ac_type || 'NON-AC'}</span>
+                      </td>
                       <td style={{ padding: '1rem' }}>{room.sharing_capacity} sharing</td>
                       <td style={{ padding: '1rem' }}>
                         <span style={{ color: roomBeds.length >= room.sharing_capacity ? 'var(--accent)' : 'var(--text-muted)' }}>
@@ -450,6 +532,7 @@ const Rooms = () => {
                 })}
               </tbody>
             </table>
+            </div>
           </div>
         )}
 
@@ -532,6 +615,24 @@ const Rooms = () => {
                   <option value="Occupied">Occupied</option>
                   <option value="Maintenance">Maintenance</option>
                 </select>
+
+                <select 
+                  value={bedAcFilter} 
+                  onChange={e => setBedAcFilter(e.target.value)}
+                  style={{ 
+                    width: '130px', 
+                    padding: '0.4rem 0.8rem', 
+                    background: 'var(--card-bg)', 
+                    border: '1px solid var(--border)', 
+                    borderRadius: '0.5rem', 
+                    color: 'var(--text-main)',
+                    fontSize: '0.85rem'
+                  }}
+                >
+                  <option value="">All Types</option>
+                  <option value="AC">AC</option>
+                  <option value="NON-AC">NON-AC</option>
+                </select>
               </div>
             </div>
             <div style={{ overflowX: 'auto' }}>
@@ -540,16 +641,26 @@ const Rooms = () => {
                   <tr style={{ borderBottom: '1px solid var(--border)', textAlign: 'left' }}>
                     <th style={{ padding: '1rem' }}>Bed ID</th>
                     <th style={{ padding: '1rem' }}>Room</th>
+                    <th style={{ padding: '1rem' }}>Type</th>
                     <th style={{ padding: '1rem' }}>Monthly Rent</th>
                     <th style={{ padding: '1rem' }}>Status</th>
                     <th style={{ padding: '1rem', textAlign: 'right' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredBeds.map(bed => (
+                  {filteredBeds.map(bed => {
+                    const room = rooms.find(r => r.room_id === bed.room_id);
+                    return (
                     <tr key={bed.bed_id} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ padding: '1rem', fontWeight: 600 }}>{bed.bed_number}</td>
                       <td style={{ padding: '1rem' }}>Room {bed.room_number}</td>
+                      <td style={{ padding: '1rem' }}>
+                        <span style={{ 
+                          padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600,
+                          background: room?.ac_type === 'AC' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(107, 114, 128, 0.1)',
+                          color: room?.ac_type === 'AC' ? '#3b82f6' : '#6b7280'
+                        }}>{room?.ac_type || 'NON-AC'}</span>
+                      </td>
                       <td style={{ padding: '1rem' }}>₹{bed.bed_cost?.toLocaleString()}</td>
                       <td style={{ padding: '1rem' }}>
                         <span style={{ 
@@ -565,7 +676,7 @@ const Rooms = () => {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  )})}
                 </tbody>
               </table>
             </div>
@@ -590,6 +701,13 @@ const Rooms = () => {
                 <select required onChange={e => setNewRoom({...newRoom, floor_id: e.target.value})}>
                   <option value="">Select Floor</option>
                   {floors.map(f => <option key={f.floor_id} value={f.floor_id}>{f.floor_name}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>AC Type</label>
+                <select value={newRoom.ac_type} onChange={e => setNewRoom({...newRoom, ac_type: e.target.value})}>
+                  <option value="NON-AC">NON-AC</option>
+                  <option value="AC">AC</option>
                 </select>
               </div>
               <div className="form-group">
@@ -707,6 +825,16 @@ const Rooms = () => {
                 >
                   <option value="">Select Floor</option>
                   {floors.map(f => <option key={f.floor_id} value={f.floor_id}>{f.floor_name}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>AC Type</label>
+                <select 
+                  value={editingRoom?.ac_type || 'NON-AC'} 
+                  onChange={e => setEditingRoom({...editingRoom, ac_type: e.target.value})}
+                >
+                  <option value="NON-AC">NON-AC</option>
+                  <option value="AC">AC</option>
                 </select>
               </div>
               <div className="form-group">
