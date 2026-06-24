@@ -1,4 +1,7 @@
 const db = require('../config/database');
+const { Expo } = require('expo-server-sdk');
+
+const expo = new Expo();
 
 const INTERVAL = 24 * 60 * 60 * 1000; // Run daily
 
@@ -41,6 +44,30 @@ const sendRentReminders = async () => {
       }
 
       if (message) {
+        // Send Expo Push Notification
+        if (tenant.expo_push_token && Expo.isExpoPushToken(tenant.expo_push_token)) {
+          const messages = [{
+            to: tenant.expo_push_token,
+            sound: 'default',
+            title: daysRemaining <= 0 ? 'Urgent: Rent Overdue' : 'Rent Reminder',
+            body: message,
+            data: { type: 'payment' },
+          }];
+          
+          expo.sendPushNotificationsAsync(messages).catch(err => {
+            console.error(`[PUSH MOCK] Failed to send push to ${tenant.expo_push_token}:`, err);
+          });
+        }
+
+        // Save to Database Inbox
+        await db('notifications').insert({
+          user_id: tenant.user_id,
+          tenant_id: tenant.tenant_id,
+          title: daysRemaining <= 0 ? 'Urgent: Rent Overdue' : 'Rent Reminder',
+          body: message,
+          type: 'payment'
+        });
+
         // Mock SMS Send
         if (tenant.mobile) {
           console.log(`[SMS MOCK] To: ${tenant.mobile} | Msg: ${message}`);

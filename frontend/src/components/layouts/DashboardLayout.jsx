@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, Navigate, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Bed, Tablet, FileText, CreditCard, LogOut, User, Settings, ShieldCheck, Key, Copy, X, MessageSquare, Calendar, Briefcase, Bell, Palette, Lock, DollarSign, Database } from 'lucide-react';
+import { LayoutDashboard, Users, Bed, Tablet, FileText, CreditCard, LogOut, User, Settings, ShieldCheck, Key, Copy, X, MessageSquare, Calendar, Briefcase, Bell, Palette, Lock, DollarSign, Database, Utensils } from 'lucide-react';
 import api from '../../services/api';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useNotifications } from '../../contexts/NotificationContext';
@@ -28,10 +28,10 @@ const Sidebar = ({ onProfileClick }) => {
     <aside className="sidebar">
       <div className="logo">
         <div style={{ 
-          background: 'var(--primary)', 
-          width: '40px',
+          background: user?.pg_logo ? 'transparent' : 'var(--primary)', 
           height: '40px',
           minWidth: '40px',
+          maxWidth: '120px',
           borderRadius: '8px',
           display: 'flex',
           alignItems: 'center',
@@ -42,7 +42,7 @@ const Sidebar = ({ onProfileClick }) => {
           flexShrink: 0
         }}>
           {user?.pg_logo ? (
-            <img src={user.pg_logo} alt="PG Logo" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px' }} />
+            <img src={user.pg_logo} alt="PG Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '8px' }} />
           ) : (
             user?.pg_name ? user.pg_name.charAt(0).toUpperCase() : <Bed size={24} color="white" />
           )}
@@ -90,11 +90,17 @@ const Sidebar = ({ onProfileClick }) => {
         <NavLink to="/tenants" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <Users size={20} /> Tenants
         </NavLink>
+        <NavLink to="/visitors" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+          <User size={20} /> Visitors
+        </NavLink>
         <NavLink to="/staff" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <Briefcase size={20} /> Staff
         </NavLink>
         <NavLink to="/rooms" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <Bed size={20} /> Rooms & Beds
+        </NavLink>
+        <NavLink to="/mess" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+          <Utensils size={20} /> Food & Mess
         </NavLink>
         <NavLink to="/devices" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <Tablet size={20} /> Devices
@@ -535,14 +541,14 @@ export const DashboardLayout = ({ children }) => {
                       <label>PG Logo</label>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                         <div style={{ 
-                          width: '60px', height: '60px', borderRadius: '12px', background: 'var(--border)', 
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden'
+                          width: '120px', height: '60px', borderRadius: '12px', background: 'var(--border)', 
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '4px'
                         }}>
-                          {pgLogo ? <img src={pgLogo} alt="Logo preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Palette size={24} color="var(--text-muted)" />}
+                          {pgLogo ? <img src={pgLogo} alt="Logo preview" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : <Palette size={24} color="var(--text-muted)" />}
                         </div>
                         <div>
                           <input type="file" accept="image/*" onChange={handleLogoUpload} style={{ fontSize: '12px', color: 'var(--text-muted)' }} />
-                          <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>Recommended: Square image, max 1MB.</p>
+                          <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>Recommended: Logo image, max 1MB.</p>
                           {pgLogo && <button type="button" onClick={() => setPgLogo('')} style={{ fontSize: '11px', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: '4px' }}>Remove Logo</button>}
                         </div>
                       </div>

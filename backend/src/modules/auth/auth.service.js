@@ -142,7 +142,8 @@ exports.updateProfile = async (email, displayName, pgName, pgAddress, pgContact,
     display_name: updatedUser.display_name,
     pg_name: updatedUser.pg_name,
     pg_address: updatedUser.pg_address,
-    pg_contact: updatedUser.pg_contact
+    pg_contact: updatedUser.pg_contact,
+    pg_logo: updatedUser.pg_logo
   };
 };
 
