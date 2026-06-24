@@ -63,8 +63,8 @@ exports.claimLicense = async (req, res, next) => {
 
 exports.updateProfile = async (req, res, next) => {
   try {
-    const { email, display_name, pg_name, pg_address, pg_contact } = req.body;
-    const result = await service.updateProfile(email, display_name, pg_name, pg_address, pg_contact);
+    const { email, display_name, pg_name, pg_address, pg_contact, pg_logo } = req.body;
+    const result = await service.updateProfile(email, display_name, pg_name, pg_address, pg_contact, pg_logo);
     res.json(result);
   } catch (err) {
     if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });

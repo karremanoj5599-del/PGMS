@@ -41,7 +41,11 @@ const Sidebar = ({ onProfileClick }) => {
           fontSize: '1.2rem',
           flexShrink: 0
         }}>
-          {user?.pg_name ? user.pg_name.charAt(0).toUpperCase() : <Bed size={24} color="white" />}
+          {user?.pg_logo ? (
+            <img src={user.pg_logo} alt="PG Logo" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px' }} />
+          ) : (
+            user?.pg_name ? user.pg_name.charAt(0).toUpperCase() : <Bed size={24} color="white" />
+          )}
         </div>
         <div style={{
           fontSize: (user?.pg_name || 'PGMS Admin').length > 12 ? '1rem' : '1.5rem',
@@ -406,6 +410,7 @@ export const DashboardLayout = ({ children }) => {
   const [pgName, setPgName] = useState(user.pg_name || '');
   const [pgAddress, setPgAddress] = useState(user.pg_address || '');
   const [pgContact, setPgContact] = useState(user.pg_contact || '');
+  const [pgLogo, setPgLogo] = useState(user.pg_logo || '');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -423,6 +428,21 @@ export const DashboardLayout = ({ children }) => {
     setTimeout(() => setMessage({ type: '', text: '' }), 3000);
   };
 
+  const handleLogoUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 1024 * 1024) { // 1MB Limit
+        setMessage({ type: 'error', text: 'Image size must be less than 1MB' });
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPgLogo(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -432,14 +452,16 @@ export const DashboardLayout = ({ children }) => {
         display_name: displayName,
         pg_name: pgName,
         pg_address: pgAddress,
-        pg_contact: pgContact
+        pg_contact: pgContact,
+        pg_logo: pgLogo
       });
       const updatedUser = { 
         ...user, 
         display_name: res.data.display_name,
         pg_name: res.data.pg_name,
         pg_address: res.data.pg_address,
-        pg_contact: res.data.pg_contact
+        pg_contact: res.data.pg_contact,
+        pg_logo: res.data.pg_logo
       };
       localStorage.setItem('pgms_user', JSON.stringify(updatedUser));
       setUser(updatedUser);
@@ -509,6 +531,23 @@ export const DashboardLayout = ({ children }) => {
               {activeTab === 'account' && (
                 <div className="settings-section">
                   <form onSubmit={handleUpdateProfile} className="settings-form">
+                    <div className="form-group" style={{ marginBottom: '20px' }}>
+                      <label>PG Logo</label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                        <div style={{ 
+                          width: '60px', height: '60px', borderRadius: '12px', background: 'var(--border)', 
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden'
+                        }}>
+                          {pgLogo ? <img src={pgLogo} alt="Logo preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Palette size={24} color="var(--text-muted)" />}
+                        </div>
+                        <div>
+                          <input type="file" accept="image/*" onChange={handleLogoUpload} style={{ fontSize: '12px', color: 'var(--text-muted)' }} />
+                          <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>Recommended: Square image, max 1MB.</p>
+                          {pgLogo && <button type="button" onClick={() => setPgLogo('')} style={{ fontSize: '11px', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: '4px' }}>Remove Logo</button>}
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="form-group">
                       <label>Email Address</label>
                       <input type="text" value={user.email} disabled className="disabled-input" />

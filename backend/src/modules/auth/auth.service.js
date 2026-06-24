@@ -75,6 +75,7 @@ exports.login = async (email, password) => {
     pg_name: user.pg_name,
     pg_address: user.pg_address,
     pg_contact: user.pg_contact,
+    pg_logo: user.pg_logo,
     status,
     message,
     trial_expiry: user.trial_expiry,
@@ -113,17 +114,10 @@ exports.claimLicense = async (email, activationCode) => {
   };
 };
 
-exports.updateProfile = async (email, displayName, pgName, pgAddress, pgContact) => {
+exports.updateProfile = async (email, displayName, pgName, pgAddress, pgContact, pgLogo) => {
   if (!email || !displayName) {
     const err = new Error('Email and display name are required');
     err.statusCode = 400;
-    throw err;
-  }
-
-  const user = await db('users').where({ email }).first();
-  if (!user) {
-    const err = new Error('User not found');
-    err.statusCode = 404;
     throw err;
   }
 
@@ -133,7 +127,8 @@ exports.updateProfile = async (email, displayName, pgName, pgAddress, pgContact)
       display_name: displayName,
       pg_name: pgName || null,
       pg_address: pgAddress || null,
-      pg_contact: pgContact || null
+      pg_contact: pgContact || null,
+      pg_logo: pgLogo || null
     })
     .returning('*');
 

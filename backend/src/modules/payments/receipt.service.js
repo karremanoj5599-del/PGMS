@@ -59,13 +59,24 @@ exports.generateReceipt = async (paymentId, userId) => {
 
   // ── Header ──────────────────────────────────────────────────────────────
   let y = 50;
+  let startX = 50;
+  
+  if (user?.pg_logo) {
+    try {
+      const base64Data = user.pg_logo.replace(/^data:image\/\w+;base64,/, '');
+      const imageBuffer = Buffer.from(base64Data, 'base64');
+      doc.image(imageBuffer, 50, y, { fit: [60, 60] });
+      startX = 125;
+    } catch (err) {
+      console.error('Failed to load PG Logo for receipt', err);
+    }
+  }
   
   // Left side: PG Details
   doc.fontSize(22).fillColor(primaryColor).font('Helvetica-Bold')
-    .text(pgName, 50, y, { width: 300 });
-  y += 26;
+    .text(pgName, startX, y, { width: 300 });
   doc.fontSize(10).fillColor(textMuted).font('Helvetica')
-    .text(pgSubText, 50, y, { width: 300 });
+    .text(pgSubText, startX, y + 26, { width: 300 });
   
   // Right side: RECEIPT title
   doc.fontSize(20).fillColor(textLight).font('Helvetica-Bold')
