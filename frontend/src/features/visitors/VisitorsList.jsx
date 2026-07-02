@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
-import { User, Phone, Calendar, Search, MapPin, Key, UserCheck, LogOut, CheckCircle, AlertCircle } from 'lucide-react';
+import { User, Phone, Calendar, Search, MapPin, Key, UserCheck, LogOut, CheckCircle, AlertCircle, Link, Tag, Check } from 'lucide-react';
 
 const VisitorsList = () => {
   const [visitors, setVisitors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [copied, setCopied] = useState(false);
 
   const fetchVisitors = async () => {
     try {
@@ -35,6 +36,26 @@ const VisitorsList = () => {
     }
   };
 
+  const handleCopyLink = () => {
+    // Determine base URL, normally window.location.origin but since it's an app, let's just construct it
+    const baseUrl = window.location.origin;
+    
+    // Extract admin's user_id from localStorage
+    let adminId = '';
+    const userString = localStorage.getItem('pgms_user');
+    if (userString) {
+      try {
+        const user = JSON.parse(userString);
+        if (user.user_id) adminId = user.user_id;
+      } catch (e) {}
+    }
+    
+    const url = adminId ? `${baseUrl}/book-visit/${adminId}` : `${baseUrl}/book-visit`;
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const filteredVisitors = visitors.filter(v => 
     v.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     v.pass_code.toLowerCase().includes(searchTerm.toLowerCase())
@@ -60,7 +81,7 @@ const VisitorsList = () => {
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', justifyContent: 'space-between' }}>
         <div style={{ position: 'relative', width: '300px' }}>
           <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
           <input 
@@ -71,6 +92,10 @@ const VisitorsList = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
+        <button className="btn btn-primary" onClick={handleCopyLink} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          {copied ? <Check size={18} /> : <Link size={18} />} 
+          {copied ? 'Copied!' : 'Copy Booking Link'}
+        </button>
       </div>
 
       {loading ? (
@@ -84,6 +109,7 @@ const VisitorsList = () => {
                 <th>Phone</th>
                 <th>Visit Date</th>
                 <th>Purpose</th>
+                <th>Type</th>
                 <th>Pass Code (PIN)</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -119,6 +145,12 @@ const VisitorsList = () => {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <MapPin size={14} color="var(--text-muted)" />
                         {v.purpose || 'N/A'}
+                      </div>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Tag size={14} color="var(--text-muted)" />
+                        {v.visitor_type || 'Guest'}
                       </div>
                     </td>
                     <td>

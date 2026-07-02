@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, Navigate, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Bed, Tablet, FileText, CreditCard, LogOut, User, Settings, ShieldCheck, Key, Copy, X, MessageSquare, Calendar, Briefcase, Bell, Palette, Lock, DollarSign, Database, Utensils } from 'lucide-react';
+import { LayoutDashboard, Users, Bed, Tablet, FileText, CreditCard, LogOut, User, Settings, ShieldCheck, Key, Copy, X, MessageSquare, Calendar, Briefcase, Bell, Palette, Lock, DollarSign, Database, Utensils, Camera } from 'lucide-react';
 import api from '../../services/api';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useNotifications } from '../../contexts/NotificationContext';
@@ -101,6 +101,9 @@ const Sidebar = ({ onProfileClick }) => {
         </NavLink>
         <NavLink to="/mess" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <Utensils size={20} /> Food & Mess
+        </NavLink>
+        <NavLink to="/cctv" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+          <Camera size={20} /> CCTV Cameras
         </NavLink>
         <NavLink to="/devices" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <Tablet size={20} /> Devices

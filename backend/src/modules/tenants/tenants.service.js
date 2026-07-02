@@ -2,6 +2,29 @@ const db = require('../../config/database');
 const bcrypt = require('bcryptjs');
 const { toNull } = require('../../shared/utils/toNull');
 const activityService = require('../system/activity.service');
+const axios = require('axios');
+
+async function syncFaceEmbedding(tenantId, photoUrl) {
+  if (!photoUrl) return;
+  try {
+    const aiResponse = await axios.post('http://localhost:8000/generate-embedding-from-url', {
+      imageUrl: photoUrl
+    });
+    const embedding = aiResponse.data.embedding;
+    
+    const existing = await db('face_embeddings').where({ tenant_id: tenantId }).first();
+    if (existing) {
+      await db('face_embeddings').where({ tenant_id: tenantId }).update({ embedding: JSON.stringify(embedding) });
+    } else {
+      await db('face_embeddings').insert({ tenant_id: tenantId, embedding: JSON.stringify(embedding) });
+    }
+    
+    // Push update flag to AI service
+    await axios.post('http://localhost:8000/reload-embeddings');
+  } catch (err) {
+    console.error(`Failed to sync face embedding for tenant ${tenantId}:`, err.message);
+  }
+}
 
 exports.getAll = (userId) => {
   return db('tenants')
@@ -86,6 +109,11 @@ exports.create = async (data, userId) => {
     metadata: { tenant_id: newId }
   });
 
+  // Sync face embedding asynchronously if photo is provided
+  if (insertData.photo) {
+    syncFaceEmbedding(newId, insertData.photo);
+  }
+
   return newId;
 };
 
@@ -146,6 +174,11 @@ exports.update = async (id, data, userId) => {
     discount_amount: discount_amount !== undefined ? (discount_amount !== '' ? parseFloat(discount_amount) : 0) : tenant.discount_amount,
     email: email !== undefined ? toNull(email) : tenant.email
   });
+
+  // Sync face embedding asynchronously if photo was updated
+  if (photo && photo !== tenant.photo) {
+    syncFaceEmbedding(id, photo);
+  }
 
   return db('tenants').where('tenant_id', id).first();
 };

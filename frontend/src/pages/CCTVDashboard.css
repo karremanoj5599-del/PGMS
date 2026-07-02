@@ -1,0 +1,495 @@
+.cctv-dashboard {
+  padding: 1.5rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.cctv-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.cctv-header h1 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--text-main);
+  background: linear-gradient(90deg, #fff, #94a3b8);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.cctv-add-btn {
+  background: var(--primary);
+  color: white;
+  padding: 0.6rem 1.2rem;
+  border-radius: 0.5rem;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 6px rgba(99, 102, 241, 0.2);
+}
+
+.cctv-add-btn:hover {
+  background: var(--primary-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 8px rgba(99, 102, 241, 0.3);
+}
+
+/* Stats */
+.cctv-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
+}
+
+.cctv-stat-card {
+  background: var(--card-bg);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cctv-stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+}
+
+.cctv-icon-container {
+  border-radius: 50%;
+  padding: 0.75rem;
+  margin-right: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cctv-icon-container.blue { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+.cctv-icon-container.red { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+.cctv-icon-container.yellow { background: rgba(234, 179, 8, 0.1); color: #eab308; }
+.cctv-icon-container.green { background: rgba(34, 197, 94, 0.1); color: #22c55e; }
+
+.cctv-icon-container svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.cctv-stat-info p:first-child {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.cctv-stat-info p:last-child {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.2;
+}
+
+/* Main Grid Layout */
+.cctv-main-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+  .cctv-main-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Camera Select */
+.cctv-camera-select-wrapper {
+  margin-bottom: 1rem;
+}
+.cctv-camera-select {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  color: var(--text-main);
+  font-size: 0.9rem;
+  outline: none;
+  cursor: pointer;
+}
+
+.cctv-camera-select:focus {
+  border-color: var(--primary);
+}
+
+/* Live View */
+.cctv-live-view {
+  background: var(--card-bg);
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.cctv-live-header {
+  padding: 0.75rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+}
+
+.cctv-live-title {
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.cctv-live-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cctv-dot-wrapper {
+  position: relative;
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.cctv-dot-pulse {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #ef4444;
+  opacity: 0.75;
+  animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.cctv-dot-solid {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #ef4444;
+}
+
+@keyframes ping {
+  75%, 100% { transform: scale(2); opacity: 0; }
+}
+
+.cctv-live-text {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.cctv-video-container {
+  aspect-ratio: 16 / 9;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.cctv-loading-text {
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.cctv-no-camera {
+  aspect-ratio: 16 / 9;
+  background: var(--card-bg);
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.cctv-live-actions {
+  padding: 0.75rem 1rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  background: var(--bg-dark);
+}
+
+.cctv-action-btn {
+  background: var(--card-bg);
+  color: var(--text-main);
+  border: 1px solid var(--border);
+  padding: 0.4rem 0.8rem;
+  border-radius: 0.25rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.cctv-action-btn:hover { background: var(--border); }
+.cctv-action-btn.primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+.cctv-action-btn.primary:hover { background: var(--primary-hover); }
+
+
+/* Recent Events */
+.cctv-recent-events {
+  background: var(--card-bg);
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.cctv-recent-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(0,0,0,0.1);
+}
+
+.cctv-recent-title {
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.cctv-recent-view-all {
+  color: var(--primary);
+  background: transparent;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cctv-recent-table-wrapper {
+  overflow-x: auto;
+  flex: 1;
+}
+
+.cctv-recent-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.cctv-recent-table th {
+  padding: 0.75rem 1.25rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  background: rgba(0,0,0,0.05);
+}
+
+.cctv-recent-table td {
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  font-size: 0.85rem;
+  color: var(--text-main);
+}
+.cctv-recent-table tr:hover td {
+  background: rgba(255,255,255,0.02);
+}
+
+.cctv-badge {
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+.cctv-badge.known { background: rgba(59, 130, 246, 0.1); color: #60a5fa; }
+.cctv-badge.unknown { background: rgba(239, 68, 68, 0.1); color: #f87171; }
+.cctv-badge.expired { background: rgba(234, 179, 8, 0.1); color: #facc15; }
+
+/* Unknown Gallery */
+.cctv-section-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin-bottom: 1rem;
+}
+
+.cctv-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.cctv-gallery-card {
+  background: var(--card-bg);
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cctv-gallery-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
+}
+
+.cctv-gallery-img-wrapper {
+  aspect-ratio: 4 / 3;
+  background: #000;
+  position: relative;
+  overflow: hidden;
+}
+
+.cctv-gallery-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+.cctv-gallery-card:hover .cctv-gallery-img {
+  transform: scale(1.05);
+}
+
+.cctv-gallery-no-img {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.cctv-gallery-content {
+  padding: 1.25rem;
+}
+.cctv-gallery-info p {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+.cctv-gallery-info span {
+  color: var(--text-main);
+  font-weight: 500;
+}
+
+.cctv-gallery-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.cctv-gallery-btn {
+  flex: 1;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-main);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.cctv-gallery-btn:hover { background: rgba(255,255,255,0.05); }
+.cctv-gallery-btn.primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+.cctv-gallery-btn.primary:hover { background: var(--primary-hover); }
+
+/* Loader */
+.cctv-loader-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  min-height: 300px;
+}
+.cctv-loader {
+  width: 3rem;
+  height: 3rem;
+  border: 3px solid rgba(99, 102, 241, 0.2);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Modal */
+.cctv-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.cctv-modal {
+  background: var(--card-bg);
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  width: 100%;
+  max-width: 450px;
+  padding: 1.5rem;
+  box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+}
+.cctv-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+.cctv-modal-header h3 {
+  font-size: 1.25rem;
+  color: var(--text-main);
+}
+.cctv-modal-close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+.cctv-modal-close:hover { color: var(--text-main); }
+
+.cctv-form-group {
+  margin-bottom: 1rem;
+}
+.cctv-form-group label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+.cctv-form-group input, .cctv-form-group select {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  color: var(--text-main);
+  outline: none;
+}
+.cctv-form-group input:focus, .cctv-form-group select:focus {
+  border-color: var(--primary);
+}
+.cctv-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}

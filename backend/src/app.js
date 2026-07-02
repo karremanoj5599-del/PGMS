@@ -20,6 +20,7 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // ── Public Routes ────────────────────────────────────────────────────────────
 app.use('/api/public/tickets', require('./modules/tickets/tickets.public.routes'));
+app.use('/api/public/leads', require('./modules/leads/leads.public.routes'));
 
 // ── Global Middleware ────────────────────────────────────────────────────────
 app.use(admsDebugLogger);
@@ -64,6 +65,12 @@ app.use('/api/expenses',            require('./modules/expenses/expenses.routes'
 app.use('/api/communication',       require('./modules/communication/communication.routes'));
 app.use('/api/mess',                require('./modules/mess/mess.routes'));
 app.use('/api/visitors',            require('./modules/visitors/visitors.routes'));
+app.use('/api/leads',               require('./modules/leads/leads.routes'));
+
+// ── CCTV AI Integration Routes ───────────────────────────────────────────────
+app.use('/api/cameras',             require('./routes/cameraRoutes'));
+app.use('/api/face',                require('./routes/faceRoutes'));
+app.use('/api/events',              require('./routes/imageRoutes'));
 
 // ── ADMS Protocol (Device Communication) ─────────────────────────────────────
 require('./modules/devices/adms/adms.routes')(app);

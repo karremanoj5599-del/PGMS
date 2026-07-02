@@ -1,4 +1,6 @@
-
+{
+    "version": "0.2.0",
+    "configurations": [
         {
             "type": "chrome",
             "name": "http://localhost:5173/",

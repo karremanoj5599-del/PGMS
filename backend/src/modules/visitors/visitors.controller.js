@@ -19,7 +19,7 @@ exports.getVisitors = async (req, res) => {
 exports.addVisitor = async (req, res) => {
   try {
     const userId = req.userId;
-    const { tenant_id, name, phone, visit_date, purpose, pass_code } = req.body;
+    const { tenant_id, name, phone, visit_date, purpose, pass_code, visitor_type } = req.body;
 
     const [newVisitor] = await db('visitors').insert({
       user_id: userId,
@@ -28,6 +28,7 @@ exports.addVisitor = async (req, res) => {
       phone,
       visit_date,
       purpose,
+      visitor_type: visitor_type || 'Guest',
       pass_code: pass_code || Math.floor(100000 + Math.random() * 900000).toString(),
       status: 'Pending'
     }).returning('*');

@@ -22,6 +22,8 @@ import CommunicationSettings from './features/communication/CommunicationSetting
 import Backups from './features/backups/Backups';
 import MessManagement from './features/mess/MessManagement';
 import VisitorsList from './features/visitors/VisitorsList';
+import CCTVDashboard from './pages/CCTVDashboard';
+import BookVisit from './pages/BookVisit';
 
 // Note: The global axios interceptor has been moved to src/services/api.js.
 // When features are fully refactored, they should import api from services instead of raw axios.
@@ -41,6 +43,7 @@ function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/activate" element={<ActivationPage />} />
           <Route path="/report-issue" element={<ReportIssuePage />} />
+          <Route path="/book-visit/:userId?" element={<BookVisit />} />
           
           {/* Protected Dashboard Routes */}
           <Route path="/" element={<ProtectedRoute><DashboardLayout><Dashboard /></DashboardLayout></ProtectedRoute>} />
@@ -57,6 +60,7 @@ function App() {
           <Route path="/reports" element={<ProtectedRoute><DashboardLayout><Reports /></DashboardLayout></ProtectedRoute>} />
           <Route path="/mess" element={<ProtectedRoute><DashboardLayout><MessManagement /></DashboardLayout></ProtectedRoute>} />
           <Route path="/visitors" element={<ProtectedRoute><DashboardLayout><VisitorsList /></DashboardLayout></ProtectedRoute>} />
+          <Route path="/cctv" element={<ProtectedRoute><DashboardLayout><CCTVDashboard /></DashboardLayout></ProtectedRoute>} />
           <Route path="/backups" element={<ProtectedRoute><DashboardLayout><Backups /></DashboardLayout></ProtectedRoute>} />
           <Route path="/tenants/:id/attendance" element={<ProtectedRoute><DashboardLayout><TenantAttendance /></DashboardLayout></ProtectedRoute>} />
           

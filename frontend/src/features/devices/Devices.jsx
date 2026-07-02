@@ -293,6 +293,19 @@ const Devices = () => {
     }
   };
 
+  // Poll for updates while the history modal is open
+  useEffect(() => {
+    let interval;
+    if (showHistoryModal) {
+      interval = setInterval(() => {
+        api.get(`${API}/api/devices/sync-history`)
+          .then(res => setSyncHistory(res.data))
+          .catch(err => console.error('Failed to poll sync history', err));
+      }, 5000); // Poll every 5 seconds
+    }
+    return () => clearInterval(interval);
+  }, [showHistoryModal]);
+
   const broadcastTemplates = async (sn, deviceName) => {
     if (!window.confirm(`Broadcast all saved biometric templates to "${deviceName}"?\n\nThis will push all fingerprints, face, and palm data to this device.`)) return;
     try {
